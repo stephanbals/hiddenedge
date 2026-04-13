@@ -1,0 +1,10 @@
+=== NEW ANALYSIS ===
+JOB WORDS: lead,product,owner,scope,lead,product,owner,accountable,maximizing,value,delivered,more,programs,liveception,powervision,solution,domains,plays,intersection,product,delivery,leadership,member,program,governance,liveception,powervision,steerco,accountable,program,backlog,definition,accountable,delivery,plan,release,dates,program,manager,product,owners,organizational,position,reports,engineering,liveception,powervision,works,close,collaboration
+CV WORDS: personalia,naam,desy,kakiay,geslacht,woonplaats,assen,functie,product,owner,gelijkwaardige,functie,basis,mijn,competenties,beschikbaarheid,week,datum,overleg,profiel,gezellige,professional,agile,datagedreven,affiniteit,desy,kakiay,achternaam,drie,lettergrepen,optimistisch,ingestelde,professional,meer,jaar,ervaring,mijn,sterke,communicatie,luistervaardigheden,hebben,bijgedragen,inkorten,ophelderen,product,backlogs,realiseren,haalbare,doelen,affiniteit
+OVERLAP: data,agile,owner,product,open
+
+=== NEW ANALYSIS ===
+JOB WORDS: lead,product,owner,scope,lead,product,owner,accountable,maximizing,value,delivered,more,programs,liveception,powervision,solution,domains,plays,intersection,product,delivery,leadership,member,program,governance,liveception,powervision,steerco,accountable,program,backlog,definition,accountable,delivery,plan,release,dates,program,manager,product,owners,organizational,position,reports,engineering,liveception,powervision,works,close,collaboration
+CV WORDS: personalia,naam,desy,kakiay,geslacht,woonplaats,assen,functie,product,owner,gelijkwaardige,functie,basis,mijn,competenties,beschikbaarheid,week,datum,overleg,profiel,gezellige,professional,agile,datagedreven,affiniteit,desy,kakiay,achternaam,drie,lettergrepen,optimistisch,ingestelde,professional,meer,jaar,ervaring,mijn,sterke,communicatie,luistervaardigheden,hebben,bijgedragen,inkorten,ophelderen,product,backlogs,realiseren,haalbare,doelen,affiniteit
+OVERLAP: data,agile,owner,product,open
+

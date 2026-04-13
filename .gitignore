@@ -1,0 +1,10 @@
+Secrets_Do Not Loose This Folder/
+uploads/
+temp_uploads/
+data/
+__pycache__/
+*.pyc
+*.zip
+*.db
+*.log
+.env

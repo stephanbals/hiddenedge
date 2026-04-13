@@ -1,0 +1,28 @@
+{
+  "recruiters": [
+    {
+      "name": "hays",
+      "url": "https://www.hays.com/job-search"
+    },
+    {
+      "name": "progressive",
+      "url": "https://www.progressiverecruitment.com/jobs"
+    },
+    {
+      "name": "computer_futures",
+      "url": "https://www.computerfutures.com/jobs"
+    },
+    {
+      "name": "amoria_bond",
+      "url": "https://www.amoriabond.com/jobs"
+    },
+    {
+      "name": "darwin",
+      "url": "https://www.darwinrecruitment.com/jobs"
+    },
+    {
+      "name": "brainbridge",
+      "url": "https://www.brainbridge.be/jobs"
+    }
+  ]
+}
