@@ -21,14 +21,80 @@ button {margin-top:10px;padding:10px;background:#4facfe;border:none;color:white;
 
 .modal {position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;justify-content:center;align-items:center;z-index:1000;}
 .modal-content {background:#0b1833;padding:20px;border-radius:10px;width:650px;max-height:80%;overflow:auto;}
+
+.help-btn {position:absolute;top:20px;right:20px;}
+
+.footer {
+    text-align:center;
+    font-size:12px;
+    color:#8faadf;
+    margin:30px 0 20px 0;
+}
+.footer a {
+    color:#8faadf;
+    text-decoration:none;
+}
+.footer a:hover {
+    text-decoration:underline;
+}
 </style>
 </head>
 
 <body>
 
+<button class="help-btn" onclick="openHelp()">Help</button>
+
 <h1>HiddenEdge – Hiring Decision Engine</h1>
 
-<!-- 🔒 FULL EULA — DO NOT MODIFY -->
+<!-- HELP MODAL -->
+<div id="helpModal" class="modal" style="display:none;">
+<div class="modal-content">
+
+<h3>How HiddenEdge Works</h3>
+
+<p><strong>Step 1 — Upload your CV</strong><br>
+Upload your CV in DOCX or PDF format.</p>
+
+<p><strong>Step 2 — Paste Job Description</strong><br>
+Provide the job description you want to evaluate.</p>
+
+<p><strong>Step 3 — Nestor (Decision Engine)</strong><br>
+Nestor analyzes your CV against the job and determines:<br>
+• Fit score<br>
+• Strengths<br>
+• Gaps<br>
+• Risk indicators<br>
+• Whether you should apply</p>
+
+<p><strong>Step 4 — Alec (CV Optimization)</strong><br>
+Alec generates an optimized version of your CV specifically tailored to the job, improving your chances.</p>
+
+<p><strong>Why Two Entities?</strong><br>
+Nestor provides objective decision support.<br>
+Alec focuses on execution and improvement.<br>
+This separation ensures clarity between analysis and action.</p>
+
+<h4>Free vs Paid Usage</h4>
+
+<p>
+HiddenEdge allows you to preview your CV analysis and the optimized CV for free.
+</p>
+
+<p>
+Downloading the tailored CV requires an upgrade.
+</p>
+
+<p>
+This way, you can first evaluate the quality before deciding to unlock full functionality.
+</p>
+
+<br>
+<button onclick="closeHelp()">Close</button>
+
+</div>
+</div>
+
+<!-- EULA -->
 <div id="eulaModal" class="modal">
 <div class="modal-content">
 
@@ -61,7 +127,6 @@ For optimal results, CVs should be provided in English. Job descriptions may be 
 <br>
 
 <input type="checkbox" id="acceptBox"> I have read and accept these terms<br><br>
-
 <button onclick="acceptEula()">Continue</button>
 
 </div>
@@ -101,6 +166,9 @@ For optimal results, CVs should be provided in English. Job descriptions may be 
 <div class="card">
 <div id="alecText"></div>
 <textarea id="tailored"></textarea>
+
+<button onclick="downloadCV()">Download CV (.docx)</button>
+
 </div>
 
 <div class="card" id="nextActions" style="display:none;">
@@ -110,10 +178,25 @@ For optimal results, CVs should be provided in English. Job descriptions may be 
 
 </div>
 
+<!-- FOOTER -->
+<div class="footer">
+© 2026 SB3PM Advisory & Services Ltd. – HiddenEdge™. All rights reserved.<br>
+Contact: <a href="mailto:HiddenEdgeInfo@proton.me">HiddenEdgeInfo@proton.me</a>
+</div>
+
 <script>
 
+function openHelp(){
+document.getElementById("helpModal").style.display="flex";
+}
+
+function closeHelp(){
+document.getElementById("helpModal").style.display="none";
+}
+
 function acceptEula(){
-if(!acceptBox.checked){alert("You must accept the terms.");return;}
+const checkbox = document.getElementById("acceptBox");
+if(!checkbox.checked){alert("You must accept the terms.");return;}
 document.getElementById("eulaModal").style.display="none";
 }
 
@@ -157,10 +240,8 @@ if(data.paywall){alert("Upgrade required");return;}
 
 let e=data.evaluation;
 
-// Decision
 decision.innerHTML=`<h2>${e.decision} (${e.fit_score}%)</h2>`;
 
-// Recommendation
 let recText="", recClass="";
 if(e.fit_score >= 80){
 recText="👉 Nestor recommends applying";
@@ -174,15 +255,12 @@ recClass="noapply";
 }
 recommendation.innerHTML=`<div class="recommend ${recClass}">${recText}</div>`;
 
-// Confidence
 confidence.innerHTML=`Nestor has a ${e.confidence.toLowerCase()} confidence that this analysis of your CV versus the job description is correct based on the provided information.`;
 
-// Details
 strengths.innerHTML=e.strengths.map(x=>"• "+x).join("<br>");
 gaps.innerHTML=e.gaps.map(x=>"• "+x).join("<br>");
 risks.innerHTML=e.risk_flags.map(x=>"• "+x).join("<br>");
 
-// Alec
 let alecMsg="";
 if(e.fit_score >= 80){
 alecMsg="Alec proposes this CV to strengthen your application:";
@@ -196,6 +274,25 @@ tailored.value=data.tailored_cv;
 
 nextActions.style.display="block";
 
+});
+}
+
+function downloadCV(){
+fetch("/download_cv",{method:"POST"})
+.then(res=>{
+if(res.status === 403){
+alert("Download requires upgrade");
+return;
+}
+return res.blob();
+})
+.then(blob=>{
+if(!blob) return;
+let url=window.URL.createObjectURL(blob);
+let a=document.createElement("a");
+a.href=url;
+a.download="tailored_cv.docx";
+a.click();
 });
 }
 
