@@ -1,115 +1,265 @@
-from flask import Flask, request, jsonify, render_template, session, send_file
-from core.cv.cv_service import extract_text_from_files, evaluate_fit, tailor_cv
-from core.cv.docx_export import generate_docx
+from flask import Flask, request, jsonify, redirect
+import stripe
 import os
-import uuid
+import sqlite3
 
 app = Flask(__name__)
-app.secret_key = "hiddenedge-secret"
 
+# =========================
+# CONFIG
+# =========================
 
-# -----------------------------
-# HOME
-# -----------------------------
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+YOUR_DOMAIN = "http://127.0.0.1:5000"
+DB_FILE = "subscriptions.db"
+
+# =========================
+# DB INIT
+# =========================
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT,
+            customer_id TEXT,
+            subscription_id TEXT,
+            status TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# =========================
+# PAYWALL / HOME
+# =========================
+
 @app.route("/")
-def index():
-    return render_template("index.html")
+def home():
+    return """
+    <html>
+    <head>
+        <title>HiddenEdge</title>
+        <style>
+            body {
+                margin:0;
+                font-family: Arial;
+                background:#0b1b3a;
+                color:white;
+                text-align:center;
+            }
+            .container {
+                max-width:700px;
+                margin:80px auto;
+            }
+            h1 {
+                font-size:42px;
+            }
+            p {
+                font-size:18px;
+                color:#cfd8ff;
+            }
+            .box {
+                margin-top:40px;
+                background:#12275a;
+                padding:30px;
+                border-radius:10px;
+            }
+            button {
+                background:#4ea3ff;
+                border:none;
+                padding:15px 25px;
+                font-size:18px;
+                border-radius:6px;
+                cursor:pointer;
+                margin-top:20px;
+            }
+            input {
+                padding:10px;
+                width:80%;
+                margin-top:20px;
+                border-radius:5px;
+                border:none;
+            }
+            .checkbox {
+                margin-top:15px;
+                font-size:14px;
+                color:#ccc;
+            }
+        </style>
+    </head>
+    <body>
 
+        <div class="container">
 
-# -----------------------------
-# UPLOAD CV
-# -----------------------------
-@app.route("/upload_cv", methods=["POST"])
-def upload_cv():
+            <h1>Stop sending CVs that get ignored.</h1>
 
-    files = request.files.getlist("files")
+            <p>
+                HiddenEdge shows exactly why you're not getting interviews —
+                and fixes your CV instantly.
+            </p>
 
-    if not files:
-        return jsonify({"error": "No file uploaded."})
+            <div class="box">
 
-    texts = extract_text_from_files(files)
+                <h2>€9 / month</h2>
+                <p>Cancel anytime</p>
 
-    cleaned = [t.strip() for t in texts if t and t.strip()]
+                <input id="email" placeholder="Enter your email" />
 
-    if not cleaned:
-        return jsonify({"error": "CV could not be read. Please upload a valid DOCX or PDF."})
+                <div class="checkbox">
+                    <input type="checkbox" id="agree" />
+                    I agree to immediate access and waive my right of withdrawal. All payments are non-refundable.
+                </div>
 
-    session["texts"] = cleaned
+                <button onclick="subscribe()">🚀 Unlock HiddenEdge</button>
 
-    return jsonify({"texts": cleaned})
+            </div>
 
+        </div>
 
-# -----------------------------
-# ANALYZE + TAILOR
-# -----------------------------
-@app.route("/tailor_cv", methods=["POST"])
-def tailor():
+        <script>
+            async function subscribe() {
 
+                const email = document.getElementById("email").value;
+                const agree = document.getElementById("agree").checked;
+
+                if (!email) {
+                    alert("Enter your email");
+                    return;
+                }
+
+                if (!agree) {
+                    alert("You must accept the terms");
+                    return;
+                }
+
+                // store email locally for access check
+                localStorage.setItem("he_email", email);
+
+                const res = await fetch("/create_checkout", {
+                    method: "POST"
+                });
+
+                const data = await res.json();
+
+                window.location.href = data.url;
+            }
+
+            async function checkAccess() {
+
+                const email = localStorage.getItem("he_email");
+                if (!email) return;
+
+                const res = await fetch("/check_access", {
+                    method: "POST",
+                    headers: {"Content-Type":"application/json"},
+                    body: JSON.stringify({email})
+                });
+
+                const data = await res.json();
+
+                if (data.access) {
+                    document.body.innerHTML = `
+                        <h1 style="margin-top:100px;">✅ Access Granted</h1>
+                        <p>Welcome to HiddenEdge.</p>
+                    `;
+                }
+            }
+
+            checkAccess();
+
+        </script>
+
+    </body>
+    </html>
+    """
+
+# -------------------------
+# CREATE CHECKOUT
+# -------------------------
+@app.route("/create_checkout", methods=["POST"])
+def create_checkout():
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        mode="subscription",
+        line_items=[{
+            "price": "price_1TKFETRsFYMAfQV15jNJ365D",
+            "quantity": 1
+        }],
+        success_url=YOUR_DOMAIN,
+        cancel_url=YOUR_DOMAIN
+    )
+    return jsonify({"url": session.url})
+
+# -------------------------
+# WEBHOOK
+# -------------------------
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    payload = request.data
+    sig_header = request.headers.get("Stripe-Signature")
+
+    event = stripe.Webhook.construct_event(payload, sig_header, WEBHOOK_SECRET)
+
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+
+        email = None
+        if hasattr(session, "customer_details") and session.customer_details:
+            email = session.customer_details.email
+
+        if not email:
+            email = session.customer_email
+
+        subscription_id = session.subscription
+        customer_id = session.customer
+
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+
+        c.execute("""
+            INSERT INTO subscriptions (email, customer_id, subscription_id, status)
+            VALUES (?, ?, ?, ?)
+        """, (email, customer_id, subscription_id, "active"))
+
+        conn.commit()
+        conn.close()
+
+        print("✅ USER STORED:", email)
+
+    return "OK", 200
+
+# -------------------------
+# CHECK ACCESS
+# -------------------------
+@app.route("/check_access", methods=["POST"])
+def check_access():
     data = request.json
+    email = data.get("email")
 
-    texts = session.get("texts", [])
-    job_text = data.get("job_text", "")
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
 
-    if not texts:
-        return jsonify({"error": "No CV found. Please upload again."})
+    c.execute("""
+        SELECT * FROM subscriptions
+        WHERE email = ? AND status = 'active'
+    """, (email,))
 
-    if not job_text or not job_text.strip():
-        return jsonify({"error": "Job description is empty."})
+    result = c.fetchone()
+    conn.close()
 
-    # PAYWALL COUNTER
-    session["count"] = session.get("count", 0) + 1
+    return jsonify({"access": bool(result)})
 
-    if session["count"] > 3 and not session.get("paid"):
-        return jsonify({"paywall": True})
+# =========================
+# RUN
+# =========================
 
-    evaluation = evaluate_fit(texts, job_text)
-    tailored = tailor_cv(texts, job_text, evaluation)
-
-    # STORE FOR DOWNLOAD
-    session["last_tailored_cv"] = tailored
-
-    return jsonify({
-        "evaluation": evaluation,
-        "tailored_cv": tailored
-    })
-
-
-# -----------------------------
-# DOWNLOAD DOCX (PAYWALL CONTROLLED)
-# -----------------------------
-@app.route("/download_cv", methods=["POST"])
-def download_cv():
-
-    if not session.get("paid"):
-        return jsonify({"paywall": True}), 403
-
-    tailored = session.get("last_tailored_cv")
-
-    if not tailored:
-        return jsonify({"error": "No CV available. Run analysis first."})
-
-    filename = f"tailored_cv_{uuid.uuid4().hex}.docx"
-    filepath = os.path.join("/tmp", filename)
-
-    # ✅ CORRECT FUNCTION CALL
-    generate_docx(tailored, filepath)
-
-    return send_file(filepath, as_attachment=True)
-
-
-# -----------------------------
-# PAYWALL UNLOCK
-# -----------------------------
-@app.route("/unlock", methods=["POST"])
-def unlock():
-    session["paid"] = True
-    return jsonify({"status": "unlocked"})
-
-
-# -----------------------------
-# RUN (RENDER COMPATIBLE)
-# -----------------------------
 if __name__ == "__main__":
-    print("🚀 HiddenEdge server running...")
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    print("🚀 Starting Flask server...")
+    app.run(port=5000, debug=True)
