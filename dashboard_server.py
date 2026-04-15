@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, redirect
+from flask import Flask, request, jsonify
 import stripe
 import os
 import sqlite3
@@ -12,7 +12,9 @@ app = Flask(__name__)
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
-YOUR_DOMAIN = "http://127.0.0.1:5000"
+# ✅ FIX: dynamic base URL (works local + production)
+BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000")
+
 DB_FILE = "subscriptions.db"
 
 # =========================
@@ -47,51 +49,14 @@ def home():
     <head>
         <title>HiddenEdge</title>
         <style>
-            body {
-                margin:0;
-                font-family: Arial;
-                background:#0b1b3a;
-                color:white;
-                text-align:center;
-            }
-            .container {
-                max-width:700px;
-                margin:80px auto;
-            }
-            h1 {
-                font-size:42px;
-            }
-            p {
-                font-size:18px;
-                color:#cfd8ff;
-            }
-            .box {
-                margin-top:40px;
-                background:#12275a;
-                padding:30px;
-                border-radius:10px;
-            }
-            button {
-                background:#4ea3ff;
-                border:none;
-                padding:15px 25px;
-                font-size:18px;
-                border-radius:6px;
-                cursor:pointer;
-                margin-top:20px;
-            }
-            input {
-                padding:10px;
-                width:80%;
-                margin-top:20px;
-                border-radius:5px;
-                border:none;
-            }
-            .checkbox {
-                margin-top:15px;
-                font-size:14px;
-                color:#ccc;
-            }
+            body { margin:0; font-family: Arial; background:#0b1b3a; color:white; text-align:center; }
+            .container { max-width:700px; margin:80px auto; }
+            h1 { font-size:42px; }
+            p { font-size:18px; color:#cfd8ff; }
+            .box { margin-top:40px; background:#12275a; padding:30px; border-radius:10px; }
+            button { background:#4ea3ff; border:none; padding:15px 25px; font-size:18px; border-radius:6px; cursor:pointer; margin-top:20px; }
+            input { padding:10px; width:80%; margin-top:20px; border-radius:5px; border:none; }
+            .checkbox { margin-top:15px; font-size:14px; color:#ccc; }
         </style>
     </head>
     <body>
@@ -139,11 +104,12 @@ def home():
                     return;
                 }
 
-                // store email locally for access check
                 localStorage.setItem("he_email", email);
 
                 const res = await fetch("/create_checkout", {
-                    method: "POST"
+                    method: "POST",
+                    headers: {"Content-Type":"application/json"},
+                    body: JSON.stringify({email})
                 });
 
                 const data = await res.json();
@@ -173,7 +139,6 @@ def home():
             }
 
             checkAccess();
-
         </script>
 
     </body>
@@ -185,16 +150,21 @@ def home():
 # -------------------------
 @app.route("/create_checkout", methods=["POST"])
 def create_checkout():
+    data = request.get_json()
+    email = data.get("email")
+
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
         mode="subscription",
+        customer_email=email,
         line_items=[{
             "price": "price_1TKFETRsFYMAfQV15jNJ365D",
             "quantity": 1
         }],
-        success_url=YOUR_DOMAIN,
-        cancel_url=YOUR_DOMAIN
+        success_url=f"{BASE_URL}",
+        cancel_url=f"{BASE_URL}"
     )
+
     return jsonify({"url": session.url})
 
 # -------------------------
@@ -205,20 +175,18 @@ def webhook():
     payload = request.data
     sig_header = request.headers.get("Stripe-Signature")
 
-    event = stripe.Webhook.construct_event(payload, sig_header, WEBHOOK_SECRET)
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, WEBHOOK_SECRET)
+    except Exception as e:
+        print("Webhook error:", e)
+        return "Invalid", 400
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
 
-        email = None
-        if hasattr(session, "customer_details") and session.customer_details:
-            email = session.customer_details.email
-
-        if not email:
-            email = session.customer_email
-
-        subscription_id = session.subscription
-        customer_id = session.customer
+        email = session.get("customer_details", {}).get("email") or session.get("customer_email")
+        subscription_id = session.get("subscription")
+        customer_id = session.get("customer")
 
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
@@ -261,5 +229,4 @@ def check_access():
 # =========================
 
 if __name__ == "__main__":
-    print("🚀 Starting Flask server...")
     app.run(port=5000, debug=True)
