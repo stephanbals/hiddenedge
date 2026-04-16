@@ -1,7 +1,3 @@
-# =============================
-# dashboard_server.py (UPDATED UX FLOW)
-# =============================
-
 from flask import Flask, request, jsonify
 import stripe
 import os
@@ -118,30 +114,35 @@ def home():
         </div>
 
         <script>
-            async function subscribe() {
 
-                const email = document.getElementById("email").value;
+        async function subscribe() {
 
-                if (!email) {
-                    alert("Enter your email");
-                    return;
-                }
+            const email = document.getElementById("email").value;
 
-                localStorage.setItem("he_email", email);
-
-                const res = await fetch("/create_checkout", {
-                    method: "POST"
-                });
-
-                const data = await res.json();
-
-                window.location.href = data.url;
+            if (!email) {
+                alert("Enter your email");
+                return;
             }
 
-            async function checkAccess() {
+            localStorage.setItem("he_email", email);
 
-                const email = localStorage.getItem("he_email");
-                if (!email) return;
+            const res = await fetch("/create_checkout", {
+                method: "POST"
+            });
+
+            const data = await res.json();
+
+            window.location.href = data.url;
+        }
+
+
+        // 🔥 ACCESS CHECK WITH RETRY (FIXES STRIPE RETURN TIMING)
+        async function checkAccessWithRetry() {
+
+            const email = localStorage.getItem("he_email");
+            if (!email) return;
+
+            for (let i = 0; i < 6; i++) {
 
                 const res = await fetch("/check_access", {
                     method: "POST",
@@ -184,10 +185,15 @@ def home():
                     window.goApp = function() {
                         window.location.href = "/app";
                     }
-                }
-            }
 
-            checkAccess();
+                    return;
+                }
+
+                await new Promise(r => setTimeout(r, 1500));
+            }
+        }
+
+        checkAccessWithRetry();
 
         </script>
 
@@ -278,7 +284,7 @@ def check_access():
     return jsonify({"access": bool(result)})
 
 # =========================
-# SIMPLE APP ENTRY (NEW)
+# APP ENTRY
 # =========================
 
 @app.route("/app")
