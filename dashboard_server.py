@@ -11,6 +11,10 @@ WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000")
 DB_FILE = "subscriptions.db"
 
+# =========================
+# DB INIT
+# =========================
+
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -28,6 +32,10 @@ def init_db():
 
 init_db()
 
+# =========================
+# HOME
+# =========================
+
 @app.route("/")
 def home():
     return '''
@@ -41,6 +49,9 @@ def home():
         <button onclick="subscribe()">Unlock</button>
 
         <script>
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const justPaid = urlParams.get("success");
 
         async function subscribe() {
 
@@ -80,7 +91,7 @@ def home():
             const email = localStorage.getItem("he_email");
             if (!email) return;
 
-            for (let i = 0; i < 6; i++) {
+            for (let i = 0; i < 10; i++) {
 
                 const res = await fetch("/check_access", {
                     method: "POST",
@@ -97,15 +108,24 @@ def home():
 
                 await new Promise(r => setTimeout(r, 1500));
             }
+
+            console.log("Access not ready yet...");
         }
 
-        checkAccessWithRetry();
+        if (justPaid) {
+            console.log("Payment detected → checking access...");
+            checkAccessWithRetry();
+        }
 
         </script>
 
     </body>
     </html>
     '''
+
+# =========================
+# CREATE CHECKOUT
+# =========================
 
 @app.route("/create_checkout", methods=["POST"])
 def create_checkout():
@@ -119,13 +139,17 @@ def create_checkout():
             "price": "price_1TKFETRsFYMAfQV15jNJ365D",
             "quantity": 1
         }],
-        success_url=BASE_URL,
+        success_url=BASE_URL + "?success=1",
         cancel_url=BASE_URL,
         customer_email=email,
         metadata={"email": email}
     )
 
     return jsonify({"url": session.url})
+
+# =========================
+# WEBHOOK
+# =========================
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -157,6 +181,10 @@ def webhook():
 
     return "OK", 200
 
+# =========================
+# CHECK ACCESS
+# =========================
+
 @app.route("/check_access", methods=["POST"])
 def check_access():
     data = request.json
@@ -175,9 +203,17 @@ def check_access():
 
     return jsonify({"access": bool(result)})
 
+# =========================
+# APP
+# =========================
+
 @app.route("/app")
 def app_entry():
-    return "<h1>Welcome inside HiddenEdge</h1>"
+    return "<h1>🚀 Welcome inside HiddenEdge</h1>"
+
+# =========================
+# RUN
+# =========================
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
