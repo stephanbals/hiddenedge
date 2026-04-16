@@ -51,17 +51,34 @@ def home():
                 return;
             }
 
+            console.log("📧 Email:", email);
+
             localStorage.setItem("he_email", email);
 
-            const res = await fetch("/create_checkout", {
-                method: "POST",
-                headers: {"Content-Type":"application/json"},
-                body: JSON.stringify({email: email})
-            });
+            try {
+                const res = await fetch("/create_checkout", {
+                    method: "POST",
+                    headers: {"Content-Type":"application/json"},
+                    body: JSON.stringify({email})
+                });
 
-            const data = await res.json();
+                console.log("📡 Response status:", res.status);
 
-            window.location.href = data.url;
+                const data = await res.json();
+
+                console.log("📦 Response data:", data);
+
+                if (!data.url) {
+                    alert("No checkout URL returned");
+                    return;
+                }
+
+                window.location.href = data.url;
+
+            } catch (err) {
+                console.error("🔥 FETCH ERROR:", err);
+                alert("Something broke. Check console.");
+            }
         }
 
         async function checkAccessWithRetry() {
@@ -98,23 +115,36 @@ def home():
 
 @app.route("/create_checkout", methods=["POST"])
 def create_checkout():
-    data = request.json
-    email = data.get("email")
+    try:
+        data = request.json
 
-    session = stripe.checkout.Session.create(
-        payment_method_types=["card"],
-        mode="subscription",
-        line_items=[{
-            "price": "price_1TKFETRsFYMAfQV15jNJ365D",
-            "quantity": 1
-        }],
-        success_url=BASE_URL,
-        cancel_url=BASE_URL,
-        customer_email=email,
-        metadata={"email": email}
-    )
+        if not data:
+            return jsonify({"error": "No JSON received"}), 400
 
-    return jsonify({"url": session.url})
+        email = data.get("email")
+
+        if not email:
+            return jsonify({"error": "No email provided"}), 400
+
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="subscription",
+            line_items=[{
+                "price": "price_1TKFETRsFYMAfQV15jNJ365D",
+                "quantity": 1
+            }],
+            success_url=BASE_URL,
+            cancel_url=BASE_URL,
+            customer_email=email,
+            metadata={"email": email}
+        )
+
+        return jsonify({"url": session.url})
+
+    except Exception as e:
+        print("🔥 CHECKOUT ERROR:", str(e))
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -129,7 +159,6 @@ def webhook():
     if event["type"] == "checkout.session.completed":
 
         session = event["data"]["object"]
-
         email = session.metadata.get("email")
 
         conn = sqlite3.connect(DB_FILE)
@@ -146,6 +175,7 @@ def webhook():
         print("✅ USER STORED:", email)
 
     return "OK", 200
+
 
 @app.route("/check_access", methods=["POST"])
 def check_access():
@@ -165,9 +195,11 @@ def check_access():
 
     return jsonify({"access": bool(result)})
 
+
 @app.route("/app")
 def app_entry():
     return "<h1>🚀 Welcome inside HiddenEdge</h1>"
+
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
