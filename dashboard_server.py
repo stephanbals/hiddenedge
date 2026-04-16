@@ -1,3 +1,7 @@
+# =============================
+# dashboard_server.py (UPDATED UX FLOW)
+# =============================
+
 from flask import Flask, request, jsonify
 import stripe
 import os
@@ -46,19 +50,72 @@ def home():
     <html>
     <head>
         <title>HiddenEdge</title>
+        <style>
+            body {
+                margin:0;
+                font-family: Arial;
+                background:#0b1b3a;
+                color:white;
+                text-align:center;
+            }
+            .container {
+                max-width:700px;
+                margin:80px auto;
+            }
+            h1 {
+                font-size:42px;
+            }
+            p {
+                font-size:18px;
+                color:#cfd8ff;
+            }
+            .box {
+                margin-top:40px;
+                background:#12275a;
+                padding:30px;
+                border-radius:10px;
+            }
+            button {
+                background:#4ea3ff;
+                border:none;
+                padding:15px 25px;
+                font-size:18px;
+                border-radius:6px;
+                cursor:pointer;
+                margin-top:20px;
+            }
+            input {
+                padding:10px;
+                width:80%;
+                margin-top:20px;
+                border-radius:5px;
+                border:none;
+            }
+        </style>
     </head>
-    <body style="background:#0b1b3a;color:white;text-align:center;font-family:Arial;">
+    <body>
 
-        <h1>Stop sending CVs that get ignored.</h1>
+        <div class="container">
 
-        <p>HiddenEdge shows exactly why you're not getting interviews — and fixes your CV instantly.</p>
+            <h1>Stop sending CVs that get ignored.</h1>
 
-        <h2>€9 / month</h2>
+            <p>
+                HiddenEdge shows exactly why you're not getting interviews —
+                and fixes your CV instantly.
+            </p>
 
-        <input id="email" placeholder="Enter your email" />
-        <br><br>
+            <div class="box">
 
-        <button onclick="subscribe()">🚀 Unlock HiddenEdge</button>
+                <h2>€9 / month</h2>
+                <p>Cancel anytime</p>
+
+                <input id="email" placeholder="Enter your email" />
+
+                <button onclick="subscribe()">🚀 Unlock HiddenEdge</button>
+
+            </div>
+
+        </div>
 
         <script>
             async function subscribe() {
@@ -66,19 +123,23 @@ def home():
                 const email = document.getElementById("email").value;
 
                 if (!email) {
-                    alert("Enter email");
+                    alert("Enter your email");
                     return;
                 }
 
                 localStorage.setItem("he_email", email);
 
-                const res = await fetch("/create_checkout", { method: "POST" });
+                const res = await fetch("/create_checkout", {
+                    method: "POST"
+                });
+
                 const data = await res.json();
 
                 window.location.href = data.url;
             }
 
             async function checkAccess() {
+
                 const email = localStorage.getItem("he_email");
                 if (!email) return;
 
@@ -91,13 +152,43 @@ def home():
                 const data = await res.json();
 
                 if (data.access) {
+
                     document.body.innerHTML = `
-                        <h1>✅ ACCESS GRANTED</h1>
+                        <div style="
+                            display:flex;
+                            flex-direction:column;
+                            justify-content:center;
+                            align-items:center;
+                            height:100vh;
+                            background:#0b1b3a;
+                            color:white;
+                            font-family:Arial;
+                        ">
+                            <h1>✅ ACCESS GRANTED</h1>
+                            <p>Welcome to HiddenEdge</p>
+
+                            <button onclick="goApp()" style="
+                                margin-top:20px;
+                                padding:15px 30px;
+                                font-size:18px;
+                                background:#4ea3ff;
+                                border:none;
+                                border-radius:6px;
+                                cursor:pointer;
+                            ">
+                                🚀 Enter HiddenEdge
+                            </button>
+                        </div>
                     `;
+
+                    window.goApp = function() {
+                        window.location.href = "/app";
+                    }
                 }
             }
 
             checkAccess();
+
         </script>
 
     </body>
@@ -117,62 +208,13 @@ def create_checkout():
             "price": "price_1TKFETRsFYMAfQV15jNJ365D",
             "quantity": 1
         }],
-        success_url=BASE_URL + "/success",
+        success_url=BASE_URL,
         cancel_url=BASE_URL
     )
     return jsonify({"url": session.url})
 
 # =========================
-# SUCCESS PAGE (TEST MODE)
-# =========================
-
-@app.route("/success")
-def success():
-    email = request.args.get("email")
-
-    # fallback to localStorage approach if missing
-    if not email:
-        return """
-        <script>
-            const email = localStorage.getItem("he_email");
-            fetch("/force_grant", {
-                method: "POST",
-                headers: {"Content-Type":"application/json"},
-                body: JSON.stringify({email})
-            }).then(() => {
-                window.location.href = "/";
-            });
-        </script>
-        """
-
-    return "Success"
-
-# =========================
-# FORCE GRANT ACCESS (TEST)
-# =========================
-
-@app.route("/force_grant", methods=["POST"])
-def force_grant():
-    data = request.json
-    email = data.get("email")
-
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    c.execute("""
-        INSERT INTO subscriptions (email, customer_id, subscription_id, status)
-        VALUES (?, ?, ?, ?)
-    """, (email, "test_customer", "test_sub", "active"))
-
-    conn.commit()
-    conn.close()
-
-    print("🔥 FORCE ACCESS GRANTED:", email)
-
-    return jsonify({"ok": True})
-
-# =========================
-# WEBHOOK (UNCHANGED)
+# WEBHOOK
 # =========================
 
 @app.route("/webhook", methods=["POST"])
@@ -180,12 +222,20 @@ def webhook():
     payload = request.data
     sig_header = request.headers.get("Stripe-Signature")
 
-    event = stripe.Webhook.construct_event(payload, sig_header, WEBHOOK_SECRET)
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, WEBHOOK_SECRET)
+    except Exception:
+        return "Invalid signature", 400
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
 
-        email = session.get("customer_details", {}).get("email")
+        email = None
+        if session.get("customer_details"):
+            email = session["customer_details"].get("email")
+
+        if not email:
+            email = session.get("customer_email")
 
         subscription_id = session.get("subscription")
         customer_id = session.get("customer")
@@ -226,6 +276,21 @@ def check_access():
     conn.close()
 
     return jsonify({"access": bool(result)})
+
+# =========================
+# SIMPLE APP ENTRY (NEW)
+# =========================
+
+@app.route("/app")
+def app_entry():
+    return """
+    <html>
+    <body style="font-family:Arial;text-align:center;margin-top:100px;">
+        <h1>🚀 Welcome to HiddenEdge</h1>
+        <p>You are now inside the platform.</p>
+    </body>
+    </html>
+    """
 
 # =========================
 # RUN
