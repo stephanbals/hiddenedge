@@ -5,19 +5,11 @@ import sqlite3
 
 app = Flask(__name__)
 
-# =========================
-# CONFIG
-# =========================
-
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000")
 DB_FILE = "subscriptions.db"
-
-# =========================
-# DB INIT
-# =========================
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
@@ -36,41 +28,31 @@ def init_db():
 
 init_db()
 
-# =========================
-# HOME
-# =========================
-
 @app.route("/")
 def home():
     return """
     <html>
-    <head>
-        <title>HiddenEdge</title>
-    </head>
     <body style="font-family:Arial;background:#0b1b3a;color:white;text-align:center;">
 
         <h1>Stop sending CVs that get ignored.</h1>
 
-        <div style="margin-top:40px;">
-            <input id="email" placeholder="Enter your email" style="padding:10px;width:300px;">
-            <br><br>
-            <button onclick="subscribe()">🚀 Unlock HiddenEdge</button>
-        </div>
+        <input id="email" placeholder="Enter your email">
+        <br><br>
+        <button onclick="subscribe()">Unlock</button>
 
         <script>
 
         async function subscribe() {
             const email = document.getElementById("email").value;
-            if (!email) {
-                alert("Enter email");
-                return;
-            }
-
             localStorage.setItem("he_email", email);
 
-            const res = await fetch("/create_checkout", {method:"POST"});
-            const data = await res.json();
+            const res = await fetch("/create_checkout", {
+                method: "POST",
+                headers: {"Content-Type":"application/json"},
+                body: JSON.stringify({email})
+            });
 
+            const data = await res.json();
             window.location.href = data.url;
         }
 
@@ -90,16 +72,7 @@ def home():
                 const data = await res.json();
 
                 if (data.access) {
-
-                    document.body.innerHTML = `
-                        <h1>✅ ACCESS GRANTED</h1>
-                        <button onclick="goApp()">Enter</button>
-                    `;
-
-                    window.goApp = function() {
-                        window.location.href = "/app";
-                    }
-
+                    document.body.innerHTML = "<h1>✅ ACCESS GRANTED</h1><button onclick='window.location=\"/app\"'>Enter</button>";
                     return;
                 }
 
@@ -115,12 +88,11 @@ def home():
     </html>
     """
 
-# =========================
-# CHECKOUT
-# =========================
-
 @app.route("/create_checkout", methods=["POST"])
 def create_checkout():
+    data = request.json
+    email = data.get("email")
+
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
         mode="subscription",
@@ -129,13 +101,12 @@ def create_checkout():
             "quantity": 1
         }],
         success_url=BASE_URL,
-        cancel_url=BASE_URL
+        cancel_url=BASE_URL,
+        customer_email=email,  # 🔥 FORCE MATCH
+        metadata={"email": email}  # 🔥 BACKUP SOURCE
     )
-    return jsonify({"url": session.url})
 
-# =========================
-# WEBHOOK (FIXED)
-# =========================
+    return jsonify({"url": session.url})
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -151,19 +122,15 @@ def webhook():
 
         session = event["data"]["object"]
 
-        # ✅ FIXED ACCESS
-        email = None
+        email = session.metadata.get("email")  # 🔥 TRUST THIS FIRST
 
-        if hasattr(session, "customer_details") and session.customer_details:
+        if not email and hasattr(session, "customer_details") and session.customer_details:
             email = session.customer_details.email
 
         if not email and hasattr(session, "customer_email"):
             email = session.customer_email
 
-        print("💡 EMAIL FROM STRIPE:", email)
-
-        subscription_id = session.subscription
-        customer_id = session.customer
+        print("FINAL EMAIL USED:", email)
 
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
@@ -171,18 +138,12 @@ def webhook():
         c.execute("""
             INSERT INTO subscriptions (email, customer_id, subscription_id, status)
             VALUES (?, ?, ?, ?)
-        """, (email, customer_id, subscription_id, "active"))
+        """, (email, session.customer, session.subscription, "active"))
 
         conn.commit()
         conn.close()
 
-        print("✅ USER STORED:", email)
-
     return "OK", 200
-
-# =========================
-# ACCESS CHECK
-# =========================
 
 @app.route("/check_access", methods=["POST"])
 def check_access():
@@ -202,17 +163,9 @@ def check_access():
 
     return jsonify({"access": bool(result)})
 
-# =========================
-# APP
-# =========================
-
 @app.route("/app")
 def app_entry():
     return "<h1>🚀 Welcome inside HiddenEdge</h1>"
-
-# =========================
-# RUN
-# =========================
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
