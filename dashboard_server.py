@@ -5,11 +5,19 @@ import sqlite3
 
 app = Flask(__name__)
 
+# =========================
+# CONFIG
+# =========================
+
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000")
 DB_FILE = "subscriptions.db"
+
+# =========================
+# DB INIT
+# =========================
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
@@ -26,6 +34,10 @@ def init_db():
     conn.close()
 
 init_db()
+
+# =========================
+# HOME (PAYWALL)
+# =========================
 
 @app.route("/")
 def home():
@@ -44,25 +56,15 @@ def home():
         const urlParams = new URLSearchParams(window.location.search);
         const justPaid = urlParams.get("success");
 
-        function log(msg) {
-            document.getElementById("debug").innerHTML += "<br>" + msg;
-        }
-
         async function subscribe() {
-
             const res = await fetch("/create_checkout", {
                 method: "POST"
             });
-
             const data = await res.json();
             window.location.href = data.url;
         }
 
-        async function checkAccessWithRetry() {
-
-            const customer_id = localStorage.getItem("he_customer_id");
-
-            log("Checking customer_id: " + customer_id);
+        async function checkAccessWithRetry(customer_id) {
 
             for (let i = 0; i < 10; i++) {
 
@@ -74,28 +76,26 @@ def home():
 
                 const data = await res.json();
 
-                log("Attempt " + i + " → " + JSON.stringify(data));
-
                 if (data.access) {
-                    document.body.innerHTML = "<h1>ACCESS GRANTED</h1>";
+                    window.location.href = "/app";
                     return;
                 }
 
                 await new Promise(r => setTimeout(r, 1500));
             }
 
-            log("FAILED");
+            document.getElementById("debug").innerText = "Access failed after retries";
         }
 
         if (justPaid) {
-            log("Payment detected");
 
-            // 🔥 GET SESSION TO EXTRACT CUSTOMER ID
-            fetch("/get_session")
+            const session_id = urlParams.get("session_id");
+
+            fetch("/get_session?session_id=" + session_id)
                 .then(r => r.json())
                 .then(data => {
                     localStorage.setItem("he_customer_id", data.customer_id);
-                    checkAccessWithRetry();
+                    checkAccessWithRetry(data.customer_id);
                 });
         }
 
@@ -104,6 +104,10 @@ def home():
     </body>
     </html>
     '''
+
+# =========================
+# STRIPE CHECKOUT
+# =========================
 
 @app.route("/create_checkout", methods=["POST"])
 def create_checkout():
@@ -121,17 +125,22 @@ def create_checkout():
 
     return jsonify({"url": session.url})
 
+# =========================
+# GET SESSION (for customer_id)
+# =========================
 
 @app.route("/get_session")
 def get_session():
     session_id = request.args.get("session_id")
-
     session = stripe.checkout.Session.retrieve(session_id)
 
     return jsonify({
         "customer_id": session.customer
     })
 
+# =========================
+# WEBHOOK
+# =========================
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -162,6 +171,9 @@ def webhook():
 
     return "OK", 200
 
+# =========================
+# ACCESS CHECK
+# =========================
 
 @app.route("/check_access", methods=["POST"])
 def check_access():
@@ -181,6 +193,70 @@ def check_access():
 
     return jsonify({"access": bool(result)})
 
+# =========================
+# APP (YOUR PRODUCT UI)
+# =========================
+
+@app.route("/app")
+def app_entry():
+    return """
+    <html>
+    <body style="font-family:Arial;background:#0b1b3a;color:white;padding:40px;">
+
+        <h1>🚀 HiddenEdge</h1>
+
+        <h3>Paste your CV:</h3>
+        <textarea id="cv" rows="10" cols="80"></textarea>
+
+        <h3>Paste Job Description:</h3>
+        <textarea id="job" rows="10" cols="80"></textarea>
+
+        <br><br>
+        <button onclick="analyze()">Analyze</button>
+
+        <pre id="result"></pre>
+
+        <script>
+
+        async function analyze() {
+
+            const cv = document.getElementById("cv").value;
+            const job = document.getElementById("job").value;
+
+            const res = await fetch("/analyze", {
+                method: "POST",
+                headers: {"Content-Type":"application/json"},
+                body: JSON.stringify({cv, job})
+            });
+
+            const data = await res.json();
+
+            document.getElementById("result").innerText = data.result;
+        }
+
+        </script>
+
+    </body>
+    </html>
+    """
+
+# =========================
+# ANALYZE (TEMP LOGIC)
+# =========================
+
+@app.route("/analyze", methods=["POST"])
+def analyze():
+    data = request.json
+    cv = data.get("cv", "")
+    job = data.get("job", "")
+
+    result = f"Analysis result:\\n\\nCV length: {len(cv)}\\nJob length: {len(job)}"
+
+    return jsonify({"result": result})
+
+# =========================
+# RUN
+# =========================
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
