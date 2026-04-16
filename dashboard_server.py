@@ -13,7 +13,9 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000")
-DB_FILE = "subscriptions.db"
+DB_FILE = "app.db"
+
+FREE_LIMIT = 3
 
 # =========================
 # DB INIT
@@ -22,83 +24,58 @@ DB_FILE = "subscriptions.db"
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
+
     c.execute("""
-        CREATE TABLE IF NOT EXISTS subscriptions (
+        CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE,
+            usage_count INTEGER DEFAULT 0,
             customer_id TEXT,
-            subscription_id TEXT,
-            status TEXT
+            subscription_status TEXT,
+            eula_accepted INTEGER DEFAULT 0
         )
     """)
+
     conn.commit()
     conn.close()
 
 init_db()
 
 # =========================
-# HOME (PAYWALL)
+# HOME
 # =========================
 
 @app.route("/")
 def home():
     return '''
     <html>
-    <body style="font-family:Arial;background:#0b1b3a;color:white;text-align:center;">
+    <body style="margin:0;font-family:Arial;background:#0b1b3a;color:white;display:flex;justify-content:center;align-items:center;height:100vh;">
 
-        <h1>HiddenEdge</h1>
+        <div style="text-align:center;">
+            <h1 style="font-size:42px;">HiddenEdge</h1>
+            <p style="color:#cfd8ff;">AI-powered CV decision engine</p>
 
-        <button onclick="subscribe()">Unlock</button>
-
-        <div id="debug" style="margin-top:20px;color:yellow;"></div>
+            <input id="email" placeholder="your@email.com"
+                   style="padding:12px;width:280px;border-radius:6px;border:none;margin-top:20px;">
+            <br><br>
+            <button onclick="start()"
+                    style="padding:12px 24px;background:#4ea3ff;border:none;border-radius:6px;color:white;font-size:16px;cursor:pointer;">
+                Start
+            </button>
+        </div>
 
         <script>
+        function start() {
+            const email = document.getElementById("email").value;
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const justPaid = urlParams.get("success");
-
-        async function subscribe() {
-            const res = await fetch("/create_checkout", {
-                method: "POST"
-            });
-            const data = await res.json();
-            window.location.href = data.url;
-        }
-
-        async function checkAccessWithRetry(customer_id) {
-
-            for (let i = 0; i < 10; i++) {
-
-                const res = await fetch("/check_access", {
-                    method: "POST",
-                    headers: {"Content-Type":"application/json"},
-                    body: JSON.stringify({customer_id})
-                });
-
-                const data = await res.json();
-
-                if (data.access) {
-                    window.location.href = "/app";
-                    return;
-                }
-
-                await new Promise(r => setTimeout(r, 1500));
+            if (!email) {
+                alert("Enter email");
+                return;
             }
 
-            document.getElementById("debug").innerText = "Access failed after retries";
+            localStorage.setItem("he_email", email);
+            window.location.href = "/app";
         }
-
-        if (justPaid) {
-
-            const session_id = urlParams.get("session_id");
-
-            fetch("/get_session?session_id=" + session_id)
-                .then(r => r.json())
-                .then(data => {
-                    localStorage.setItem("he_customer_id", data.customer_id);
-                    checkAccessWithRetry(data.customer_id);
-                });
-        }
-
         </script>
 
     </body>
@@ -106,41 +83,64 @@ def home():
     '''
 
 # =========================
-# STRIPE CHECKOUT
+# EULA
+# =========================
+
+@app.route("/check_eula", methods=["POST"])
+def check_eula():
+    email = request.json.get("email")
+
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+
+    c.execute("SELECT eula_accepted FROM users WHERE email = ?", (email,))
+    row = c.fetchone()
+
+    if not row:
+        c.execute("INSERT INTO users (email) VALUES (?)", (email,))
+        conn.commit()
+        accepted = 0
+    else:
+        accepted = row[0]
+
+    conn.close()
+
+    return jsonify({"accepted": bool(accepted)})
+
+@app.route("/accept_eula", methods=["POST"])
+def accept_eula():
+    email = request.json.get("email")
+
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+
+    c.execute("UPDATE users SET eula_accepted = 1 WHERE email = ?", (email,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"ok": True})
+
+# =========================
+# STRIPE
 # =========================
 
 @app.route("/create_checkout", methods=["POST"])
 def create_checkout():
+    email = request.json.get("email")
 
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
         mode="subscription",
+        customer_email=email,
         line_items=[{
             "price": "price_1TKFETRsFYMAfQV15jNJ365D",
             "quantity": 1
         }],
-        success_url=BASE_URL + "?success=1&session_id={CHECKOUT_SESSION_ID}",
+        success_url=BASE_URL,
         cancel_url=BASE_URL
     )
 
     return jsonify({"url": session.url})
-
-# =========================
-# GET SESSION (for customer_id)
-# =========================
-
-@app.route("/get_session")
-def get_session():
-    session_id = request.args.get("session_id")
-    session = stripe.checkout.Session.retrieve(session_id)
-
-    return jsonify({
-        "customer_id": session.customer
-    })
-
-# =========================
-# WEBHOOK
-# =========================
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -153,106 +153,206 @@ def webhook():
         return "Invalid signature", 400
 
     if event["type"] == "checkout.session.completed":
-
         session = event["data"]["object"]
 
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
 
         c.execute("""
-            INSERT INTO subscriptions (customer_id, subscription_id, status)
-            VALUES (?, ?, ?)
-        """, (session.customer, session.subscription, "active"))
+            UPDATE users
+            SET customer_id = ?, subscription_status = 'active'
+            WHERE email = ?
+        """, (session.customer, session.customer_email))
 
         conn.commit()
         conn.close()
 
-        print("USER STORED:", session.customer)
-
     return "OK", 200
 
 # =========================
-# ACCESS CHECK
-# =========================
-
-@app.route("/check_access", methods=["POST"])
-def check_access():
-    data = request.json
-    customer_id = data.get("customer_id")
-
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    c.execute("""
-        SELECT * FROM subscriptions
-        WHERE customer_id = ? AND status = 'active'
-    """, (customer_id,))
-
-    result = c.fetchone()
-    conn.close()
-
-    return jsonify({"access": bool(result)})
-
-# =========================
-# APP (YOUR PRODUCT UI)
+# APP (POLISHED UI)
 # =========================
 
 @app.route("/app")
-def app_entry():
-    return """
+def app_screen():
+    return f"""
     <html>
-    <body style="font-family:Arial;background:#0b1b3a;color:white;padding:40px;">
+    <body style="margin:0;font-family:Arial;background:#0b1b3a;color:white;">
 
-        <h1>🚀 HiddenEdge</h1>
+    <!-- EULA MODAL -->
+    <div id="eulaModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);">
 
-        <h3>Paste your CV:</h3>
-        <textarea id="cv" rows="10" cols="80"></textarea>
+        <div style="background:#12275a;width:60%;margin:80px auto;padding:25px;border-radius:10px;">
+            <h2>Terms, Privacy & AI Notice</h2>
 
-        <h3>Paste Job Description:</h3>
-        <textarea id="job" rows="10" cols="80"></textarea>
+            <div style="height:200px;overflow:auto;background:#0b1b3a;padding:10px;border-radius:6px;">
+                <p><b>Service:</b> HiddenEdge provides AI-based career insights.</p>
+                <p><b>AI:</b> Outputs are advisory and not guaranteed.</p>
+                <p><b>Data:</b> CV is processed temporarily. Email stored for access.</p>
+                <p><b>Payments:</b> Non-refundable.</p>
+                <p><b>Contact:</b> HiddenEdgeInfo@proton.me</p>
+            </div>
 
-        <br><br>
-        <button onclick="analyze()">Analyze</button>
+            <br>
+            <input type="checkbox" id="agree"> I accept
+            <br><br>
+            <button onclick="acceptEula()" style="padding:10px 20px;background:#4ea3ff;border:none;border-radius:6px;color:white;">
+                Continue
+            </button>
+        </div>
+    </div>
 
-        <pre id="result"></pre>
+    <!-- MAIN -->
+    <div style="max-width:900px;margin:40px auto;padding:20px;">
 
-        <script>
+        <h1 style="text-align:center;">🚀 HiddenEdge</h1>
 
-        async function analyze() {
+        <div style="margin-top:30px;background:#12275a;padding:20px;border-radius:10px;">
+            <h3>Upload CV</h3>
+            <input type="file" id="cvFile">
+        </div>
 
-            const cv = document.getElementById("cv").value;
-            const job = document.getElementById("job").value;
+        <div style="margin-top:20px;background:#12275a;padding:20px;border-radius:10px;">
+            <h3>Job Description</h3>
+            <textarea id="job" rows="8" style="width:100%;border-radius:6px;"></textarea>
+        </div>
 
-            const res = await fetch("/analyze", {
-                method: "POST",
-                headers: {"Content-Type":"application/json"},
-                body: JSON.stringify({cv, job})
-            });
+        <div style="text-align:center;margin-top:20px;">
+            <button onclick="analyze()"
+                    style="padding:12px 30px;background:#4ea3ff;border:none;border-radius:6px;color:white;font-size:16px;">
+                Analyze
+            </button>
+        </div>
 
-            const data = await res.json();
+        <div style="margin-top:30px;background:#1b3a6b;padding:20px;border-radius:10px;">
+            <h3>Nestor AI</h3>
+            <pre id="result"></pre>
+        </div>
 
-            document.getElementById("result").innerText = data.result;
-        }
+    </div>
 
-        </script>
+    <!-- FOOTER -->
+    <div style="text-align:center;margin-top:40px;font-size:12px;color:#aaa;padding:20px;">
+        HiddenEdgeInfo@proton.me | SB3PM Advisory and Services Ltd, HiddenEdge is part of ProductiveYou services branch
+    </div>
+
+    <script>
+
+    const email = localStorage.getItem("he_email");
+
+    if (!email) {{
+        window.location.href = "/";
+    }}
+
+    async function checkEula() {{
+        const res = await fetch("/check_eula", {{
+            method:"POST",
+            headers:{{"Content-Type":"application/json"}},
+            body:JSON.stringify({{email}})
+        }});
+        const data = await res.json();
+        if (!data.accepted) {{
+            document.getElementById("eulaModal").style.display = "block";
+        }}
+    }}
+
+    async function acceptEula() {{
+        if (!document.getElementById("agree").checked) {{
+            alert("You must accept");
+            return;
+        }}
+
+        await fetch("/accept_eula", {{
+            method:"POST",
+            headers:{{"Content-Type":"application/json"}},
+            body:JSON.stringify({{email}})
+        }});
+
+        document.getElementById("eulaModal").style.display = "none";
+    }}
+
+    let cvText = "";
+
+    document.getElementById("cvFile").addEventListener("change", function() {{
+        const reader = new FileReader();
+        reader.onload = e => cvText = e.target.result;
+        reader.readAsText(this.files[0]);
+    }});
+
+    async function analyze() {{
+        const res = await fetch("/analyze", {{
+            method:"POST",
+            headers:{{"Content-Type":"application/json"}},
+            body:JSON.stringify({{
+                email,
+                cv:cvText,
+                job:document.getElementById("job").value
+            }})
+        }});
+
+        const data = await res.json();
+
+        if (data.blocked) {{
+            alert("Free limit reached. Redirecting to payment.");
+            const checkout = await fetch("/create_checkout", {{
+                method:"POST",
+                headers:{{"Content-Type":"application/json"}},
+                body:JSON.stringify({{email}})
+            }});
+            const cdata = await checkout.json();
+            window.location.href = cdata.url;
+            return;
+        }}
+
+        document.getElementById("result").innerText =
+            data.nestor.decision + "\\n" + data.nestor.reason;
+    }}
+
+    checkEula();
+
+    </script>
 
     </body>
     </html>
     """
 
 # =========================
-# ANALYZE (TEMP LOGIC)
+# ANALYZE
 # =========================
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
     data = request.json
-    cv = data.get("cv", "")
-    job = data.get("job", "")
+    email = data.get("email")
 
-    result = f"Analysis result:\\n\\nCV length: {len(cv)}\\nJob length: {len(job)}"
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
 
-    return jsonify({"result": result})
+    c.execute("SELECT usage_count, subscription_status FROM users WHERE email = ?", (email,))
+    row = c.fetchone()
+
+    if not row:
+        c.execute("INSERT INTO users (email) VALUES (?)", (email,))
+        usage = 0
+        paid = False
+    else:
+        usage, sub = row
+        paid = sub == "active"
+
+    if not paid and usage >= FREE_LIMIT:
+        conn.close()
+        return jsonify({"blocked": True})
+
+    if not paid:
+        c.execute("UPDATE users SET usage_count = usage_count + 1 WHERE email = ?", (email,))
+        conn.commit()
+
+    conn.close()
+
+    return jsonify({
+        "blocked": False,
+        "nestor": {"decision": "OK", "reason": "Analysis complete"}
+    })
 
 # =========================
 # RUN
