@@ -43,16 +43,24 @@ def home():
         <script>
 
         async function subscribe() {
+
             const email = document.getElementById("email").value;
+
+            if (!email) {
+                alert("Enter email");
+                return;
+            }
+
             localStorage.setItem("he_email", email);
 
             const res = await fetch("/create_checkout", {
                 method: "POST",
                 headers: {"Content-Type":"application/json"},
-                body: JSON.stringify({email})
+                body: JSON.stringify({email: email})
             });
 
             const data = await res.json();
+
             window.location.href = data.url;
         }
 
@@ -102,8 +110,8 @@ def create_checkout():
         }],
         success_url=BASE_URL,
         cancel_url=BASE_URL,
-        customer_email=email,  # 🔥 FORCE MATCH
-        metadata={"email": email}  # 🔥 BACKUP SOURCE
+        customer_email=email,
+        metadata={"email": email}
     )
 
     return jsonify({"url": session.url})
@@ -122,15 +130,7 @@ def webhook():
 
         session = event["data"]["object"]
 
-        email = session.metadata.get("email")  # 🔥 TRUST THIS FIRST
-
-        if not email and hasattr(session, "customer_details") and session.customer_details:
-            email = session.customer_details.email
-
-        if not email and hasattr(session, "customer_email"):
-            email = session.customer_email
-
-        print("FINAL EMAIL USED:", email)
+        email = session.metadata.get("email")
 
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
@@ -142,6 +142,8 @@ def webhook():
 
         conn.commit()
         conn.close()
+
+        print("✅ USER STORED:", email)
 
     return "OK", 200
 
