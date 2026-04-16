@@ -136,7 +136,7 @@ def home():
         }
 
 
-        // 🔥 ACCESS CHECK WITH RETRY (FIXES STRIPE RETURN TIMING)
+        // 🔥 CRITICAL FIX: retry until webhook updates DB
         async function checkAccessWithRetry() {
 
             const email = localStorage.getItem("he_email");
