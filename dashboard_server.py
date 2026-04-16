@@ -37,7 +37,7 @@ def init_db():
 init_db()
 
 # =========================
-# HOME / PAYWALL
+# HOME
 # =========================
 
 @app.route("/")
@@ -46,97 +46,34 @@ def home():
     <html>
     <head>
         <title>HiddenEdge</title>
-        <style>
-            body {
-                margin:0;
-                font-family: Arial;
-                background:#0b1b3a;
-                color:white;
-                text-align:center;
-            }
-            .container {
-                max-width:700px;
-                margin:80px auto;
-            }
-            h1 {
-                font-size:42px;
-            }
-            p {
-                font-size:18px;
-                color:#cfd8ff;
-            }
-            .box {
-                margin-top:40px;
-                background:#12275a;
-                padding:30px;
-                border-radius:10px;
-            }
-            button {
-                background:#4ea3ff;
-                border:none;
-                padding:15px 25px;
-                font-size:18px;
-                border-radius:6px;
-                cursor:pointer;
-                margin-top:20px;
-            }
-            input {
-                padding:10px;
-                width:80%;
-                margin-top:20px;
-                border-radius:5px;
-                border:none;
-            }
-        </style>
     </head>
-    <body>
+    <body style="font-family:Arial;background:#0b1b3a;color:white;text-align:center;">
 
-        <div class="container">
+        <h1>Stop sending CVs that get ignored.</h1>
 
-            <h1>Stop sending CVs that get ignored.</h1>
-
-            <p>
-                HiddenEdge shows exactly why you're not getting interviews —
-                and fixes your CV instantly.
-            </p>
-
-            <div class="box">
-
-                <h2>€9 / month</h2>
-                <p>Cancel anytime</p>
-
-                <input id="email" placeholder="Enter your email" />
-
-                <button onclick="subscribe()">🚀 Unlock HiddenEdge</button>
-
-            </div>
-
+        <div style="margin-top:40px;">
+            <input id="email" placeholder="Enter your email" style="padding:10px;width:300px;">
+            <br><br>
+            <button onclick="subscribe()">🚀 Unlock HiddenEdge</button>
         </div>
 
         <script>
 
         async function subscribe() {
-
             const email = document.getElementById("email").value;
-
             if (!email) {
-                alert("Enter your email");
+                alert("Enter email");
                 return;
             }
 
             localStorage.setItem("he_email", email);
 
-            const res = await fetch("/create_checkout", {
-                method: "POST"
-            });
-
+            const res = await fetch("/create_checkout", {method:"POST"});
             const data = await res.json();
 
             window.location.href = data.url;
         }
 
-
-        // 🔥 CRITICAL FIX: retry until webhook updates DB
         async function checkAccessWithRetry() {
 
             const email = localStorage.getItem("he_email");
@@ -155,31 +92,8 @@ def home():
                 if (data.access) {
 
                     document.body.innerHTML = `
-                        <div style="
-                            display:flex;
-                            flex-direction:column;
-                            justify-content:center;
-                            align-items:center;
-                            height:100vh;
-                            background:#0b1b3a;
-                            color:white;
-                            font-family:Arial;
-                        ">
-                            <h1>✅ ACCESS GRANTED</h1>
-                            <p>Welcome to HiddenEdge</p>
-
-                            <button onclick="goApp()" style="
-                                margin-top:20px;
-                                padding:15px 30px;
-                                font-size:18px;
-                                background:#4ea3ff;
-                                border:none;
-                                border-radius:6px;
-                                cursor:pointer;
-                            ">
-                                🚀 Enter HiddenEdge
-                            </button>
-                        </div>
+                        <h1>✅ ACCESS GRANTED</h1>
+                        <button onclick="goApp()">Enter</button>
                     `;
 
                     window.goApp = function() {
@@ -202,7 +116,7 @@ def home():
     """
 
 # =========================
-# CREATE CHECKOUT
+# CHECKOUT
 # =========================
 
 @app.route("/create_checkout", methods=["POST"])
@@ -220,7 +134,7 @@ def create_checkout():
     return jsonify({"url": session.url})
 
 # =========================
-# WEBHOOK
+# WEBHOOK (FIXED)
 # =========================
 
 @app.route("/webhook", methods=["POST"])
@@ -234,17 +148,22 @@ def webhook():
         return "Invalid signature", 400
 
     if event["type"] == "checkout.session.completed":
+
         session = event["data"]["object"]
 
+        # ✅ FIXED ACCESS
         email = None
-        if session.get("customer_details"):
-            email = session["customer_details"].get("email")
 
-        if not email:
-            email = session.get("customer_email")
+        if hasattr(session, "customer_details") and session.customer_details:
+            email = session.customer_details.email
 
-        subscription_id = session.get("subscription")
-        customer_id = session.get("customer")
+        if not email and hasattr(session, "customer_email"):
+            email = session.customer_email
+
+        print("💡 EMAIL FROM STRIPE:", email)
+
+        subscription_id = session.subscription
+        customer_id = session.customer
 
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
@@ -262,7 +181,7 @@ def webhook():
     return "OK", 200
 
 # =========================
-# CHECK ACCESS
+# ACCESS CHECK
 # =========================
 
 @app.route("/check_access", methods=["POST"])
@@ -284,19 +203,12 @@ def check_access():
     return jsonify({"access": bool(result)})
 
 # =========================
-# APP ENTRY
+# APP
 # =========================
 
 @app.route("/app")
 def app_entry():
-    return """
-    <html>
-    <body style="font-family:Arial;text-align:center;margin-top:100px;">
-        <h1>🚀 Welcome to HiddenEdge</h1>
-        <p>You are now inside the platform.</p>
-    </body>
-    </html>
-    """
+    return "<h1>🚀 Welcome inside HiddenEdge</h1>"
 
 # =========================
 # RUN
