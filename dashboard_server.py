@@ -11,10 +11,6 @@ WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000")
 DB_FILE = "subscriptions.db"
 
-# =========================
-# DB INIT
-# =========================
-
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -32,26 +28,28 @@ def init_db():
 
 init_db()
 
-# =========================
-# HOME
-# =========================
-
 @app.route("/")
 def home():
     return '''
     <html>
     <body style="font-family:Arial;background:#0b1b3a;color:white;text-align:center;">
 
-        <h1>Stop sending CVs that get ignored.</h1>
+        <h1>HiddenEdge Debug Mode</h1>
 
         <input id="email" placeholder="Enter your email">
         <br><br>
         <button onclick="subscribe()">Unlock</button>
 
+        <div id="debug" style="margin-top:20px;color:yellow;"></div>
+
         <script>
 
         const urlParams = new URLSearchParams(window.location.search);
         const justPaid = urlParams.get("success");
+
+        function log(msg) {
+            document.getElementById("debug").innerHTML += "<br>" + msg;
+        }
 
         async function subscribe() {
 
@@ -63,57 +61,49 @@ def home():
             }
 
             localStorage.setItem("he_email", email);
+            log("Saved email: " + email);
 
-            try {
-                const res = await fetch("/create_checkout", {
-                    method: "POST",
-                    headers: {"Content-Type":"application/json"},
-                    body: JSON.stringify({email: email})
-                });
+            const res = await fetch("/create_checkout", {
+                method: "POST",
+                headers: {"Content-Type":"application/json"},
+                body: JSON.stringify({email: email})
+            });
 
-                const data = await res.json();
-
-                if (!data.url) {
-                    alert("No checkout URL returned");
-                    return;
-                }
-
-                window.location.href = data.url;
-
-            } catch (err) {
-                console.error(err);
-                alert("Error occurred");
-            }
+            const data = await res.json();
+            window.location.href = data.url;
         }
 
         async function checkAccessWithRetry() {
 
             const email = localStorage.getItem("he_email");
-            if (!email) return;
+
+            log("Checking access for: " + email);
 
             for (let i = 0; i < 10; i++) {
 
                 const res = await fetch("/check_access", {
                     method: "POST",
                     headers: {"Content-Type":"application/json"},
-                    body: JSON.stringify({email: email})
+                    body: JSON.stringify({email})
                 });
 
                 const data = await res.json();
 
+                log("Attempt " + i + " → " + JSON.stringify(data));
+
                 if (data.access) {
-                    document.body.innerHTML = "<h1>ACCESS GRANTED</h1><button onclick=\\"window.location.href='/app'\\">Enter</button>";
+                    document.body.innerHTML = "<h1>ACCESS GRANTED</h1>";
                     return;
                 }
 
                 await new Promise(r => setTimeout(r, 1500));
             }
 
-            console.log("Access not ready yet...");
+            log("FAILED: No access after retries");
         }
 
         if (justPaid) {
-            console.log("Payment detected → checking access...");
+            log("Payment detected");
             checkAccessWithRetry();
         }
 
@@ -122,10 +112,6 @@ def home():
     </body>
     </html>
     '''
-
-# =========================
-# CREATE CHECKOUT
-# =========================
 
 @app.route("/create_checkout", methods=["POST"])
 def create_checkout():
@@ -147,10 +133,6 @@ def create_checkout():
 
     return jsonify({"url": session.url})
 
-# =========================
-# WEBHOOK
-# =========================
-
 @app.route("/webhook", methods=["POST"])
 def webhook():
     payload = request.data
@@ -165,6 +147,8 @@ def webhook():
 
         session = event["data"]["object"]
         email = session.metadata.get("email")
+
+        print("WEBHOOK EMAIL:", email)
 
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
@@ -181,14 +165,12 @@ def webhook():
 
     return "OK", 200
 
-# =========================
-# CHECK ACCESS
-# =========================
-
 @app.route("/check_access", methods=["POST"])
 def check_access():
     data = request.json
     email = data.get("email")
+
+    print("CHECK ACCESS FOR:", email)
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -201,19 +183,9 @@ def check_access():
     result = c.fetchone()
     conn.close()
 
+    print("RESULT:", result)
+
     return jsonify({"access": bool(result)})
-
-# =========================
-# APP
-# =========================
-
-@app.route("/app")
-def app_entry():
-    return "<h1>🚀 Welcome inside HiddenEdge</h1>"
-
-# =========================
-# RUN
-# =========================
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
