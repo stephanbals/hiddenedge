@@ -7,14 +7,105 @@
 body {font-family:Arial;background:#0b1b3a;color:white;}
 .container {width:1200px;margin:auto;}
 .card {background:#132a5e;padding:20px;margin:20px;border-radius:10px;}
-textarea {width:100%;height:250px;background:#020a1f;color:white;}
-button {padding:10px;margin-top:10px;}
+textarea {width:100%;height:250px;background:#020a1f;color:white;border:1px solid #1e4fff;padding:10px;}
+button {padding:10px;margin-top:10px;cursor:pointer;}
 .split {display:flex;gap:20px;}
 .box {width:50%;}
+
+/* MODAL */
+.modal {
+    position:fixed;
+    top:0;left:0;
+    width:100%;height:100%;
+    background:rgba(0,0,0,0.85);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    z-index:1000;
+}
+.modal-content {
+    background:#0b1833;
+    padding:20px;
+    border-radius:10px;
+    width:700px;
+    max-height:80%;
+    overflow:auto;
+}
+
+/* FOOTER */
+.footer {
+    text-align:center;
+    font-size:12px;
+    color:#8faadf;
+    margin:30px 0 20px 0;
+}
+.footer a {color:#8faadf;text-decoration:none;}
+.footer a:hover {text-decoration:underline;}
+
+.help-btn {
+    position:fixed;
+    top:20px;
+    right:20px;
+}
 </style>
 </head>
 
 <body>
+
+<button class="help-btn" onclick="openHelp()">Help</button>
+
+<!-- HELP MODAL -->
+<div id="helpModal" class="modal" style="display:none;">
+<div class="modal-content">
+
+<h3>How HiddenEdge Works</h3>
+
+<p><b>Step 1 — Upload your CV</b></p>
+<p><b>Step 2 — Paste Job Description</b></p>
+<p><b>Step 3 — Nestor analyzes fit, risks, and match</b></p>
+<p><b>Step 4 — Alec improves your CV for the role</b></p>
+
+<p>
+HiddenEdge helps you decide whether to apply and improves your CV accordingly.
+</p>
+
+<br>
+<button onclick="closeHelp()">Close</button>
+
+</div>
+</div>
+
+<!-- EULA -->
+<div id="eulaModal" class="modal">
+<div class="modal-content">
+
+<h3>Terms of Use & AI Disclosure</h3>
+
+<p><b>1. AI Advisory Nature</b><br>
+HiddenEdge provides non-binding AI-generated insights. Results are indicative only.</p>
+
+<p><b>2. No Guarantee of Outcomes</b><br>
+Use of this tool does not guarantee job success or interview outcomes.</p>
+
+<p><b>3. Data Processing (GDPR)</b><br>
+Your data is processed only to generate results and is not stored or reused.</p>
+
+<p><b>4. AI Transparency (EU AI Act)</b><br>
+This system uses artificial intelligence and does not make automated decisions.</p>
+
+<p><b>5. No Refund Policy</b><br>
+Due to the nature of digital AI-generated services, all payments are final and non-refundable.</p>
+
+<p><b>6. User Responsibility</b><br>
+You are responsible for how you use the outputs.</p>
+
+<br>
+
+<input type="checkbox" id="acceptBox"> I accept the Terms<br><br>
+<button onclick="acceptEula()">Continue</button>
+
+</div>
+</div>
 
 <div class="container">
 
@@ -54,141 +145,135 @@ button {padding:10px;margin-top:10px;}
 
 </div>
 
+<!-- FOOTER -->
+<div class="footer">
+HiddenEdge is part of the ProductiveYou Products from SB3PM Advisory & Services Ltd<br>
+Contact: <a href="mailto:HiddenEdgeInfo@proton.me">HiddenEdgeInfo@proton.me</a>
+</div>
+
 <script>
 
-function getEmail(){
-    let email = document.getElementById("email").value;
-    if(!email){
-        alert("Enter email first");
-        throw new Error("no email");
-    }
-    return email;
+// HELP
+function openHelp(){
+document.getElementById("helpModal").style.display="flex";
+}
+function closeHelp(){
+document.getElementById("helpModal").style.display="none";
 }
 
+// EULA
+function acceptEula(){
+if(!document.getElementById("acceptBox").checked){
+alert("You must accept the terms");
+return;
+}
+document.getElementById("eulaModal").style.display="none";
+}
+
+// EMAIL CHECK
+function getEmail(){
+let email=document.getElementById("email").value;
+if(!email){
+alert("Enter email first");
+throw new Error("no email");
+}
+return email;
+}
+
+// CORE
 async function run(){
+const email=getEmail();
+const file=document.getElementById("cv").files[0];
+const job=document.getElementById("job").value;
 
-    const email = getEmail();
-    const file = document.getElementById("cv").files[0];
-    const job = document.getElementById("job").value;
+const fd=new FormData();
+fd.append("email",email);
+fd.append("job",job);
+fd.append("files",file);
 
-    const fd = new FormData();
-    fd.append("email", email);
-    fd.append("job", job);
-    fd.append("files", file);
+const res=await fetch("/analyze",{method:"POST",body:fd});
+const data=await res.json();
 
-    const res = await fetch("/analyze",{method:"POST",body:fd});
-    const data = await res.json();
+document.getElementById("result").innerText =
+data.nestor.decision + " " + data.nestor.fit_score;
 
-    document.getElementById("result").innerText =
-        data.nestor.decision + " " + data.nestor.fit_score;
-
-    document.getElementById("cv_original").value = await file.text();
-    document.getElementById("cv_out").value = data.alec.cv;
+document.getElementById("cv_original").value = await file.text();
+document.getElementById("cv_out").value = data.alec.cv;
 }
 
 async function simulate(){
+const email=getEmail();
 
-    const email = getEmail();
+const res=await fetch("/simulate",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({email:email})
+});
 
-    const res = await fetch("/simulate",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({email:email})
-    });
-
-    const data = await res.json();
-
-    document.getElementById("sim").innerText =
-        data.new_score + " → " + data.new_decision;
+const data=await res.json();
+document.getElementById("sim").innerText =
+data.new_score + " → " + data.new_decision;
 }
 
 async function regenerate(){
+const email=getEmail();
 
-    const email = getEmail();
+const res=await fetch("/regenerate",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({email:email})
+});
 
-    const res = await fetch("/regenerate",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({email:email})
-    });
+const data=await res.json();
 
-    const data = await res.json();
-
-    if(data.paywall){
-
-        const pay = await fetch("/create_checkout",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({email:email})
-        });
-
-        const p = await pay.json();
-        window.location = p.url;
-        return;
-    }
-
-    document.getElementById("cv_out").value = data.cv;
+if(data.paywall){
+const pay=await fetch("/create_checkout",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({email:email})
+});
+const p=await pay.json();
+window.location=p.url;
+return;
 }
 
-window.onload = async function(){
-
-    const params = new URLSearchParams(window.location.search);
-
-    if(params.get("paid") === "true"){
-
-        const email = document.getElementById("email").value;
-
-        if(!email) return;
-
-        const res = await fetch("/regenerate",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({email:email})
-        });
-
-        const data = await res.json();
-
-        document.getElementById("cv_out").value = data.cv;
-        alert("CV ready");
-    }
-};
+document.getElementById("cv_out").value=data.cv;
+}
 
 async function download(){
+const cv=document.getElementById("cv_out").value;
 
-    const cv = document.getElementById("cv_out").value;
+const res=await fetch("/download_cv",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({cv:cv})
+});
 
-    const res = await fetch("/download_cv",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({cv:cv})
-    });
+const blob=await res.blob();
+const url=URL.createObjectURL(blob);
 
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-
-    let a=document.createElement("a");
-    a.href=url;
-    a.download="cv.docx";
-    a.click();
+let a=document.createElement("a");
+a.href=url;
+a.download="cv.docx";
+a.click();
 }
 
 async function downloadReport(){
+const email=getEmail();
 
-    const email = getEmail();
+const res=await fetch("/download_report",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({email:email})
+});
 
-    const res = await fetch("/download_report",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({email:email})
-    });
+const blob=await res.blob();
+const url=URL.createObjectURL(blob);
 
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-
-    let a=document.createElement("a");
-    a.href=url;
-    a.download="report.pdf";
-    a.click();
+let a=document.createElement("a");
+a.href=url;
+a.download="report.pdf";
+a.click();
 }
 
 </script>
