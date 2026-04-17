@@ -6,9 +6,8 @@ import pdfplumber
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-
 # -----------------------------
-# FILE EXTRACTION
+# FILE EXTRACTION (UPDATED)
 # -----------------------------
 def extract_text_from_files(files):
     texts = []
@@ -17,14 +16,20 @@ def extract_text_from_files(files):
         filename = file.filename.lower()
 
         try:
+            # DOCX
             if filename.endswith(".docx"):
                 doc = docx.Document(file)
                 text = "\n".join([p.text for p in doc.paragraphs])
 
+            # PDF
             elif filename.endswith(".pdf"):
                 with pdfplumber.open(file) as pdf:
                     pages = [page.extract_text() or "" for page in pdf.pages]
                     text = "\n".join(pages)
+
+            # TXT (NEW)
+            elif filename.endswith(".txt"):
+                text = file.read().decode("utf-8", errors="ignore")
 
             else:
                 text = "Unsupported file format"
@@ -38,7 +43,7 @@ def extract_text_from_files(files):
 
 
 # -----------------------------
-# NESTOR (FIXED — FACT EXTRACTION FIRST)
+# NESTOR
 # -----------------------------
 def evaluate_fit(texts, job_text):
 
@@ -53,17 +58,15 @@ STEP 1 — Extract ONLY explicit facts from the CV:
 - skills
 - languages
 - responsibilities
-- financial scope (budgets, P&L)
+- financial scope
 
-STEP 2 — Evaluate match against job using ONLY those facts.
+STEP 2 — Evaluate match vs job using ONLY those facts.
 
 STRICT RULES:
-- DO NOT ignore information that IS present
-- DO NOT say something is missing if it appears in the CV
-- DO NOT assume or infer
-- DO NOT hallucinate
+- NO hallucination
+- NO ignoring existing info
 
-RETURN STRICT JSON:
+RETURN JSON:
 
 {{
   "fit_score": number,
@@ -73,11 +76,6 @@ RETURN STRICT JSON:
   "gaps": [],
   "risk_flags": []
 }}
-
-RULES:
-- max 4 per list
-- short phrases only
-- grounded in CV
 
 CV:
 {cv_text}
@@ -107,7 +105,7 @@ JOB:
 
 
 # -----------------------------
-# ALEC (SAFE — NO FABRICATION)
+# ALEC
 # -----------------------------
 def tailor_cv(texts, job_text, evaluation):
 
@@ -116,20 +114,19 @@ def tailor_cv(texts, job_text, evaluation):
     prompt = f"""
 You are a senior CV strategist.
 
-Rewrite the CV to improve alignment with the job.
+Rewrite CV to better align with job.
 
-STRICT RULES:
-- DO NOT invent experience, education, skills, or languages
-- DO NOT change job titles or create new roles
-- DO NOT downgrade seniority
-- DO NOT fabricate industry experience
+STRICT:
+- NO fake experience
+- NO role invention
+- NO changing titles
 
 ALLOWED:
-- Rephrase
-- Reorder
-- Emphasize relevant transferable experience
+- rephrase
+- reorder
+- emphasize
 
-USE THIS INPUT:
+INPUT:
 
 STRENGTHS:
 {evaluation.get("strengths", [])}
