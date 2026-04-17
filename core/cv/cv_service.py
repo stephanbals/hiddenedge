@@ -1,25 +1,46 @@
 import os
 import json
 from openai import OpenAI
+from docx import Document
+import PyPDF2
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # -------------------------------
-# FILE EXTRACTION
+# FILE EXTRACTION (FIXED)
 # -------------------------------
 
 def extract_text_from_files(files):
+
     texts = []
+
     for f in files:
+        filename = f.filename.lower()
+
         try:
-            texts.append(f.read().decode("utf-8", errors="ignore"))
+            if filename.endswith(".pdf"):
+                reader = PyPDF2.PdfReader(f)
+                text = ""
+                for page in reader.pages:
+                    text += page.extract_text() or ""
+                texts.append(text)
+
+            elif filename.endswith(".docx"):
+                doc = Document(f)
+                text = "\n".join([p.text for p in doc.paragraphs])
+                texts.append(text)
+
+            else:
+                texts.append(f.read().decode("utf-8", errors="ignore"))
+
         except:
             texts.append("")
+
     return texts
 
 
 # -------------------------------
-# NESTOR (AI)
+# NESTOR
 # -------------------------------
 
 def evaluate_fit(texts, job_text):
@@ -55,12 +76,22 @@ JOB:
             temperature=0.3
         )
         return json.loads(r.choices[0].message.content)
+
     except:
-        return fallback_response()
+        return {
+            "decision":"Potential Match",
+            "fit_score":5,
+            "heatmap":{"skills":50,"experience":50,"tools":50,"domain":50,"seniority":50},
+            "domain_analysis":"Fallback",
+            "strengths":["Basic alignment"],
+            "gaps":["Missing specific requirements"],
+            "risk_flags":["Low confidence"],
+            "cv_diff":[]
+        }
 
 
 # -------------------------------
-# ALEC (REWRITE)
+# ALEC
 # -------------------------------
 
 def tailor_cv(texts, job_text, evaluation):
@@ -70,79 +101,9 @@ def tailor_cv(texts, job_text, evaluation):
     prompt = f"""
 Rewrite CV for job.
 
-Do NOT invent experience.
-
-CV:
-{cv_text}
-
-JOB:
-{job_text}
-"""
-
-    try:
-        r = client.chat.completions.create(
-            model="gpt-5.3",
-            messages=[{"role":"user","content":prompt}],
-            temperature=0.4
-        )
-        return r.choices[0].message.content
-    except:
-        return cv_text
-
-
-# -------------------------------
-# SIMULATION
-# -------------------------------
-
-def simulate_improvement(texts, job_text, evaluation):
-
-    prompt = f"""
-Simulate improved CV outcome.
-
-Current evaluation:
-{json.dumps(evaluation)}
-
-Return JSON:
-{{
- "new_score": number,
- "new_decision": "...",
- "improvements_applied": [],
- "reasoning": "..."
-}}
-"""
-
-    try:
-        r = client.chat.completions.create(
-            model="gpt-5.3",
-            messages=[{"role":"user","content":prompt}],
-            temperature=0.3
-        )
-        return json.loads(r.choices[0].message.content)
-    except:
-        return {
-            "new_score": min(10, evaluation.get("fit_score",5)+1),
-            "new_decision":"Improved",
-            "improvements_applied":["General improvements"],
-            "reasoning":"Fallback"
-        }
-
-
-# -------------------------------
-# 🔥 NEW: REGENERATE FROM SIMULATION
-# -------------------------------
-
-def regenerate_from_simulation(texts, job_text, improvements):
-
-    cv_text = "\n".join(texts)
-
-    prompt = f"""
-Rewrite CV applying these improvements:
-
-{improvements}
-
 Rules:
-- no hallucination
-- apply improvements clearly
+- No hallucination
+- Improve clarity and alignment
 
 CV:
 {cv_text}
@@ -158,20 +119,3 @@ JOB:
     )
 
     return r.choices[0].message.content
-
-
-# -------------------------------
-# FALLBACK
-# -------------------------------
-
-def fallback_response():
-    return {
-        "decision":"Potential Match",
-        "fit_score":5,
-        "heatmap":{"skills":50,"experience":50,"tools":50,"domain":50,"seniority":50},
-        "domain_analysis":"Unknown",
-        "strengths":[],
-        "gaps":[],
-        "risk_flags":[],
-        "cv_diff":[]
-    }

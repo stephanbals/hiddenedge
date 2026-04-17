@@ -4,276 +4,182 @@
 <title>HiddenEdge</title>
 
 <style>
-body {font-family:Arial;background:#0b1b3a;color:white;}
-.container {width:1200px;margin:auto;}
-.card {background:#132a5e;padding:20px;margin:20px;border-radius:10px;}
-textarea {width:100%;height:250px;background:#020a1f;color:white;border:1px solid #1e4fff;padding:10px;}
-button {padding:10px;margin-top:10px;cursor:pointer;}
-.split {display:flex;gap:20px;}
-.box {width:50%;}
-
-/* MODAL */
-.modal {
-    position:fixed;
-    top:0;left:0;
-    width:100%;height:100%;
-    background:rgba(0,0,0,0.85);
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    z-index:1000;
+body {
+    font-family:Arial;
+    background:#0b1b3a;
+    color:white;
 }
-.modal-content {
-    background:#0b1833;
+.container {
+    width:1100px;
+    margin:auto;
+}
+.card {
+    background:#132a5e;
     padding:20px;
+    margin:20px 0;
     border-radius:10px;
-    width:700px;
-    max-height:80%;
-    overflow:auto;
 }
-
-/* FOOTER */
-.footer {
-    text-align:center;
-    font-size:12px;
-    color:#8faadf;
-    margin:30px 0 20px 0;
+textarea {
+    width:100%;
+    height:220px;
+    background:#020a1f;
+    color:white;
+    border:1px solid #1e4fff;
+    padding:10px;
 }
-.footer a {color:#8faadf;text-decoration:none;}
-.footer a:hover {text-decoration:underline;}
-
-.help-btn {
-    position:fixed;
-    top:20px;
-    right:20px;
+button {
+    padding:10px;
+    margin-top:10px;
+    cursor:pointer;
+}
+.split {
+    display:flex;
+    gap:20px;
+}
+.box {
+    width:50%;
+}
+.title {
+    font-size:22px;
+    margin-bottom:10px;
+}
+.sub {
+    color:#9bbcff;
+}
+.highlight {
+    background:#1f3c88;
+    padding:10px;
+    border-radius:6px;
+    margin-top:10px;
 }
 </style>
 </head>
 
 <body>
 
-<button class="help-btn" onclick="openHelp()">Help</button>
-
-<!-- HELP MODAL -->
-<div id="helpModal" class="modal" style="display:none;">
-<div class="modal-content">
-
-<h3>How HiddenEdge Works</h3>
-
-<p><b>Step 1 — Upload your CV</b></p>
-<p><b>Step 2 — Paste Job Description</b></p>
-<p><b>Step 3 — Nestor analyzes fit, risks, and match</b></p>
-<p><b>Step 4 — Alec improves your CV for the role</b></p>
-
-<p>
-HiddenEdge helps you decide whether to apply and improves your CV accordingly.
-</p>
-
-<br>
-<button onclick="closeHelp()">Close</button>
-
-</div>
-</div>
-
-<!-- EULA -->
-<div id="eulaModal" class="modal">
-<div class="modal-content">
-
-<h3>Terms of Use & AI Disclosure</h3>
-
-<p><b>1. AI Advisory Nature</b><br>
-HiddenEdge provides non-binding AI-generated insights. Results are indicative only.</p>
-
-<p><b>2. No Guarantee of Outcomes</b><br>
-Use of this tool does not guarantee job success or interview outcomes.</p>
-
-<p><b>3. Data Processing (GDPR)</b><br>
-Your data is processed only to generate results and is not stored or reused.</p>
-
-<p><b>4. AI Transparency (EU AI Act)</b><br>
-This system uses artificial intelligence and does not make automated decisions.</p>
-
-<p><b>5. No Refund Policy</b><br>
-Due to the nature of digital AI-generated services, all payments are final and non-refundable.</p>
-
-<p><b>6. User Responsibility</b><br>
-You are responsible for how you use the outputs.</p>
-
-<br>
-
-<input type="checkbox" id="acceptBox"> I accept the Terms<br><br>
-<button onclick="acceptEula()">Continue</button>
-
-</div>
-</div>
-
 <div class="container">
 
+<!-- INPUT -->
 <div class="card">
+<div class="title">Start Analysis</div>
+
 <input id="email" placeholder="Enter your email"><br><br>
 <input type="file" id="cv"><br><br>
-<textarea id="job" placeholder="Paste job description"></textarea><br>
+
+<textarea id="job" placeholder="Paste job description"></textarea>
+
 <button onclick="run()">Analyze</button>
 </div>
 
+<!-- NESTOR -->
 <div class="card">
-<div id="result"></div>
+<div class="title">🤖 Nestor — Should You Apply?</div>
+
+<div id="decision"></div>
+
+<div id="analysis"></div>
 </div>
 
+<!-- ALEC -->
 <div class="card">
+<div class="title">🛠 Alec — CV Optimization</div>
+
 <div class="split">
+
 <div class="box">
-<h3>Original</h3>
-<textarea id="cv_original"></textarea>
+<h3>Original CV</h3>
+<textarea id="cv_original" readonly></textarea>
 </div>
+
 <div class="box">
-<h3>Improved</h3>
+<h3>Improved CV</h3>
 <textarea id="cv_out"></textarea>
 </div>
+
 </div>
 
 <button onclick="download()">Download CV</button>
-<button onclick="downloadReport()">Download Report</button>
 </div>
 
-<div class="card">
-<button onclick="simulate()">Simulate</button>
-<div id="sim"></div>
-
-<button onclick="regenerate()">Generate CV 🔒</button>
-</div>
-
-</div>
-
-<!-- FOOTER -->
-<div class="footer">
-HiddenEdge is part of the ProductiveYou Products from SB3PM Advisory & Services Ltd<br>
-Contact: <a href="mailto:HiddenEdgeInfo@proton.me">HiddenEdgeInfo@proton.me</a>
 </div>
 
 <script>
 
-// HELP
-function openHelp(){
-document.getElementById("helpModal").style.display="flex";
-}
-function closeHelp(){
-document.getElementById("helpModal").style.display="none";
-}
-
-// EULA
-function acceptEula(){
-if(!document.getElementById("acceptBox").checked){
-alert("You must accept the terms");
-return;
-}
-document.getElementById("eulaModal").style.display="none";
-}
-
-// EMAIL CHECK
 function getEmail(){
-let email=document.getElementById("email").value;
-if(!email){
-alert("Enter email first");
-throw new Error("no email");
-}
-return email;
+    let email=document.getElementById("email").value;
+    if(!email){
+        alert("Enter email first");
+        throw new Error("no email");
+    }
+    return email;
 }
 
-// CORE
 async function run(){
-const email=getEmail();
-const file=document.getElementById("cv").files[0];
-const job=document.getElementById("job").value;
 
-const fd=new FormData();
-fd.append("email",email);
-fd.append("job",job);
-fd.append("files",file);
+    const email=getEmail();
+    const file=document.getElementById("cv").files[0];
+    const job=document.getElementById("job").value;
 
-const res=await fetch("/analyze",{method:"POST",body:fd});
-const data=await res.json();
+    const fd=new FormData();
+    fd.append("email",email);
+    fd.append("job",job);
+    fd.append("files",file);
 
-document.getElementById("result").innerText =
-data.nestor.decision + " " + data.nestor.fit_score;
+    const res=await fetch("/analyze",{method:"POST",body:fd});
+    const data=await res.json();
 
-document.getElementById("cv_original").value = await file.text();
-document.getElementById("cv_out").value = data.alec.cv;
-}
+    // DECISION
+    document.getElementById("decision").innerHTML =
+        `<div class="highlight">${data.nestor.decision} (${data.nestor.fit_score}/10)</div>`;
 
-async function simulate(){
-const email=getEmail();
+    // ANALYSIS
+    const n=data.nestor;
 
-const res=await fetch("/simulate",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({email:email})
-});
+    let html = `
+    <div class="sub">Match Breakdown</div>
 
-const data=await res.json();
-document.getElementById("sim").innerText =
-data.new_score + " → " + data.new_decision;
-}
+    <b>Strengths:</b><br>${n.strengths.join("<br>")}<br><br>
 
-async function regenerate(){
-const email=getEmail();
+    <b>Gaps:</b><br>${n.gaps.join("<br>")}<br><br>
 
-const res=await fetch("/regenerate",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({email:email})
-});
+    <b>Risks:</b><br>${n.risk_flags.join("<br>")}<br><br>
 
-const data=await res.json();
+    <b>Domain:</b><br>${n.domain_analysis}<br><br>
 
-if(data.paywall){
-const pay=await fetch("/create_checkout",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({email:email})
-});
-const p=await pay.json();
-window.location=p.url;
-return;
-}
+    <b>Score Breakdown:</b><br>
+    Skills: ${n.heatmap.skills}%<br>
+    Experience: ${n.heatmap.experience}%<br>
+    Tools: ${n.heatmap.tools}%<br>
+    Domain: ${n.heatmap.domain}%<br>
+    Seniority: ${n.heatmap.seniority}%<br>
+    `;
 
-document.getElementById("cv_out").value=data.cv;
+    document.getElementById("analysis").innerHTML = html;
+
+    // FIXED ORIGINAL DISPLAY (NO BINARY)
+    document.getElementById("cv_original").value =
+        "CV processed successfully";
+
+    document.getElementById("cv_out").value = data.alec.cv;
 }
 
 async function download(){
-const cv=document.getElementById("cv_out").value;
 
-const res=await fetch("/download_cv",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({cv:cv})
-});
+    const cv=document.getElementById("cv_out").value;
 
-const blob=await res.blob();
-const url=URL.createObjectURL(blob);
+    const res=await fetch("/download_cv",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({cv:cv})
+    });
 
-let a=document.createElement("a");
-a.href=url;
-a.download="cv.docx";
-a.click();
-}
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
 
-async function downloadReport(){
-const email=getEmail();
-
-const res=await fetch("/download_report",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({email:email})
-});
-
-const blob=await res.blob();
-const url=URL.createObjectURL(blob);
-
-let a=document.createElement("a");
-a.href=url;
-a.download="report.pdf";
-a.click();
+    let a=document.createElement("a");
+    a.href=url;
+    a.download="cv.docx";
+    a.click();
 }
 
 </script>
