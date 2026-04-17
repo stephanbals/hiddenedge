@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>HiddenEdge</title>
+
+<style>
+body {font-family:Arial;background:#0b1b3a;color:white;}
+.container {width:1200px;margin:auto;}
+.card {background:#132a5e;padding:20px;margin:20px;border-radius:10px;}
+textarea {width:100%;height:250px;background:#020a1f;color:white;}
+button {padding:10px;margin-top:10px;}
+.split {display:flex;gap:20px;}
+.box {width:50%;}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="card">
+<input id="email" placeholder="Enter your email"><br><br>
+<input type="file" id="cv"><br><br>
+<textarea id="job" placeholder="Paste job description"></textarea><br>
+<button onclick="run()">Analyze</button>
+</div>
+
+<div class="card">
+<div id="result"></div>
+</div>
+
+<div class="card">
+<div class="split">
+<div class="box">
+<h3>Original</h3>
+<textarea id="cv_original"></textarea>
+</div>
+<div class="box">
+<h3>Improved</h3>
+<textarea id="cv_out"></textarea>
+</div>
+</div>
+
+<button onclick="download()">Download CV</button>
+<button onclick="downloadReport()">Download Report</button>
+</div>
+
+<div class="card">
+<button onclick="simulate()">Simulate</button>
+<div id="sim"></div>
+
+<button onclick="regenerate()">Generate CV 🔒</button>
+</div>
+
+</div>
+
+<script>
+
+function getEmail(){
+    let email = document.getElementById("email").value;
+    if(!email){
+        alert("Enter email first");
+        throw new Error("no email");
+    }
+    return email;
+}
+
+async function run(){
+
+    const email = getEmail();
+    const file = document.getElementById("cv").files[0];
+    const job = document.getElementById("job").value;
+
+    const fd = new FormData();
+    fd.append("email", email);
+    fd.append("job", job);
+    fd.append("files", file);
+
+    const res = await fetch("/analyze",{method:"POST",body:fd});
+    const data = await res.json();
+
+    document.getElementById("result").innerText =
+        data.nestor.decision + " " + data.nestor.fit_score;
+
+    document.getElementById("cv_original").value = await file.text();
+    document.getElementById("cv_out").value = data.alec.cv;
+}
+
+async function simulate(){
+
+    const email = getEmail();
+
+    const res = await fetch("/simulate",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({email:email})
+    });
+
+    const data = await res.json();
+
+    document.getElementById("sim").innerText =
+        data.new_score + " → " + data.new_decision;
+}
+
+async function regenerate(){
+
+    const email = getEmail();
+
+    const res = await fetch("/regenerate",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({email:email})
+    });
+
+    const data = await res.json();
+
+    if(data.paywall){
+
+        const pay = await fetch("/create_checkout",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({email:email})
+        });
+
+        const p = await pay.json();
+        window.location = p.url;
+        return;
+    }
+
+    document.getElementById("cv_out").value = data.cv;
+}
+
+window.onload = async function(){
+
+    const params = new URLSearchParams(window.location.search);
+
+    if(params.get("paid") === "true"){
+
+        const email = document.getElementById("email").value;
+
+        if(!email) return;
+
+        const res = await fetch("/regenerate",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({email:email})
+        });
+
+        const data = await res.json();
+
+        document.getElementById("cv_out").value = data.cv;
+        alert("CV ready");
+    }
+};
+
+async function download(){
+
+    const cv = document.getElementById("cv_out").value;
+
+    const res = await fetch("/download_cv",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({cv:cv})
+    });
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+
+    let a=document.createElement("a");
+    a.href=url;
+    a.download="cv.docx";
+    a.click();
+}
+
+async function downloadReport(){
+
+    const email = getEmail();
+
+    const res = await fetch("/download_report",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({email:email})
+    });
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+
+    let a=document.createElement("a");
+    a.href=url;
+    a.download="report.pdf";
+    a.click();
+}
+
+</script>
+
+</body>
+</html>

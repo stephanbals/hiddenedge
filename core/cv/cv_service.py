@@ -1,80 +1,44 @@
 import os
 import json
 from openai import OpenAI
-import docx
-import pdfplumber
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# -----------------------------
-# FILE EXTRACTION (UPDATED)
-# -----------------------------
+# -------------------------------
+# FILE EXTRACTION
+# -------------------------------
+
 def extract_text_from_files(files):
     texts = []
-
-    for file in files:
-        filename = file.filename.lower()
-
+    for f in files:
         try:
-            # DOCX
-            if filename.endswith(".docx"):
-                doc = docx.Document(file)
-                text = "\n".join([p.text for p in doc.paragraphs])
-
-            # PDF
-            elif filename.endswith(".pdf"):
-                with pdfplumber.open(file) as pdf:
-                    pages = [page.extract_text() or "" for page in pdf.pages]
-                    text = "\n".join(pages)
-
-            # TXT (NEW)
-            elif filename.endswith(".txt"):
-                text = file.read().decode("utf-8", errors="ignore")
-
-            else:
-                text = "Unsupported file format"
-
-        except Exception as e:
-            text = f"Error reading file: {str(e)}"
-
-        texts.append(text)
-
+            texts.append(f.read().decode("utf-8", errors="ignore"))
+        except:
+            texts.append("")
     return texts
 
 
-# -----------------------------
-# NESTOR
-# -----------------------------
+# -------------------------------
+# NESTOR (AI)
+# -------------------------------
+
 def evaluate_fit(texts, job_text):
 
     cv_text = "\n".join(texts)
 
     prompt = f"""
-You are a senior recruiter.
+Analyze CV vs job.
 
-STEP 1 — Extract ONLY explicit facts from the CV:
-- roles
-- industries
-- skills
-- languages
-- responsibilities
-- financial scope
-
-STEP 2 — Evaluate match vs job using ONLY those facts.
-
-STRICT RULES:
-- NO hallucination
-- NO ignoring existing info
-
-RETURN JSON:
-
+Return JSON:
 {{
-  "fit_score": number,
-  "decision": "APPLY" | "STRETCH" | "HIGH_RISK",
-  "confidence": "HIGH" | "MEDIUM" | "LOW",
-  "strengths": [],
-  "gaps": [],
-  "risk_flags": []
+ "decision": "...",
+ "fit_score": number,
+ "heatmap": {{"skills":0-100,"experience":0-100,"tools":0-100,"domain":0-100,"seniority":0-100}},
+ "domain_analysis": "...",
+ "strengths": [],
+ "gaps": [],
+ "risk_flags": [],
+ "cv_diff": []
 }}
 
 CV:
@@ -85,76 +49,129 @@ JOB:
 """
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1
+        r = client.chat.completions.create(
+            model="gpt-5.3",
+            messages=[{"role":"user","content":prompt}],
+            temperature=0.3
         )
-
-        return json.loads(response.choices[0].message.content)
-
-    except Exception as e:
-        return {
-            "fit_score": 50,
-            "decision": "STRETCH",
-            "confidence": "LOW",
-            "strengths": [],
-            "gaps": [f"LLM error: {str(e)}"],
-            "risk_flags": []
-        }
+        return json.loads(r.choices[0].message.content)
+    except:
+        return fallback_response()
 
 
-# -----------------------------
-# ALEC
-# -----------------------------
+# -------------------------------
+# ALEC (REWRITE)
+# -------------------------------
+
 def tailor_cv(texts, job_text, evaluation):
 
     cv_text = "\n".join(texts)
 
     prompt = f"""
-You are a senior CV strategist.
+Rewrite CV for job.
 
-Rewrite CV to better align with job.
-
-STRICT:
-- NO fake experience
-- NO role invention
-- NO changing titles
-
-ALLOWED:
-- rephrase
-- reorder
-- emphasize
-
-INPUT:
-
-STRENGTHS:
-{evaluation.get("strengths", [])}
-
-GAPS:
-{evaluation.get("gaps", [])}
-
-RISKS:
-{evaluation.get("risk_flags", [])}
-
-JOB:
-{job_text}
+Do NOT invent experience.
 
 CV:
 {cv_text}
 
-OUTPUT:
-Return FULL CV only.
+JOB:
+{job_text}
 """
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2
+        r = client.chat.completions.create(
+            model="gpt-5.3",
+            messages=[{"role":"user","content":prompt}],
+            temperature=0.4
         )
-
-        return response.choices[0].message.content
-
+        return r.choices[0].message.content
     except:
         return cv_text
+
+
+# -------------------------------
+# SIMULATION
+# -------------------------------
+
+def simulate_improvement(texts, job_text, evaluation):
+
+    prompt = f"""
+Simulate improved CV outcome.
+
+Current evaluation:
+{json.dumps(evaluation)}
+
+Return JSON:
+{{
+ "new_score": number,
+ "new_decision": "...",
+ "improvements_applied": [],
+ "reasoning": "..."
+}}
+"""
+
+    try:
+        r = client.chat.completions.create(
+            model="gpt-5.3",
+            messages=[{"role":"user","content":prompt}],
+            temperature=0.3
+        )
+        return json.loads(r.choices[0].message.content)
+    except:
+        return {
+            "new_score": min(10, evaluation.get("fit_score",5)+1),
+            "new_decision":"Improved",
+            "improvements_applied":["General improvements"],
+            "reasoning":"Fallback"
+        }
+
+
+# -------------------------------
+# 🔥 NEW: REGENERATE FROM SIMULATION
+# -------------------------------
+
+def regenerate_from_simulation(texts, job_text, improvements):
+
+    cv_text = "\n".join(texts)
+
+    prompt = f"""
+Rewrite CV applying these improvements:
+
+{improvements}
+
+Rules:
+- no hallucination
+- apply improvements clearly
+
+CV:
+{cv_text}
+
+JOB:
+{job_text}
+"""
+
+    r = client.chat.completions.create(
+        model="gpt-5.3",
+        messages=[{"role":"user","content":prompt}],
+        temperature=0.4
+    )
+
+    return r.choices[0].message.content
+
+
+# -------------------------------
+# FALLBACK
+# -------------------------------
+
+def fallback_response():
+    return {
+        "decision":"Potential Match",
+        "fit_score":5,
+        "heatmap":{"skills":50,"experience":50,"tools":50,"domain":50,"seniority":50},
+        "domain_analysis":"Unknown",
+        "strengths":[],
+        "gaps":[],
+        "risk_flags":[],
+        "cv_diff":[]
+    }

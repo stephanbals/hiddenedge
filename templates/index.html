@@ -1,309 +1,126 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>HiddenEdge – Decision Engine</title>
+<title>HiddenEdge</title>
 
 <style>
-body {font-family:Arial;margin:0;background:linear-gradient(180deg,#1e2f5c,#2d4aa0);color:#e6f0ff;}
-h1 {text-align:center;padding:20px;color:#6fb1ff;}
-.container {width:900px;margin:auto;}
-.card {background:#0b1833;padding:20px;border-radius:10px;margin-bottom:20px;}
-label {display:block;margin-top:10px;margin-bottom:5px;color:#6fb1ff;}
-textarea {width:100%;height:150px;background:#020a1f;border:1px solid #1e4fff;color:white;padding:10px;}
-button {margin-top:10px;padding:10px;background:#4facfe;border:none;color:white;cursor:pointer;}
-.secondary {background:#00c6ff;}
-.progress {display:none;margin-top:10px;}
-
-.recommend {margin-top:10px;padding:10px;border-radius:6px;font-weight:bold;}
-.apply {background:#1f7a3a;}
-.try {background:#b8860b;}
-.noapply {background:#8b0000;}
-
-.modal {position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;justify-content:center;align-items:center;z-index:1000;}
-.modal-content {background:#0b1833;padding:20px;border-radius:10px;width:650px;max-height:80%;overflow:auto;}
-
-.help-btn {position:absolute;top:20px;right:20px;}
-
-.footer {
+body {
+    margin:0;
+    font-family:Arial;
+    color:white;
+    background: radial-gradient(circle at top, #140a2e, #050010);
     text-align:center;
-    font-size:12px;
-    color:#8faadf;
-    margin:30px 0 20px 0;
 }
-.footer a {
-    color:#8faadf;
-    text-decoration:none;
+
+.hero {
+    padding:80px 20px;
 }
-.footer a:hover {
-    text-decoration:underline;
+
+.title {
+    font-size:42px;
+    text-shadow:0 0 20px #4ea3ff;
+}
+
+.subtitle {
+    margin-top:10px;
+    font-size:18px;
+    color:#cfe3ff;
+}
+
+.start-btn {
+    margin-top:30px;
+    padding:18px 50px;
+    font-size:22px;
+    background:#4ea3ff;
+    border:none;
+    border-radius:12px;
+    color:white;
+    cursor:pointer;
+    box-shadow:0 0 25px #4ea3ff;
+}
+
+.counter {
+    margin-top:10px;
+    font-size:14px;
+    color:#aaa;
+}
+
+.cards {
+    display:flex;
+    justify-content:center;
+    gap:40px;
+    margin-top:60px;
+    flex-wrap:wrap;
+}
+
+.card {
+    width:420px;
+    padding:25px;
+    border-radius:20px;
+    background: rgba(255,255,255,0.05);
+    box-shadow:0 0 40px rgba(0,0,0,0.7);
 }
 </style>
 </head>
 
 <body>
 
-<button class="help-btn" onclick="openHelp()">Help</button>
+<div class="hero">
 
-<h1>HiddenEdge – Hiring Decision Engine</h1>
+    <div style="font-size:80px;">🤖</div>
 
-<!-- HELP MODAL -->
-<div id="helpModal" class="modal" style="display:none;">
-<div class="modal-content">
+    <div class="title">Welcome to HiddenEdge</div>
+    <div class="subtitle">Let’s make your CV get noticed.</div>
 
-<h3>How HiddenEdge Works</h3>
+    <button class="start-btn" onclick="start()">
+        🚀 START HERE
+    </button>
 
-<p><strong>Step 1 — Upload your CV</strong><br>
-Upload your CV in DOCX or PDF format.</p>
-
-<p><strong>Step 2 — Paste Job Description</strong><br>
-Provide the job description you want to evaluate.</p>
-
-<p><strong>Step 3 — Nestor (Decision Engine)</strong><br>
-Nestor analyzes your CV against the job and determines:<br>
-• Fit score<br>
-• Strengths<br>
-• Gaps<br>
-• Risk indicators<br>
-• Whether you should apply</p>
-
-<p><strong>Step 4 — Alec (CV Optimization)</strong><br>
-Alec generates an optimized version of your CV specifically tailored to the job, improving your chances.</p>
-
-<p><strong>Why Two Entities?</strong><br>
-Nestor provides objective decision support.<br>
-Alec focuses on execution and improvement.<br>
-This separation ensures clarity between analysis and action.</p>
-
-<h4>Free vs Paid Usage</h4>
-
-<p>
-HiddenEdge allows you to preview your CV analysis and the optimized CV for free.
-</p>
-
-<p>
-Downloading the tailored CV requires an upgrade.
-</p>
-
-<p>
-This way, you can first evaluate the quality before deciding to unlock full functionality.
-</p>
-
-<br>
-<button onclick="closeHelp()">Close</button>
-
-</div>
-</div>
-
-<!-- EULA -->
-<div id="eulaModal" class="modal">
-<div class="modal-content">
-
-<h3>Terms of Use & AI Disclosure</h3>
-
-<p><strong>1. Nature of the Service</strong><br>
-HiddenEdge provides AI-generated advisory insights to support CV evaluation and improvement. Results are indicative only and do not guarantee job application success or outcomes.</p>
-
-<p><strong>2. Use of Artificial Intelligence</strong><br>
-This system uses artificial intelligence to analyze CVs and job descriptions. Outputs are generated automatically and should be interpreted strictly as guidance. The system does not replace human judgment.</p>
-
-<p><strong>3. Data Processing & Privacy</strong><br>
-Your CV and job description are processed temporarily for the sole purpose of generating results. HiddenEdge does not store, retain, sell, or reuse your personal data after processing.</p>
-
-<p><strong>4. Third-Party Processing</strong><br>
-Data may be securely processed by external AI service providers solely to generate results. No data is used for training or secondary purposes.</p>
-
-<p><strong>5. User Responsibility</strong><br>
-You remain fully responsible for how you interpret and use the results. You should not rely exclusively on this tool for career decisions.</p>
-
-<p><strong>6. Limitation of Liability</strong><br>
-HiddenEdge and its operators are not liable for any decisions, actions, or outcomes resulting from the use of this system.</p>
-
-<p><strong>7. AI Transparency Statement</strong><br>
-This system provides <strong>non-binding recommendations</strong> and does not make automated decisions.</p>
-
-<p><strong>8. Language Guidance</strong><br>
-For optimal results, CVs should be provided in English. Job descriptions may be submitted in most European languages.</p>
-
-<br>
-
-<input type="checkbox" id="acceptBox"> I have read and accept these terms<br><br>
-<button onclick="acceptEula()">Continue</button>
-
-</div>
-</div>
-
-<div class="container">
-
-<div class="card">
-
-<label>Upload CV</label>
-<input type="file" id="file" multiple>
-<button onclick="upload()">Upload CV</button>
-
-<div id="uploadProgress" class="progress"></div>
-
-<label>Job Description</label>
-<textarea id="job" placeholder="Paste job description here"></textarea>
-
-<button onclick="tailor()">Run Analysis</button>
-
-<div id="analysisProgress" class="progress"></div>
+    <div class="counter" id="counterText">
+        You have Free Trials left: 03
+    </div>
 
 </div>
 
-<div class="card">
+<div class="cards">
 
-<div id="decision"></div>
-<div id="recommendation"></div>
-<div id="confidence"></div>
+    <div class="card">
+        <h3>NESTOR ANALYZES</h3>
+        <h2>Should you apply?</h2>
+        <ul>
+            <li>Strong Match</li>
+            <li>Stretch Opportunity</li>
+            <li>Do NOT Apply</li>
+        </ul>
+    </div>
 
-<div id="strengths"></div>
-<div id="gaps"></div>
-<div id="risks"></div>
+    <div class="card">
+        <h3>ALEC REFINES</h3>
+        <h2>Fit the role perfectly</h2>
+        <ul>
+            <li>Tailored CV</li>
+            <li>Upgrade your CV</li>
+        </ul>
+    </div>
 
-</div>
-
-<div class="card">
-<div id="alecText"></div>
-<textarea id="tailored"></textarea>
-
-<button onclick="downloadCV()">Download CV (.docx)</button>
-
-</div>
-
-<div class="card" id="nextActions" style="display:none;">
-<button onclick="analyzeAgain()">Analyze another job (keep CV)</button>
-<button class="secondary" onclick="resetAll()">Upload new CV</button>
-</div>
-
-</div>
-
-<!-- FOOTER -->
-<div class="footer">
-© 2026 SB3PM Advisory & Services Ltd. – HiddenEdge™. All rights reserved.<br>
-Contact: <a href="mailto:HiddenEdgeInfo@proton.me">HiddenEdgeInfo@proton.me</a>
 </div>
 
 <script>
 
-function openHelp(){
-document.getElementById("helpModal").style.display="flex";
-}
+// FREE COUNTER DISPLAY
+let count = localStorage.getItem("usage") || 0;
+let remaining = 3 - count;
+if(remaining < 0) remaining = 0;
 
-function closeHelp(){
-document.getElementById("helpModal").style.display="none";
-}
+document.getElementById("counterText").innerText =
+"Free Trials left: " + remaining.toString().padStart(2,'0');
 
-function acceptEula(){
-const checkbox = document.getElementById("acceptBox");
-if(!checkbox.checked){alert("You must accept the terms.");return;}
-document.getElementById("eulaModal").style.display="none";
-}
-
-function upload(){
-uploadProgress.style.display="block";
-uploadProgress.innerHTML="Uploading CV...";
-
-let form=new FormData();
-for(let f of file.files){form.append("files",f);}
-
-fetch("/upload_cv",{method:"POST",body:form})
-.then(r=>r.json())
-.then(d=>{
-if(d.error){
-alert(d.error);
-uploadProgress.style.display="none";
-return;
-}
-setTimeout(()=>{uploadProgress.innerHTML="Upload complete";},500);
-setTimeout(()=>{uploadProgress.style.display="none";},1500);
-});
-}
-
-function tailor(){
-
-analysisProgress.style.display="block";
-analysisProgress.innerHTML="Nestor is analyzing your CV versus the job description...";
-
-fetch("/tailor_cv",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({job_text:job.value})
-})
-.then(r=>r.json())
-.then(data=>{
-
-analysisProgress.style.display="none";
-
-if(data.error){alert(data.error);return;}
-if(data.paywall){alert("Upgrade required");return;}
-
-let e=data.evaluation;
-
-decision.innerHTML=`<h2>${e.decision} (${e.fit_score}%)</h2>`;
-
-let recText="", recClass="";
-if(e.fit_score >= 80){
-recText="👉 Nestor recommends applying";
-recClass="apply";
-}else if(e.fit_score >= 50){
-recText="👉 Nestor suggests trying to apply";
-recClass="try";
-}else{
-recText="👉 Nestor advises NOT to apply";
-recClass="noapply";
-}
-recommendation.innerHTML=`<div class="recommend ${recClass}">${recText}</div>`;
-
-confidence.innerHTML=`Nestor has a ${e.confidence.toLowerCase()} confidence that this analysis of your CV versus the job description is correct based on the provided information.`;
-
-strengths.innerHTML=e.strengths.map(x=>"• "+x).join("<br>");
-gaps.innerHTML=e.gaps.map(x=>"• "+x).join("<br>");
-risks.innerHTML=e.risk_flags.map(x=>"• "+x).join("<br>");
-
-let alecMsg="";
-if(e.fit_score >= 80){
-alecMsg="Alec proposes this CV to strengthen your application:";
-}else if(e.fit_score >= 50){
-alecMsg="Alec proposes this CV to improve your chances:";
-}else{
-alecMsg="Alec does not recommend applying, but if you choose to proceed, this CV may help:";
-}
-alecText.innerHTML=`<b>${alecMsg}</b>`;
-tailored.value=data.tailored_cv;
-
-nextActions.style.display="block";
-
-});
-}
-
-function downloadCV(){
-fetch("/download_cv",{method:"POST"})
-.then(res=>{
-if(res.status === 403){
-alert("Download requires upgrade");
-return;
-}
-return res.blob();
-})
-.then(blob=>{
-if(!blob) return;
-let url=window.URL.createObjectURL(blob);
-let a=document.createElement("a");
-a.href=url;
-a.download="tailored_cv.docx";
-a.click();
-});
-}
-
-function analyzeAgain(){
-job.value="";
-window.scrollTo({top:0,behavior:"smooth"});
-job.focus();
-}
-
-function resetAll(){
-location.reload();
+function start(){
+    const email = prompt("Enter your email:");
+    if(email){
+        localStorage.setItem("email", email);
+        window.location="/app";
+    }
 }
 
 </script>
