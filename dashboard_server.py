@@ -80,7 +80,6 @@ def webhook():
 # ================= ANALYZE =================
 @app.route("/analyze", methods=["POST"])
 def analyze():
-
     email = request.form.get("email")
     job = request.form.get("job")
     files = request.files.getlist("files")
@@ -139,54 +138,109 @@ def download_cv():
         mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
 
-# ================= LANDING PAGE =================
+# ================= LANDING (PIXEL UI) =================
 @app.route("/")
 def home():
     return """
     <html>
-    <body style="margin:0;background:#0b1b3a;color:white;font-family:Arial;">
+    <head>
+    <style>
+        body {
+            margin:0;
+            font-family:Arial;
+            background: radial-gradient(circle at top, #1a0f3c, #050010);
+            color:white;
+        }
 
-    <div style="text-align:center;padding:80px;">
+        .container {
+            text-align:center;
+            padding:60px 20px;
+        }
 
-        <h1 style="font-size:48px;margin-bottom:20px;">HiddenEdge</h1>
+        .hero {
+            padding:40px;
+            border-radius:20px;
+            background: rgba(255,255,255,0.05);
+            box-shadow: 0 0 40px rgba(80,120,255,0.3);
+            max-width:900px;
+            margin:auto;
+        }
 
-        <div style="font-size:80px;">🤖</div>
+        .glow {
+            text-shadow: 0 0 10px #4ea3ff, 0 0 20px #4ea3ff;
+        }
 
-        <h2 style="margin-top:20px;">Stop applying to the wrong jobs.</h2>
+        .start-btn {
+            margin-top:20px;
+            padding:18px 40px;
+            font-size:22px;
+            background:#4ea3ff;
+            border:none;
+            border-radius:12px;
+            color:white;
+            cursor:pointer;
+            box-shadow:0 0 20px #4ea3ff;
+        }
 
-        <p style="max-width:700px;margin:auto;font-size:18px;">
-        HiddenEdge tells you if applying is worth it — and then helps you stand out when it is.
-        </p>
+        .cards {
+            display:flex;
+            justify-content:center;
+            gap:30px;
+            margin-top:50px;
+            flex-wrap:wrap;
+        }
 
-        <br><br>
+        .card {
+            width:380px;
+            padding:25px;
+            border-radius:15px;
+            background: rgba(255,255,255,0.05);
+            box-shadow:0 0 30px rgba(0,0,0,0.6);
+        }
+    </style>
+    </head>
 
-        <button onclick="start()" 
-        style="padding:20px 50px;font-size:24px;background:#4ea3ff;color:white;border:none;border-radius:12px;">
-            🚀 START HERE
-        </button>
+    <body>
 
-        <br><br><br>
+    <div class="container">
 
-        <div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;">
+        <h1 class="glow">HiddenEdge</h1>
 
-            <div style="background:#1c2e5a;padding:25px;border-radius:12px;width:300px;">
-                <div style="font-size:40px;">👔🤖</div>
-                <h3>Nestor analyzes</h3>
-                <p>Should you apply?</p>
+        <div class="hero">
+            <div style="font-size:80px;">🤖</div>
+
+            <h2 class="glow">Welcome to HiddenEdge</h2>
+            <p>Let’s make your CV get noticed.</p>
+
+            <button class="start-btn" onclick="start()">
+                🚀 START HERE
+            </button>
+
+            <p style="font-size:12px;color:#aaa;">
+                HiddenEdge determines your success probability and upgrades your CV
+            </p>
+        </div>
+
+        <div class="cards">
+
+            <div class="card">
+                <div style="font-size:50px;">👔🤖</div>
+                <h3>NESTOR ANALYZES</h3>
+                <h2>Should you apply?</h2>
                 <ul style="text-align:left;">
-                    <li>Strong match</li>
-                    <li>Stretch</li>
-                    <li>Do not apply</li>
+                    <li>Strong Match</li>
+                    <li>Stretch Opportunity</li>
+                    <li>Rethink</li>
                 </ul>
             </div>
 
-            <div style="background:#1c2e5a;padding:25px;border-radius:12px;width:300px;">
-                <div style="font-size:40px;">💻🤖</div>
-                <h3>Alec refines</h3>
-                <p>Strengthens your CV</p>
+            <div class="card">
+                <div style="font-size:50px;">💻🤖</div>
+                <h3>ALEC REFINES</h3>
+                <h2>Fit the role perfectly</h2>
                 <ul style="text-align:left;">
                     <li>Tailored CV</li>
-                    <li>Better positioning</li>
+                    <li>Upgrade your CV</li>
                 </ul>
             </div>
 
@@ -208,105 +262,32 @@ def home():
     </html>
     """
 
-# ================= TOOL PAGE =================
+# ================= TOOL =================
 @app.route("/app")
 def app_ui():
     return """
     <html>
     <body style="background:#0b1b3a;color:white;font-family:Arial;padding:40px;">
 
-    <h2>HiddenEdge</h2>
-
-    <div style="font-size:60px;">🤖</div>
-    <p>Welcome — let’s make smarter application decisions.</p>
+    <h2>HiddenEdge Tool</h2>
 
     <input type="file" id="cv"><br><br>
     <textarea id="job" rows="6" style="width:100%;"></textarea><br><br>
 
     <button onclick="run()">Analyze</button>
 
-    <div id="nestor" style="margin-top:40px;"></div>
-    <div id="alec" style="margin-top:40px;"></div>
-    <div id="download" style="margin-top:40px;"></div>
-    <div id="continue" style="margin-top:40px;"></div>
+    <div id="nestor"></div>
+    <div id="alec"></div>
+    <div id="download"></div>
 
     <script>
-
     let file;
     let currentCV = "";
 
     document.getElementById("cv").onchange=e=>file=e.target.files[0];
 
-    function showThinking(){
-        document.getElementById("nestor").innerHTML = "<p>👔🤖 Nestor is thinking...</p>";
-    }
-
-    function renderNestor(data){
-        const n = data.nestor;
-        const strengths = n.strengths ? n.strengths.join(", ") : "N/A";
-        const gaps = n.gaps ? n.gaps.join(", ") : "N/A";
-
-        document.getElementById("nestor").innerHTML = `
-            <h3>Nestor Decision</h3>
-            <p><b>${n.decision}</b> (${n.fit_score}/10)</p>
-            <p><b>Strengths:</b> ${strengths}</p>
-            <p><b>Gaps:</b> ${gaps}</p>
-        `;
-    }
-
-    function renderAlec(data){
-        currentCV = data.alec.cv;
-
-        document.getElementById("alec").innerHTML = `
-            <h3>Alec</h3>
-            <p>Rewriting your CV...</p>
-            <pre>${currentCV}</pre>
-        `;
-    }
-
-    function renderDownload(){
-        document.getElementById("download").innerHTML = `
-            <button onclick="download()">Download CV</button>
-        `;
-    }
-
-    function renderContinue(){
-        document.getElementById("continue").innerHTML = `
-            <p>Analyze another job?</p>
-            <button onclick="location.reload()">Yes</button>
-            <button onclick="exit()">No</button>
-        `;
-    }
-
-    function exit(){
-        alert("Thank you — come back soon!");
-        window.location = "https://google.com";
-    }
-
-    async function download(){
-        const res = await fetch("/download_cv",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({cv: currentCV})
-        });
-
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "HiddenEdge_CV.docx";
-        a.click();
-    }
-
     async function run(){
-
-        if(!file){
-            alert("Upload CV first");
-            return;
-        }
-
-        showThinking();
+        if(!file){ alert("Upload CV first"); return; }
 
         const fd=new FormData();
         fd.append("email",localStorage.getItem("email"));
@@ -327,18 +308,14 @@ def app_ui():
             return;
         }
 
-        renderNestor(d);
-        renderAlec(d);
-        renderDownload();
-        renderContinue();
+        currentCV = d.alec.cv;
+        document.getElementById("alec").innerText = currentCV;
     }
-
     </script>
 
     </body>
     </html>
     """
 
-# ================= RUN =================
 if __name__ == "__main__":
     app.run(debug=True)
