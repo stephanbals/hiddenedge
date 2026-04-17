@@ -85,7 +85,6 @@ def analyze():
     job = request.form.get("job")
     files = request.files.getlist("files")
 
-    # 🚨 HARD VALIDATION
     if not files or files[0].filename == "":
         return jsonify({"error": "No CV uploaded"})
 
@@ -113,10 +112,8 @@ def analyze():
 
     conn.close()
 
-    # CORE ENGINE
     texts = extract_text_from_files(files)
 
-    # 🚨 SECOND VALIDATION
     if not texts or texts[0].strip() == "":
         return jsonify({"error": "CV could not be read"})
 
@@ -143,42 +140,86 @@ def download_cv():
         mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
 
-# ================= UI =================
+# ================= HOME =================
 @app.route("/")
 def home():
     return """
-    <html><body style="background:#0b1b3a;color:white;text-align:center;padding:50px;">
-    <h1>HiddenEdge</h1>
+    <html>
+    <body style="background:#0b1b3a;color:white;text-align:center;padding:50px;font-family:Arial;">
+        <h1>HiddenEdge</h1>
 
-    <input id="email"><br><br>
-    <button onclick="go()">Start</button>
+        <input id="email" placeholder="Enter email"><br><br>
+        <button onclick="go()">Start</button>
 
-    <script>
-    function go(){
-        localStorage.setItem("email",document.getElementById("email").value);
-        window.location="/app";
-    }
-    </script>
-    </body></html>
+        <script>
+        function go(){
+            localStorage.setItem("email",document.getElementById("email").value);
+            window.location="/app";
+        }
+        </script>
+    </body>
+    </html>
     """
 
+# ================= APP UI =================
 @app.route("/app")
 def app_ui():
     return """
-    <html><body style="background:#0b1b3a;color:white;padding:40px;">
+    <html>
+    <body style="background:#0b1b3a;color:white;font-family:Arial;">
 
-    <input type="file" id="cv" accept=".docx,.pdf,.txt"><br><br>
-    <textarea id="job" rows="6" style="width:100%;"></textarea><br><br>
-
-    <button onclick="run()">Analyze</button>
-
-    <div id="barBox" style="display:none;margin-top:20px;">
-        <div style="background:#222;height:20px;">
-            <div id="bar" style="height:100%;width:0%;background:#4ea3ff;"></div>
-        </div>
+    <!-- HEADER -->
+    <div style="display:flex;justify-content:space-between;padding:20px;">
+        <h2>HiddenEdge</h2>
+        <button onclick="toggleHelp()" style="padding:10px;background:#4ea3ff;border:none;color:white;border-radius:6px;">
+            Help
+        </button>
     </div>
 
-    <pre id="out"></pre>
+    <!-- HELP MODAL -->
+    <div id="helpBox" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.9);padding:40px;overflow:auto;">
+
+        <h2>How to use HiddenEdge</h2>
+
+        <ol>
+            <li>Upload your CV (.docx, .pdf, .txt)</li>
+            <li>Paste job description</li>
+            <li>Click Analyze</li>
+            <li>Nestor evaluates your fit</li>
+            <li>Alec rewrites your CV</li>
+            <li>Download improved CV</li>
+        </ol>
+
+        <p>Free: 3 analyses → then payment required.</p>
+
+        <button onclick="toggleHelp()">Close</button>
+    </div>
+
+    <!-- MAIN -->
+    <div style="max-width:900px;margin:auto;padding:30px;">
+
+        <h3>Upload CV</h3>
+        <input type="file" id="cv" accept=".docx,.pdf,.txt"><br><br>
+
+        <h3>Job Description</h3>
+        <textarea id="job" rows="6" style="width:100%;"></textarea><br><br>
+
+        <button onclick="run()" style="padding:12px 20px;background:#4ea3ff;border:none;color:white;border-radius:6px;">
+            Analyze
+        </button>
+
+        <!-- PROGRESS -->
+        <div id="barBox" style="display:none;margin-top:20px;">
+            <div style="background:#222;height:20px;">
+                <div id="bar" style="height:100%;width:0%;background:#4ea3ff;"></div>
+            </div>
+        </div>
+
+        <!-- OUTPUT -->
+        <pre id="out" style="margin-top:20px;"></pre>
+
+    </div>
 
     <script>
 
@@ -186,10 +227,12 @@ def app_ui():
 
     document.getElementById("cv").onchange=e=>{
         file=e.target.files[0];
-        if(!file){
-            alert("No file selected");
-        }
     };
+
+    function toggleHelp(){
+        const h=document.getElementById("helpBox");
+        h.style.display = (h.style.display === "none") ? "block" : "none";
+    }
 
     function animate(){
         let w=0;
@@ -204,7 +247,7 @@ def app_ui():
     async function run(){
 
         if(!file){
-            alert("Please upload a CV first");
+            alert("Upload CV first");
             return;
         }
 
@@ -241,7 +284,8 @@ def app_ui():
 
     </script>
 
-    </body></html>
+    </body>
+    </html>
     """
 
 # ================= RUN =================
