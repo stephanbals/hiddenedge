@@ -139,29 +139,76 @@ def download_cv():
         mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
 
-# ================= LANDING =================
+# ================= LANDING PAGE =================
 @app.route("/")
 def home():
     return """
     <html>
-    <body style="background:#0b1b3a;color:white;text-align:center;padding:60px;font-family:Arial;">
-        <h1>Stop applying to the wrong jobs.</h1>
-        <p>HiddenEdge tells you if applying is worth it — and then helps you stand out when it is.</p>
-        <button onclick="start()" style="padding:15px 30px;font-size:18px;">Start</button>
-        <script>
-        function start(){
-            const email = prompt("Enter your email:");
-            if(email){
-                localStorage.setItem("email", email);
-                window.location="/app";
-            }
+    <body style="margin:0;background:#0b1b3a;color:white;font-family:Arial;">
+
+    <div style="text-align:center;padding:80px;">
+
+        <h1 style="font-size:48px;margin-bottom:20px;">HiddenEdge</h1>
+
+        <div style="font-size:80px;">🤖</div>
+
+        <h2 style="margin-top:20px;">Stop applying to the wrong jobs.</h2>
+
+        <p style="max-width:700px;margin:auto;font-size:18px;">
+        HiddenEdge tells you if applying is worth it — and then helps you stand out when it is.
+        </p>
+
+        <br><br>
+
+        <button onclick="start()" 
+        style="padding:20px 50px;font-size:24px;background:#4ea3ff;color:white;border:none;border-radius:12px;">
+            🚀 START HERE
+        </button>
+
+        <br><br><br>
+
+        <div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;">
+
+            <div style="background:#1c2e5a;padding:25px;border-radius:12px;width:300px;">
+                <div style="font-size:40px;">👔🤖</div>
+                <h3>Nestor analyzes</h3>
+                <p>Should you apply?</p>
+                <ul style="text-align:left;">
+                    <li>Strong match</li>
+                    <li>Stretch</li>
+                    <li>Do not apply</li>
+                </ul>
+            </div>
+
+            <div style="background:#1c2e5a;padding:25px;border-radius:12px;width:300px;">
+                <div style="font-size:40px;">💻🤖</div>
+                <h3>Alec refines</h3>
+                <p>Strengthens your CV</p>
+                <ul style="text-align:left;">
+                    <li>Tailored CV</li>
+                    <li>Better positioning</li>
+                </ul>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+    function start(){
+        const email = prompt("Enter your email:");
+        if(email){
+            localStorage.setItem("email", email);
+            window.location = "/app";
         }
-        </script>
+    }
+    </script>
+
     </body>
     </html>
     """
 
-# ================= APP =================
+# ================= TOOL PAGE =================
 @app.route("/app")
 def app_ui():
     return """
@@ -170,27 +217,17 @@ def app_ui():
 
     <h2>HiddenEdge</h2>
 
-    <!-- WELCOME ROBOT -->
     <div style="font-size:60px;">🤖</div>
     <p>Welcome — let’s make smarter application decisions.</p>
 
-    <!-- INPUT -->
-    <div style="margin-top:20px;">
-        <input type="file" id="cv"><br><br>
-        <textarea id="job" rows="6" style="width:100%;"></textarea><br><br>
-        <button onclick="run()">Analyze</button>
-    </div>
+    <input type="file" id="cv"><br><br>
+    <textarea id="job" rows="6" style="width:100%;"></textarea><br><br>
 
-    <!-- NESTOR -->
+    <button onclick="run()">Analyze</button>
+
     <div id="nestor" style="margin-top:40px;"></div>
-
-    <!-- ALEC -->
     <div id="alec" style="margin-top:40px;"></div>
-
-    <!-- DOWNLOAD -->
     <div id="download" style="margin-top:40px;"></div>
-
-    <!-- CONTINUE -->
     <div id="continue" style="margin-top:40px;"></div>
 
     <script>
@@ -201,27 +238,26 @@ def app_ui():
     document.getElementById("cv").onchange=e=>file=e.target.files[0];
 
     function showThinking(){
-        document.getElementById("nestor").innerHTML = `
-            <div style="font-size:40px;">👔🤖</div>
-            <p>Nestor is thinking...</p>
-        `;
+        document.getElementById("nestor").innerHTML = "<p>👔🤖 Nestor is thinking...</p>";
     }
 
     function renderNestor(data){
         const n = data.nestor;
+        const strengths = n.strengths ? n.strengths.join(", ") : "N/A";
+        const gaps = n.gaps ? n.gaps.join(", ") : "N/A";
+
         document.getElementById("nestor").innerHTML = `
-            <div style="font-size:40px;">👔🤖</div>
             <h3>Nestor Decision</h3>
             <p><b>${n.decision}</b> (${n.fit_score}/10)</p>
-            <p><b>Strengths:</b> ${n.strengths.join(", ")}</p>
-            <p><b>Gaps:</b> ${n.gaps.join(", ")}</p>
+            <p><b>Strengths:</b> ${strengths}</p>
+            <p><b>Gaps:</b> ${gaps}</p>
         `;
     }
 
     function renderAlec(data){
         currentCV = data.alec.cv;
+
         document.getElementById("alec").innerHTML = `
-            <div style="font-size:40px;">💻🤖</div>
             <h3>Alec</h3>
             <p>Rewriting your CV...</p>
             <pre>${currentCV}</pre>
@@ -230,7 +266,6 @@ def app_ui():
 
     function renderDownload(){
         document.getElementById("download").innerHTML = `
-            <div style="font-size:40px;">🛠️🤖</div>
             <button onclick="download()">Download CV</button>
         `;
     }
