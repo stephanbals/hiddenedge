@@ -85,6 +85,10 @@ def analyze():
     job = request.form.get("job")
     files = request.files.getlist("files")
 
+    # 🚨 HARD VALIDATION
+    if not files or files[0].filename == "":
+        return jsonify({"error": "No CV uploaded"})
+
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
 
@@ -109,7 +113,13 @@ def analyze():
 
     conn.close()
 
+    # CORE ENGINE
     texts = extract_text_from_files(files)
+
+    # 🚨 SECOND VALIDATION
+    if not texts or texts[0].strip() == "":
+        return jsonify({"error": "CV could not be read"})
+
     evaluation = evaluate_fit(texts, job)
     cv = tailor_cv(texts, job, evaluation)
 
@@ -123,6 +133,7 @@ def analyze():
 @app.route("/download_cv", methods=["POST"])
 def download_cv():
     cv = request.json.get("cv")
+
     file_bytes = generate_docx(cv)
 
     return send_file(
@@ -171,9 +182,14 @@ def app_ui():
 
     <script>
 
-    let f;
+    let file;
 
-    document.getElementById("cv").onchange=e=>f=e.target.files[0];
+    document.getElementById("cv").onchange=e=>{
+        file=e.target.files[0];
+        if(!file){
+            alert("No file selected");
+        }
+    };
 
     function animate(){
         let w=0;
@@ -187,16 +203,26 @@ def app_ui():
 
     async function run(){
 
+        if(!file){
+            alert("Please upload a CV first");
+            return;
+        }
+
         document.getElementById("barBox").style.display="block";
         animate();
 
         const fd=new FormData();
         fd.append("email",localStorage.getItem("email"));
         fd.append("job",document.getElementById("job").value);
-        fd.append("files",f);
+        fd.append("files",file);
 
         const r=await fetch("/analyze",{method:"POST",body:fd});
         const d=await r.json();
+
+        if(d.error){
+            alert(d.error);
+            return;
+        }
 
         if(d.blocked){
             const pay=await fetch("/create_checkout",{
@@ -209,7 +235,7 @@ def app_ui():
             return;
         }
 
-        document.getElementById("out").innerText=
+        document.getElementById("out").innerText =
             JSON.stringify(d,null,2);
     }
 
