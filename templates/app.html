@@ -1,12 +1,28 @@
-\<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <title>HiddenEdge</title>
+
 <style>
-body { font-family:Arial; background:#111; color:white; text-align:center; }
-textarea { width:80%; height:120px; }
-button { padding:10px 20px; margin-top:20px; }
+body {
+    font-family: Arial;
+    background: #111;
+    color: white;
+    text-align: center;
+}
+
+textarea {
+    width: 80%;
+    height: 120px;
+}
+
+button {
+    padding: 10px 20px;
+    margin-top: 20px;
+    cursor: pointer;
+}
 </style>
+
 </head>
 
 <body>
@@ -20,11 +36,15 @@ button { padding:10px 20px; margin-top:20px; }
 <h2>Job Description</h2>
 <textarea id="job"></textarea><br>
 
-<button onclick="analyze()">Analyze</button>
+<button type="button" onclick="analyze()">Analyze</button>
 
 <div id="result"></div>
 
 <script>
+
+// 🔹 preload email if stored
+document.getElementById("email").value =
+    localStorage.getItem("email") || "";
 
 async function analyze(){
 
@@ -39,6 +59,9 @@ async function analyze(){
         return;
     }
 
+    // 🔹 store email so user doesn't re-enter
+    localStorage.setItem("email", email);
+
     let fd = new FormData();
     fd.append("email", email);
     fd.append("job", job);
@@ -48,7 +71,7 @@ async function analyze(){
 
         const res = await fetch("/analyze", {
             method:"POST",
-            body:fd
+            body: fd
         });
 
         console.log("RESPONSE STATUS:", res.status);
@@ -60,7 +83,7 @@ async function analyze(){
         document.getElementById("result").innerHTML =
             "Decision: " + data.decision +
             "<br>Score: " + data.fit_score +
-            "<br><button onclick='pay()'>Improve CV</button>";
+            "<br><button type='button' onclick='pay()'>Improve CV</button>";
 
     } catch(err){
         console.error("ERROR:", err);
@@ -75,7 +98,7 @@ async function pay(){
     const res = await fetch("/create_checkout", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({email})
+        body: JSON.stringify({email})
     });
 
     const data = await res.json();
