@@ -1,340 +1,111 @@
-from flask import Flask, request, jsonify, send_file, render_template
 import os
-import sqlite3
-from io import BytesIO
 import stripe
-import json
+from flask import Flask, request, jsonify
 
-from core.cv.cv_service import (
-    extract_text_from_files,
-    evaluate_fit,
-    tailor_cv,
-    simulate_improvement,
-    regenerate_from_simulation
-)
-from core.cv.doc_export import generate_docx
-from core.cv.report_export import generate_report_pdf
+app = Flask(__name__)
 
-app = Flask(__name__, template_folder="templates")
+# =========================
+# STRIPE CONFIG (ENV BASED)
+# =========================
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-BASE_URL = os.getenv("BASE_URL")
+STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
-DB_FILE = "app.db"
+# Temporary in-memory storage (replace later with DB)
+paid_users = set()
 
-# -------------------------------
-# DB INIT
-# -------------------------------
-def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+# =========================
+# HEALTH CHECK
+# =========================
 
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            email TEXT PRIMARY KEY,
-            subscription_status TEXT
-        )
-    """)
-
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS sessions (
-            email TEXT,
-            cv_text TEXT,
-            job TEXT,
-            improvements TEXT,
-            evaluation TEXT
-        )
-    """)
-
-    conn.commit()
-    conn.close()
-
-init_db()
+@app.route("/", methods=["GET"])
+def home():
+    return "HiddenEdge Backend Running"
 
 
-# -------------------------------
-# DB HELPERS
-# -------------------------------
-def activate_user(email):
-    if not email:
-        print("❌ No email provided to activate_user")
-        return
-
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    c.execute("""
-        INSERT OR REPLACE INTO users(email, subscription_status)
-        VALUES(?, 'active')
-    """, (email,))
-
-    conn.commit()
-    conn.close()
-
-    print(f"✅ User activated: {email}")
-
-
-def is_paid(email):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    c.execute("SELECT subscription_status FROM users WHERE email=?", (email,))
-    row = c.fetchone()
-
-    conn.close()
-    return row and row[0] == "active"
-
-
-def save_session(email, cv_text, job, evaluation):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    c.execute("DELETE FROM sessions WHERE email=?", (email,))
-    c.execute("""
-        INSERT INTO sessions(email, cv_text, job, evaluation)
-        VALUES(?,?,?,?)
-    """, (email, cv_text, job, json.dumps(evaluation)))
-
-    conn.commit()
-    conn.close()
-
-
-def update_improvements(email, improvements):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    c.execute("""
-        UPDATE sessions SET improvements=?
-        WHERE email=?
-    """, (json.dumps(improvements), email))
-
-    conn.commit()
-    conn.close()
-
-
-def load_session(email):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-
-    c.execute("""
-        SELECT cv_text, job, improvements, evaluation
-        FROM sessions WHERE email=?
-    """, (email,))
-
-    row = c.fetchone()
-    conn.close()
-
-    if not row:
-        return None
-
-    return {
-        "cv_text": row[0],
-        "job": row[1],
-        "improvements": json.loads(row[2] or "[]"),
-        "evaluation": json.loads(row[3] or "{}")
-    }
-
-
-# -------------------------------
-# ROUTES
-# -------------------------------
-
-@app.route("/")
-def landing():
-    return render_template("index.html")
-
-
-@app.route("/app")
-def app_page():
-    return render_template("app.html")
-
-
-# -------------------------------
-# ANALYZE
-# -------------------------------
-
-@app.route("/analyze", methods=["POST"])
-def analyze():
-
-    email = request.form.get("email")
-    job = request.form.get("job")
-    files = request.files.getlist("files")
-
-    texts = extract_text_from_files(files)
-    cv_text = "\n".join(texts)
-
-    evaluation = evaluate_fit(texts, job)
-    cv = tailor_cv(texts, job, evaluation)
-
-    save_session(email, cv_text, job, evaluation)
-
-    return jsonify({
-        "nestor": evaluation,
-        "alec": {"cv": cv}
-    })
-
-
-# -------------------------------
-# SIMULATE
-# -------------------------------
-
-@app.route("/simulate", methods=["POST"])
-def simulate():
-
-    email = request.json.get("email")
-
-    session = load_session(email)
-    if not session:
-        return jsonify({"error": "No session found"})
-
-    result = simulate_improvement(
-        [session["cv_text"]],
-        session["job"],
-        session["evaluation"]
-    )
-
-    update_improvements(email, result.get("improvements_applied", []))
-
-    return jsonify(result)
-
-
-# -------------------------------
-# REGENERATE (PAYWALLED)
-# -------------------------------
-
-@app.route("/regenerate", methods=["POST"])
-def regenerate():
-
-    email = request.json.get("email")
-
-    if not is_paid(email):
-        return jsonify({"paywall": True})
-
-    session = load_session(email)
-    if not session:
-        return jsonify({"error": "Session missing"})
-
-    new_cv = regenerate_from_simulation(
-        [session["cv_text"]],
-        session["job"],
-        session["improvements"]
-    )
-
-    return jsonify({"cv": new_cv})
-
-
-# -------------------------------
-# STRIPE CHECKOUT
-# -------------------------------
+# =========================
+# CREATE CHECKOUT SESSION
+# =========================
 
 @app.route("/create_checkout", methods=["POST"])
 def create_checkout():
-
-    email = request.json.get("email")
-
     try:
+        data = request.get_json()
+        email = data.get("email")
+
+        if not email:
+            return jsonify({"error": "Missing email"}), 400
+
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             mode="subscription",
             customer_email=email,
             line_items=[{
-                "price": "price_1TKzL42KtXZSLAsWCVnaTxHW",
-                "quantity": 1
+                "price": STRIPE_PRICE_ID,
+                "quantity": 1,
             }],
-            success_url=BASE_URL + "/app?paid=true",
-            cancel_url=BASE_URL + "/app"
+            success_url="https://hiddenedge-live.onrender.com/app?paid=true",
+            cancel_url="https://hiddenedge-live.onrender.com/app?canceled=true",
         )
 
         return jsonify({"url": session.url})
 
     except Exception as e:
-        print("❌ Stripe checkout error:", str(e))
-        return jsonify({"error": "Stripe error"}), 500
+        print("CHECKOUT ERROR:", str(e))
+        return jsonify({"error": str(e)}), 500
 
 
-# -------------------------------
-# WEBHOOK (🔥 FIXED)
-# -------------------------------
+# =========================
+# WEBHOOK
+# =========================
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-
     payload = request.data
-    sig = request.headers.get("Stripe-Signature")
-    endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    sig_header = request.headers.get("Stripe-Signature")
 
     try:
-        event = stripe.Webhook.construct_event(payload, sig, endpoint_secret)
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, STRIPE_WEBHOOK_SECRET
+        )
     except Exception as e:
-        print("❌ Webhook error:", str(e))
-        return "fail", 400
+        print("Webhook signature error:", str(e))
+        return "", 400
+
+    # =========================
+    # HANDLE EVENTS
+    # =========================
 
     if event["type"] == "checkout.session.completed":
-
         session = event["data"]["object"]
-
-        # 🔥 PRIMARY
         email = session.get("customer_email")
 
-        # 🔥 FALLBACK (critical for subscriptions)
-        if not email:
-            customer_id = session.get("customer")
-            if customer_id:
-                try:
-                    customer = stripe.Customer.retrieve(customer_id)
-                    email = customer.get("email")
-                except Exception as e:
-                    print("❌ Customer fetch error:", str(e))
-
-        print("📩 Webhook email:", email)
-
         if email:
-            activate_user(email)
-        else:
-            print("❌ No email found in webhook")
+            print(f"✅ Payment success for: {email}")
+            paid_users.add(email)
 
-    return "ok", 200
-
-
-# -------------------------------
-# DOWNLOAD REPORT
-# -------------------------------
-
-@app.route("/download_report", methods=["POST"])
-def download_report():
-
-    email = request.json.get("email")
-    session = load_session(email)
-
-    pdf_bytes = generate_report_pdf(session["evaluation"])
-
-    return send_file(
-        BytesIO(pdf_bytes),
-        as_attachment=True,
-        download_name="HiddenEdge_Report.pdf",
-        mimetype="application/pdf"
-    )
+    return "", 200
 
 
-# -------------------------------
-# DOWNLOAD CV
-# -------------------------------
+# =========================
+# CHECK IF USER IS PAID
+# =========================
 
-@app.route("/download_cv", methods=["POST"])
-def download_cv():
+@app.route("/check_payment", methods=["POST"])
+def check_payment():
+    data = request.get_json()
+    email = data.get("email")
 
-    cv = request.json.get("cv")
-    template = request.json.get("template")
+    if email in paid_users:
+        return jsonify({"paid": True})
 
-    file_bytes = generate_docx(cv, template)
+    return jsonify({"paid": False})
 
-    return send_file(
-        BytesIO(file_bytes),
-        as_attachment=True,
-        download_name="HiddenEdge_CV.docx",
-        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    )
 
+# =========================
+# RUN
+# =========================
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000)

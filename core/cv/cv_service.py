@@ -1,162 +1,69 @@
 import os
-import json
-import re
 from openai import OpenAI
-from docx import Document
-import PyPDF2
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Initialize OpenAI client safely
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# -------------------------------
-# FILE EXTRACTION
-# -------------------------------
+if not OPENAI_API_KEY:
+    raise ValueError("Missing OPENAI_API_KEY environment variable")
 
-def extract_text_from_files(files):
-
-    texts = []
-
-    for f in files:
-        filename = f.filename.lower()
-
-        try:
-            if filename.endswith(".pdf"):
-                reader = PyPDF2.PdfReader(f)
-                text = ""
-                for page in reader.pages:
-                    text += page.extract_text() or ""
-                texts.append(text)
-
-            elif filename.endswith(".docx"):
-                doc = Document(f)
-                text = "\n".join([p.text for p in doc.paragraphs])
-                texts.append(text)
-
-            else:
-                texts.append(f.read().decode("utf-8", errors="ignore"))
-
-        except Exception as e:
-            print("FILE ERROR:", str(e))
-            texts.append("")
-
-    return texts
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 
-# -------------------------------
-# SAFE JSON PARSER
-# -------------------------------
+def tailor_cv(texts, job, evaluation):
+    """
+    Takes:
+        texts: extracted CV text
+        job: job description
+        evaluation: match analysis (score, reasoning, etc.)
+    Returns:
+        improved CV text
+    """
 
-def extract_json(text):
     try:
-        # remove ```json blocks if present
-        text = re.sub(r"```json|```", "", text).strip()
+        prompt = f"""
+You are an expert CV optimization assistant.
 
-        # extract first {...} block
-        match = re.search(r"\{.*\}", text, re.DOTALL)
-        if match:
-            return json.loads(match.group())
+TASK:
+Rewrite and improve the candidate's CV to maximize alignment with the job description.
 
-        return json.loads(text)
+RULES:
+- Keep it realistic and truthful
+- Strengthen alignment with required skills
+- Use strong, professional language
+- Improve structure and clarity
+- Keep it concise and impactful
 
-    except Exception as e:
-        print("JSON PARSE ERROR:", str(e))
-        return None
+INPUTS:
 
+=== CURRENT CV ===
+{texts}
 
-# -------------------------------
-# NESTOR (FULL REPORT)
-# -------------------------------
+=== JOB DESCRIPTION ===
+{job}
 
-def evaluate_fit(texts, job_text):
+=== MATCH ANALYSIS ===
+{evaluation}
 
-    cv_text = "\n".join(texts)
-
-    prompt = f"""
-Analyze CV vs job.
-
-Return STRICT JSON only (no text, no explanation):
-
-{{
- "decision": "Strong Match | Potential Match | No Match",
- "fit_score": number,
- "summary": "short explanation",
- "strengths": [],
- "gaps": []
-}}
-
-CV:
-{cv_text}
-
-JOB:
-{job_text}
+OUTPUT:
+Provide the improved CV only.
 """
 
-    try:
-        r = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",  # stable & available
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.4,
         )
 
-        content = r.choices[0].message.content.strip()
+        result = response.choices[0].message.content
 
-        print("RAW MODEL OUTPUT:", content)
+        if not result:
+            raise ValueError("Empty response from OpenAI")
 
-        parsed = extract_json(content)
-
-        if not parsed:
-            raise Exception("Failed to parse JSON")
-
-        return parsed
+        return result
 
     except Exception as e:
-        print("EVALUATE ERROR:", str(e))
-
-        return {
-            "decision": "Error",
-            "fit_score": 0,
-            "summary": "Analysis failed",
-            "strengths": [],
-            "gaps": ["Model parsing failed"]
-        }
-
-
-# -------------------------------
-# ALEC
-# -------------------------------
-
-def tailor_cv(texts, job_text, evaluation):
-
-    cv_text = "\n".join(texts)
-
-    prompt = f"""
-Rewrite CV for job.
-
-Improve clarity and alignment.
-
-CV:
-{cv_text}
-
-JOB:
-{job_text}
-"""
-
-    try:
-        r = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.4
-        )
-
-        return r.choices[0].message.content
-
-    except Exception as e:
-        print("TAILOR ERROR:", str(e))
-        return "CV generation failed"
-
-
-def simulate_improvement(*args, **kwargs):
-    return {"improvements_applied": []}
-
-
-def regenerate_from_simulation(texts, job, improvements):
-    return "\n".join(texts)
+        print("❌ OpenAI CV generation failed:", str(e))
+        raise
