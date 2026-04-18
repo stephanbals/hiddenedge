@@ -68,34 +68,27 @@ async function analyze(){
 
     try {
 
-        console.log("SENDING REQUEST...");
-
         const res = await fetch("https://hiddenedge-live.onrender.com/analyze", {
             method: "POST",
             body: fd
         });
 
-        console.log("STATUS:", res.status);
+        const data = await res.json();
 
-        const text = await res.text();
-        console.log("RAW RESPONSE:", text);
+        console.log("DATA:", data);
 
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch(e) {
-            alert("Server returned non-JSON (check logs)");
-            return;
-        }
+        // 🔥 FIX HERE
+        const decision = data.nestor?.decision || "Error";
+        const score = data.nestor?.fit_score || 0;
 
         document.getElementById("result").innerHTML =
-            "Decision: " + data.decision +
-            "<br>Score: " + data.fit_score +
+            "Decision: " + decision +
+            "<br>Score: " + score +
             "<br><button type='button' onclick='pay()'>Improve CV</button>";
 
     } catch(err){
-        console.error("FETCH ERROR:", err);
-        alert("Analyze failed — network/backend issue");
+        console.error("ERROR:", err);
+        alert("Analyze failed");
     }
 }
 
