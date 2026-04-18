@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from openai import OpenAI
 from docx import Document
 import PyPDF2
@@ -41,6 +42,27 @@ def extract_text_from_files(files):
 
 
 # -------------------------------
+# SAFE JSON PARSER
+# -------------------------------
+
+def extract_json(text):
+    try:
+        # remove ```json blocks if present
+        text = re.sub(r"```json|```", "", text).strip()
+
+        # extract first {...} block
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            return json.loads(match.group())
+
+        return json.loads(text)
+
+    except Exception as e:
+        print("JSON PARSE ERROR:", str(e))
+        return None
+
+
+# -------------------------------
 # NESTOR (FULL REPORT)
 # -------------------------------
 
@@ -51,7 +73,7 @@ def evaluate_fit(texts, job_text):
     prompt = f"""
 Analyze CV vs job.
 
-Return STRICT JSON:
+Return STRICT JSON only (no text, no explanation):
 
 {{
  "decision": "Strong Match | Potential Match | No Match",
@@ -77,9 +99,14 @@ JOB:
 
         content = r.choices[0].message.content.strip()
 
-        print("MODEL OUTPUT:", content)
+        print("RAW MODEL OUTPUT:", content)
 
-        return json.loads(content)
+        parsed = extract_json(content)
+
+        if not parsed:
+            raise Exception("Failed to parse JSON")
+
+        return parsed
 
     except Exception as e:
         print("EVALUATE ERROR:", str(e))
@@ -89,7 +116,7 @@ JOB:
             "fit_score": 0,
             "summary": "Analysis failed",
             "strengths": [],
-            "gaps": ["Analysis failed"]
+            "gaps": ["Model parsing failed"]
         }
 
 
@@ -104,7 +131,7 @@ def tailor_cv(texts, job_text, evaluation):
     prompt = f"""
 Rewrite CV for job.
 
-Improve clarity, alignment, and impact.
+Improve clarity and alignment.
 
 CV:
 {cv_text}
