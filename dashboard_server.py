@@ -1,4 +1,4 @@
-import os
+=import os
 import stripe
 import sqlite3
 import logging
@@ -12,7 +12,12 @@ from openai import OpenAI
 
 # ---------------- CONFIG ----------------
 
-app = Flask(__name__, template_folder="templates")
+app = Flask(
+    __name__,
+    template_folder="templates",
+    static_folder="static",
+    static_url_path="/static"
+)
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
@@ -80,7 +85,7 @@ def get_user(email):
         c.execute("INSERT INTO users (email, usage, paid) VALUES (?, 0, 0)", (email,))
         conn.commit()
         conn.close()
-        logger.info(f"NEW USER CREATED: {email}")
+        logger.info(f"NEW USER: {email}")
         return {"usage": 0, "paid": 0}
 
     conn.close()
@@ -138,14 +143,13 @@ Format:
   "decision": "Strong Match" | "Moderate Match" | "Weak Match",
   "strengths": ["specific strengths tied to job"],
   "gaps": ["specific missing elements vs job"],
-  "improvements": ["concrete, actionable improvements"],
-  "advice": "clear recommendation whether to apply and why"
+  "improvements": ["actionable improvements"],
+  "advice": "should the candidate apply or not and why"
 }}
 
 Rules:
-- Be specific (mention skills, tools, experience)
-- Avoid generic phrases
-- Improvements must be actionable
+- Be specific
+- Avoid generic statements
 - Max 5 items per list
 
 CV:
@@ -163,20 +167,17 @@ JOB:
         )
 
         raw = response.choices[0].message.content.strip()
-        parsed = json.loads(raw)
+        return json.loads(raw)
 
-        return parsed
-
-    except Exception as e:
-        logger.exception("AI PARSE ERROR")
-
+    except Exception:
+        logger.exception("AI ERROR")
         return {
             "score": 50,
             "decision": "Moderate Match",
-            "strengths": ["Unable to extract strengths"],
-            "gaps": ["AI parsing failed"],
-            "improvements": ["Retry analysis"],
-            "advice": "Unable to determine recommendation"
+            "strengths": ["AI failed"],
+            "gaps": ["AI failed"],
+            "improvements": ["Retry"],
+            "advice": "Unable to determine"
         }
 
 # ---------------- ROUTES ----------------
@@ -201,11 +202,7 @@ def analyze():
 
         user = get_user(email)
 
-        logger.info(f"ANALYZE REQUEST: {email} | usage={user['usage']} | paid={user['paid']}")
-
-        # PAYWALL
         if not user["paid"] and user["usage"] >= FREE_LIMIT:
-            logger.info(f"PAYWALL HIT: {email}")
             return jsonify({"paywall": True}), 403
 
         file = request.files.get("cv_file")
@@ -219,7 +216,6 @@ def analyze():
 
         result = analyze_with_ai(cv_text, job)
 
-        # TRACK USAGE
         if not user["paid"]:
             new_usage = user["usage"] + 1
             update_user(email, usage=new_usage)
@@ -231,19 +227,17 @@ def analyze():
 
         return jsonify(result)
 
-    except Exception as e:
+    except Exception:
         logger.exception("ANALYZE ERROR")
         return jsonify({"error": "Analyze failed"}), 500
 
-# ---------------- STRIPE CHECKOUT ----------------
+# ---------------- STRIPE ----------------
 
 @app.route("/create_checkout", methods=["POST"])
 def create_checkout():
     try:
         data = request.json or {}
         email = data.get("email")
-
-        logger.info(f"CHECKOUT START: {email}")
 
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
@@ -259,8 +253,8 @@ def create_checkout():
 
         return jsonify({"url": session.url})
 
-    except Exception as e:
-        logger.exception("STRIPE CHECKOUT ERROR")
+    except Exception:
+        logger.exception("STRIPE ERROR")
         return jsonify({"error": "Checkout failed"}), 500
 
 # ---------------- WEBHOOK ----------------
@@ -274,7 +268,7 @@ def webhook():
         event = stripe.Webhook.construct_event(
             payload, sig_header, STRIPE_WEBHOOK_SECRET
         )
-    except Exception as e:
+    except Exception:
         logger.exception("WEBHOOK ERROR")
         return "", 400
 
@@ -291,5 +285,5 @@ def webhook():
 # ---------------- RUN ----------------
 
 if __name__ == "__main__":
-    logger.info("🚀 Starting HiddenEdge server...")
+    logger.info("Starting HiddenEdge...")
     app.run(host="0.0.0.0", port=5000)
