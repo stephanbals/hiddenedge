@@ -6,3 +6,4 @@ pdfplumber
 gunicorn
 stripe
 reportlab
+pypdf2
