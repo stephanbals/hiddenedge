@@ -1,10 +1,30 @@
-Secrets_Do Not Loose This Folder/
-uploads/
-temp_uploads/
-data/
+# Database
+*.db
+
+# Logs
+*.log
+
+# Python
 __pycache__/
 *.pyc
+
+# Uploads / temp
+uploads/
+temp_uploads/
+
+# Build
+build/
+
+# Secrets
+Secrets_Do Not Loose This Folder/
+
+# Backups
+Backups of versions/
 *.zip
-*.db
-*.log
-.env
+
+# DATA (CRITICAL)
+data/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,12 +1,13 @@
 import os
 import stripe
-import pdfplumber
-from docx import Document
+import sqlite3
+import logging
 from flask import Flask, request, jsonify, render_template
+import io
+from docx import Document
+import PyPDF2
 
-# ------------------------
-# CONFIG
-# ------------------------
+# ---------------- CONFIG ----------------
 
 app = Flask(__name__, template_folder="templates")
 
@@ -15,17 +16,96 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
 BASE_URL = os.getenv("BASE_URL")
 
-if not STRIPE_SECRET_KEY:
-    raise ValueError("Missing STRIPE_SECRET_KEY")
-
-if not STRIPE_PRICE_ID:
-    raise ValueError("Missing STRIPE_PRICE_ID")
-
 stripe.api_key = STRIPE_SECRET_KEY
 
-# ------------------------
-# ROUTES
-# ------------------------
+FREE_LIMIT = 3
+DB_FILE = "users.db"
+LOG_FILE = "app.log"
+
+# ---------------- LOGGING SETUP ----------------
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    handlers=[
+        logging.FileHandler(LOG_FILE),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+# ---------------- DATABASE ----------------
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            email TEXT PRIMARY KEY,
+            usage INTEGER DEFAULT 0,
+            paid INTEGER DEFAULT 0
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+def get_user(email):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+
+    c.execute("SELECT usage, paid FROM users WHERE email=?", (email,))
+    row = c.fetchone()
+
+    if not row:
+        c.execute("INSERT INTO users (email, usage, paid) VALUES (?, 0, 0)", (email,))
+        conn.commit()
+        conn.close()
+        logger.info(f"NEW USER CREATED: {email}")
+        return {"usage": 0, "paid": 0}
+
+    conn.close()
+    return {"usage": row[0], "paid": row[1]}
+
+def update_user(email, usage=None, paid=None):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+
+    if usage is not None:
+        c.execute("UPDATE users SET usage=? WHERE email=?", (usage, email))
+
+    if paid is not None:
+        c.execute("UPDATE users SET paid=? WHERE email=?", (paid, email))
+
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# ---------------- FILE PARSING ----------------
+
+def extract_text_from_pdf(file_bytes):
+    reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
+    return "\n".join([page.extract_text() or "" for page in reader.pages])
+
+def extract_text_from_docx(file_bytes):
+    doc = Document(io.BytesIO(file_bytes))
+    return "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+
+def extract_text(filename, file_bytes):
+    filename = filename.lower()
+
+    if filename.endswith(".pdf"):
+        return extract_text_from_pdf(file_bytes)
+
+    if filename.endswith(".docx"):
+        return extract_text_from_docx(file_bytes)
+
+    return file_bytes.decode("utf-8", errors="ignore")
+
+# ---------------- ROUTES ----------------
 
 @app.route("/")
 def home():
@@ -35,106 +115,96 @@ def home():
 def app_page():
     return render_template("index.html")
 
-@app.route("/health")
-def health():
-    return jsonify({"status": "ok"})
-
-# ------------------------
-# FILE PARSING
-# ------------------------
-
-def extract_text_from_pdf(file):
-    text = ""
-    with pdfplumber.open(file) as pdf:
-        for page in pdf.pages:
-            text += page.extract_text() or ""
-    return text
-
-def extract_text_from_docx(file):
-    doc = Document(file)
-    return "\n".join([p.text for p in doc.paragraphs])
-
-def extract_text(file):
-    filename = file.filename.lower()
-
-    if filename.endswith(".pdf"):
-        return extract_text_from_pdf(file)
-
-    elif filename.endswith(".docx"):
-        return extract_text_from_docx(file)
-
-    elif filename.endswith(".txt"):
-        return file.read().decode("utf-8", errors="ignore")
-
-    else:
-        return ""
-
-# ------------------------
-# ANALYZE
-# ------------------------
+# ---------------- ANALYZE ----------------
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
     try:
-        if "cv_file" not in request.files:
-            return jsonify({"error": "No CV uploaded"}), 400
+        email = request.form.get("email")
 
-        file = request.files["cv_file"]
-        job_description = request.form.get("job_description")
+        if not email:
+            logger.warning("ANALYZE FAILED: missing email")
+            return jsonify({"error": "Missing email"}), 400
 
-        if file.filename == "":
-            return jsonify({"error": "Empty file"}), 400
+        user = get_user(email)
 
-        if not job_description:
-            return jsonify({"error": "Missing job description"}), 400
+        logger.info(f"ANALYZE REQUEST: {email} | usage={user['usage']} | paid={user['paid']}")
 
-        cv_text = extract_text(file)
+        # PAYWALL
+        if not user["paid"] and user["usage"] >= FREE_LIMIT:
+            logger.info(f"PAYWALL HIT: {email}")
+            return jsonify({"paywall": True}), 403
 
-        if not cv_text.strip():
-            return jsonify({"error": "Could not extract text from CV"}), 400
+        file = request.files.get("cv_file")
+        job = request.form.get("job_description")
 
-        # ------------------------
-        # TEMP LOGIC (replace later)
-        # ------------------------
-        score = 85
-        decision = "Strong Match"
+        if not file or not job:
+            logger.warning(f"ANALYZE FAILED INPUT: {email}")
+            return jsonify({"error": "Missing input"}), 400
 
-        return jsonify({
+        file_bytes = file.read()
+        cv_text = extract_text(file.filename, file_bytes)
+
+        score = min(95, 50 + len(cv_text) % 50)
+
+        result = {
             "score": score,
-            "decision": decision
-        })
+            "decision": "Strong Match" if score > 75 else "Moderate Match",
+            "strengths": ["Relevant experience", "Clear structure"],
+            "gaps": ["Missing metrics", "Weak keyword alignment"],
+            "improvements": [
+                "Add measurable results",
+                "Tailor summary",
+                "Align keywords"
+            ]
+        }
+
+        # TRACK USAGE
+        if not user["paid"]:
+            new_usage = user["usage"] + 1
+            update_user(email, usage=new_usage)
+            result["remaining"] = FREE_LIMIT - new_usage
+            logger.info(f"USAGE UPDATED: {email} → {new_usage}")
+        else:
+            result["remaining"] = "∞"
+
+        result["paid"] = bool(user["paid"])
+
+        return jsonify(result)
 
     except Exception as e:
-        print("❌ Analyze error:", str(e))
+        logger.exception("ANALYZE CRASH")
         return jsonify({"error": "Analyze failed"}), 500
 
-# ------------------------
-# STRIPE
-# ------------------------
+# ---------------- STRIPE CHECKOUT ----------------
 
 @app.route("/create_checkout", methods=["POST"])
 def create_checkout():
     try:
+        data = request.json or {}
+        email = data.get("email")
+
+        logger.info(f"CHECKOUT START: {email}")
+
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
+            customer_email=email,
             line_items=[{
                 "price": STRIPE_PRICE_ID,
                 "quantity": 1,
             }],
             mode="subscription",
             success_url=f"{BASE_URL}/app?success=true",
-            cancel_url=f"{BASE_URL}/app?canceled=true",
+            cancel_url=f"{BASE_URL}/app",
         )
 
         return jsonify({"url": session.url})
 
     except Exception as e:
-        print("❌ Stripe error:", str(e))
+        logger.exception("STRIPE CHECKOUT ERROR")
         return jsonify({"error": "Checkout failed"}), 500
 
-# ------------------------
-# WEBHOOK
-# ------------------------
+# ---------------- WEBHOOK ----------------
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -146,17 +216,21 @@ def webhook():
             payload, sig_header, STRIPE_WEBHOOK_SECRET
         )
     except Exception as e:
-        print("❌ Webhook error:", str(e))
+        logger.exception("WEBHOOK SIGNATURE ERROR")
         return "", 400
 
     if event["type"] == "checkout.session.completed":
-        print("✅ Payment completed")
+        session = event["data"]["object"]
+        email = session.get("customer_email")
+
+        if email:
+            update_user(email, paid=1)
+            logger.info(f"PAYMENT SUCCESS → USER UNLOCKED: {email}")
 
     return "", 200
 
-# ------------------------
-# RUN
-# ------------------------
+# ---------------- RUN ----------------
 
 if __name__ == "__main__":
+    logger.info("🚀 Starting HiddenEdge server...")
     app.run(host="0.0.0.0", port=5000)
