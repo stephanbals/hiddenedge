@@ -1,67 +1,107 @@
 import os
 import stripe
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 
-app = Flask(__name__)
+# ------------------------
+# CONFIG
+# ------------------------
 
-# =========================
-# STRIPE CONFIG (ENV BASED)
-# =========================
+app = Flask(__name__, template_folder="templates")
 
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
+BASE_URL = os.getenv("BASE_URL")
 
-# Temporary in-memory storage (replace later with DB)
-paid_users = set()
+if not STRIPE_SECRET_KEY:
+    raise ValueError("Missing STRIPE_SECRET_KEY")
 
-# =========================
-# HEALTH CHECK
-# =========================
+if not STRIPE_PRICE_ID:
+    raise ValueError("Missing STRIPE_PRICE_ID")
 
-@app.route("/", methods=["GET"])
+stripe.api_key = STRIPE_SECRET_KEY
+
+# ------------------------
+# ROUTES
+# ------------------------
+
+@app.route("/")
 def home():
-    return "HiddenEdge Backend Running"
+    # 🔥 Serve frontend instead of plain text
+    return render_template("index.html")
 
 
-# =========================
-# CREATE CHECKOUT SESSION
-# =========================
+@app.route("/app")
+def app_page():
+    return render_template("index.html")
+
+
+# ------------------------
+# ANALYZE ENDPOINT
+# ------------------------
+
+@app.route("/analyze", methods=["POST"])
+def analyze():
+    try:
+        data = request.json
+
+        if not data:
+            return jsonify({"error": "No JSON received"}), 400
+
+        cv_text = data.get("cv_text")
+        job_description = data.get("job_description")
+
+        if not cv_text or not job_description:
+            return jsonify({"error": "Missing input"}), 400
+
+        # Temporary placeholder logic
+        score = 85
+        decision = "Strong Match"
+
+        return jsonify({
+            "score": score,
+            "decision": decision
+        })
+
+    except Exception as e:
+        print("❌ Analyze error:", str(e))
+        return jsonify({"error": "Analyze failed"}), 500
+
+
+# ------------------------
+# STRIPE CHECKOUT
+# ------------------------
 
 @app.route("/create_checkout", methods=["POST"])
 def create_checkout():
     try:
-        data = request.get_json()
-        email = data.get("email")
-
-        if not email:
-            return jsonify({"error": "Missing email"}), 400
+        if not BASE_URL:
+            return jsonify({"error": "Missing BASE_URL"}), 500
 
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
-            mode="subscription",
-            customer_email=email,
             line_items=[{
                 "price": STRIPE_PRICE_ID,
                 "quantity": 1,
             }],
-            success_url="https://hiddenedge-live.onrender.com/app?paid=true",
-            cancel_url="https://hiddenedge-live.onrender.com/app?canceled=true",
+            mode="subscription",
+            success_url=f"{BASE_URL}/app?success=true",
+            cancel_url=f"{BASE_URL}/app?canceled=true",
         )
 
         return jsonify({"url": session.url})
 
     except Exception as e:
-        print("CHECKOUT ERROR:", str(e))
-        return jsonify({"error": str(e)}), 500
+        print("❌ Stripe checkout error:", str(e))
+        return jsonify({"error": "Checkout failed"}), 500
 
 
-# =========================
-# WEBHOOK
-# =========================
+# ------------------------
+# STRIPE WEBHOOK
+# ------------------------
 
 @app.route("/webhook", methods=["POST"])
-def webhook():
+def stripe_webhook():
     payload = request.data
     sig_header = request.headers.get("Stripe-Signature")
 
@@ -70,42 +110,29 @@ def webhook():
             payload, sig_header, STRIPE_WEBHOOK_SECRET
         )
     except Exception as e:
-        print("Webhook signature error:", str(e))
+        print("❌ Webhook signature error:", str(e))
         return "", 400
 
-    # =========================
-    # HANDLE EVENTS
-    # =========================
-
+    # Handle event
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
-        email = session.get("customer_email")
-
-        if email:
-            print(f"✅ Payment success for: {email}")
-            paid_users.add(email)
+        print("✅ Payment successful:", session.get("customer_email"))
 
     return "", 200
 
 
-# =========================
-# CHECK IF USER IS PAID
-# =========================
+# ------------------------
+# HEALTH CHECK (useful for debugging)
+# ------------------------
 
-@app.route("/check_payment", methods=["POST"])
-def check_payment():
-    data = request.get_json()
-    email = data.get("email")
-
-    if email in paid_users:
-        return jsonify({"paid": True})
-
-    return jsonify({"paid": False})
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"})
 
 
-# =========================
+# ------------------------
 # RUN
-# =========================
+# ------------------------
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
