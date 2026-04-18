@@ -56,6 +56,10 @@ init_db()
 # DB HELPERS
 # -------------------------------
 def activate_user(email):
+    if not email:
+        print("❌ No email provided to activate_user")
+        return
+
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
 
@@ -66,6 +70,8 @@ def activate_user(email):
 
     conn.commit()
     conn.close()
+
+    print(f"✅ User activated: {email}")
 
 
 def is_paid(email):
@@ -226,23 +232,28 @@ def create_checkout():
 
     email = request.json.get("email")
 
-    session = stripe.checkout.Session.create(
-        payment_method_types=["card"],
-        mode="subscription",
-        customer_email=email,
-        line_items=[{
-            "price": "price_1TKzL42KtXZSLAsWCVnaTxHW",  # ✅ YOUR LIVE PRICE ID
-            "quantity": 1
-        }],
-        success_url=BASE_URL + "/app?paid=true",
-        cancel_url=BASE_URL + "/app"
-    )
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="subscription",
+            customer_email=email,
+            line_items=[{
+                "price": "price_1TKzL42KtXZSLAsWCVnaTxHW",
+                "quantity": 1
+            }],
+            success_url=BASE_URL + "/app?paid=true",
+            cancel_url=BASE_URL + "/app"
+        )
 
-    return jsonify({"url": session.url})
+        return jsonify({"url": session.url})
+
+    except Exception as e:
+        print("❌ Stripe checkout error:", str(e))
+        return jsonify({"error": "Stripe error"}), 500
 
 
 # -------------------------------
-# WEBHOOK
+# WEBHOOK (🔥 FIXED)
 # -------------------------------
 
 @app.route("/webhook", methods=["POST"])
@@ -254,12 +265,33 @@ def webhook():
 
     try:
         event = stripe.Webhook.construct_event(payload, sig, endpoint_secret)
-    except:
+    except Exception as e:
+        print("❌ Webhook error:", str(e))
         return "fail", 400
 
     if event["type"] == "checkout.session.completed":
-        email = event["data"]["object"]["customer_email"]
-        activate_user(email)
+
+        session = event["data"]["object"]
+
+        # 🔥 PRIMARY
+        email = session.get("customer_email")
+
+        # 🔥 FALLBACK (critical for subscriptions)
+        if not email:
+            customer_id = session.get("customer")
+            if customer_id:
+                try:
+                    customer = stripe.Customer.retrieve(customer_id)
+                    email = customer.get("email")
+                except Exception as e:
+                    print("❌ Customer fetch error:", str(e))
+
+        print("📩 Webhook email:", email)
+
+        if email:
+            activate_user(email)
+        else:
+            print("❌ No email found in webhook")
 
     return "ok", 200
 
