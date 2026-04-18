@@ -41,7 +41,7 @@ def extract_text_from_files(files):
 
 
 # -------------------------------
-# NESTOR (ANALYSIS)
+# NESTOR (FULL REPORT)
 # -------------------------------
 
 def evaluate_fit(texts, job_text):
@@ -51,11 +51,13 @@ def evaluate_fit(texts, job_text):
     prompt = f"""
 Analyze CV vs job.
 
-Return STRICT JSON ONLY (no markdown, no explanation):
+Return STRICT JSON:
 
 {{
  "decision": "Strong Match | Potential Match | No Match",
  "fit_score": number,
+ "summary": "short explanation",
+ "strengths": [],
  "gaps": []
 }}
 
@@ -75,7 +77,7 @@ JOB:
 
         content = r.choices[0].message.content.strip()
 
-        print("RAW MODEL OUTPUT:", content)
+        print("MODEL OUTPUT:", content)
 
         return json.loads(content)
 
@@ -85,12 +87,14 @@ JOB:
         return {
             "decision": "Error",
             "fit_score": 0,
+            "summary": "Analysis failed",
+            "strengths": [],
             "gaps": ["Analysis failed"]
         }
 
 
 # -------------------------------
-# ALEC (CV REWRITE)
+# ALEC
 # -------------------------------
 
 def tailor_cv(texts, job_text, evaluation):
@@ -100,9 +104,7 @@ def tailor_cv(texts, job_text, evaluation):
     prompt = f"""
 Rewrite CV for job.
 
-Rules:
-- No hallucination
-- Improve clarity and alignment
+Improve clarity, alignment, and impact.
 
 CV:
 {cv_text}
@@ -124,10 +126,6 @@ JOB:
         print("TAILOR ERROR:", str(e))
         return "CV generation failed"
 
-
-# -------------------------------
-# SAFE FALLBACKS (KEEP PIPELINE STABLE)
-# -------------------------------
 
 def simulate_improvement(*args, **kwargs):
     return {"improvements_applied": []}

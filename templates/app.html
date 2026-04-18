@@ -11,15 +11,51 @@ body {
     text-align: center;
 }
 
+/* INPUTS */
 textarea {
     width: 80%;
     height: 120px;
 }
 
+input {
+    padding: 6px;
+}
+
+/* BUTTON */
 button {
-    padding: 10px 20px;
+    padding: 12px 24px;
     margin-top: 20px;
     cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+}
+
+/* ANALYZE BUTTON */
+#analyzeBtn {
+    background: #4ea3ff;
+    color: white;
+}
+
+/* LOADING STATE */
+.processing {
+    background: #00c853 !important;
+    animation: pulse 1.2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0px #00c853; }
+    50% { box-shadow: 0 0 20px #00c853; }
+    100% { box-shadow: 0 0 0px #00c853; }
+}
+
+/* RESULT BOX */
+#resultBox {
+    margin-top: 40px;
+    padding: 25px;
+    border-radius: 10px;
+    background: #1c1c1c;
+    display: none;
 }
 </style>
 
@@ -36,9 +72,14 @@ button {
 <h2>Job Description</h2>
 <textarea id="job"></textarea><br>
 
-<button type="button" onclick="analyze()">Analyze</button>
+<button id="analyzeBtn" onclick="analyze()">Analyze</button>
 
-<div id="result"></div>
+<!-- RESULT AREA -->
+<div id="resultBox">
+    <h2 id="decision"></h2>
+    <h3 id="score"></h3>
+    <button onclick="pay()">Improve CV</button>
+</div>
 
 <script>
 
@@ -50,7 +91,7 @@ document.getElementById("email").value =
 
 async function analyze(){
 
-    console.log("ANALYZE CLICKED");
+    const btn = document.getElementById("analyzeBtn");
 
     const email = document.getElementById("email").value;
     const job = document.getElementById("job").value;
@@ -60,6 +101,11 @@ async function analyze(){
         alert("Fill all fields");
         return;
     }
+
+    // LOADING STATE
+    btn.innerText = "Analyzing...";
+    btn.classList.add("processing");
+    btn.disabled = true;
 
     localStorage.setItem("email", email);
 
@@ -82,22 +128,30 @@ async function analyze(){
         const decision = data.nestor?.decision || "Error";
         const score = data.nestor?.fit_score || 0;
 
-        document.getElementById("result").innerHTML =
-            "Decision: " + decision +
-            "<br>Score: " + score +
-            "<br><button type='button' onclick='pay()'>Improve CV</button>";
+        // SHOW RESULT
+        document.getElementById("decision").innerText = "Decision: " + decision;
+        document.getElementById("score").innerText = "Score: " + score;
+
+        const box = document.getElementById("resultBox");
+        box.style.display = "block";
+
+        // 🔥 AUTO SCROLL TO RESULT
+        box.scrollIntoView({ behavior: "smooth" });
 
     } catch(err){
         console.error("ANALYZE ERROR:", err);
         alert("Analyze failed");
     }
+
+    // RESET BUTTON
+    btn.innerText = "Analyze";
+    btn.classList.remove("processing");
+    btn.disabled = false;
 }
 
 // ---------------- PAY ----------------
 
 async function pay(){
-
-    console.log("PAY CLICKED");
 
     const email = document.getElementById("email").value;
 
@@ -111,12 +165,10 @@ async function pay(){
 
         const data = await res.json();
 
-        console.log("CHECKOUT RESPONSE:", data);
-
         if(data.url){
             window.location.href = data.url;
         } else {
-            alert("Payment failed");
+            alert("Checkout error");
         }
 
     } catch(err){
