@@ -33,14 +33,15 @@ def extract_text_from_files(files):
             else:
                 texts.append(f.read().decode("utf-8", errors="ignore"))
 
-        except:
+        except Exception as e:
+            print("FILE ERROR:", str(e))
             texts.append("")
 
     return texts
 
 
 # -------------------------------
-# NESTOR
+# NESTOR (ANALYSIS)
 # -------------------------------
 
 def evaluate_fit(texts, job_text):
@@ -71,27 +72,30 @@ JOB:
 
     try:
         r = client.chat.completions.create(
-            model="gpt-5.3",
-            messages=[{"role":"user","content":prompt}],
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
             temperature=0.3
         )
+
         return json.loads(r.choices[0].message.content)
 
-    except:
+    except Exception as e:
+        print("EVALUATE ERROR:", str(e))
+
         return {
-            "decision":"Potential Match",
-            "fit_score":5,
-            "heatmap":{"skills":50,"experience":50,"tools":50,"domain":50,"seniority":50},
-            "domain_analysis":"Fallback",
-            "strengths":["Basic alignment"],
-            "gaps":["Missing specific requirements"],
-            "risk_flags":["Low confidence"],
-            "cv_diff":[]
+            "decision": "Error",
+            "fit_score": 0,
+            "heatmap": {"skills": 0, "experience": 0, "tools": 0, "domain": 0, "seniority": 0},
+            "domain_analysis": "Failed to analyze",
+            "strengths": [],
+            "gaps": ["Analysis failed"],
+            "risk_flags": ["Backend error"],
+            "cv_diff": []
         }
 
 
 # -------------------------------
-# ALEC
+# ALEC (CV REWRITE)
 # -------------------------------
 
 def tailor_cv(texts, job_text, evaluation):
@@ -112,17 +116,22 @@ JOB:
 {job_text}
 """
 
-    r = client.chat.completions.create(
-        model="gpt-5.3",
-        messages=[{"role":"user","content":prompt}],
-        temperature=0.4
-    )
+    try:
+        r = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4
+        )
 
-    return r.choices[0].message.content
+        return r.choices[0].message.content
+
+    except Exception as e:
+        print("TAILOR ERROR:", str(e))
+        return "CV generation failed"
 
 
 # -------------------------------
-# OPTIONAL PLACEHOLDERS (needed by server)
+# OPTIONAL SAFE FALLBACKS
 # -------------------------------
 
 def simulate_improvement(*args, **kwargs):
