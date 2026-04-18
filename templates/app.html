@@ -46,6 +46,8 @@ button {
 document.getElementById("email").value =
     localStorage.getItem("email") || "";
 
+// ---------------- ANALYZE ----------------
+
 async function analyze(){
 
     console.log("ANALYZE CLICKED");
@@ -68,7 +70,7 @@ async function analyze(){
 
     try {
 
-        const res = await fetch("https://hiddenedge-live.onrender.com/analyze", {
+        const res = await fetch("/analyze", {
             method: "POST",
             body: fd
         });
@@ -77,7 +79,6 @@ async function analyze(){
 
         console.log("DATA:", data);
 
-        // 🔥 FIX HERE
         const decision = data.nestor?.decision || "Error";
         const score = data.nestor?.fit_score || 0;
 
@@ -87,24 +88,41 @@ async function analyze(){
             "<br><button type='button' onclick='pay()'>Improve CV</button>";
 
     } catch(err){
-        console.error("ERROR:", err);
+        console.error("ANALYZE ERROR:", err);
         alert("Analyze failed");
     }
 }
 
+// ---------------- PAY ----------------
+
 async function pay(){
+
+    console.log("PAY CLICKED");
 
     const email = document.getElementById("email").value;
 
-    const res = await fetch("https://hiddenedge-live.onrender.com/create_checkout", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({email})
-    });
+    try {
 
-    const data = await res.json();
+        const res = await fetch("/create_checkout", {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({email})
+        });
 
-    window.location.href = data.url;
+        const data = await res.json();
+
+        console.log("CHECKOUT RESPONSE:", data);
+
+        if(data.url){
+            window.location.href = data.url;
+        } else {
+            alert("Payment failed");
+        }
+
+    } catch(err){
+        console.error("PAY ERROR:", err);
+        alert("Checkout error");
+    }
 }
 
 </script>
