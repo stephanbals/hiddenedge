@@ -1,152 +1,173 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>HiddenEdge</title>
+    <meta charset="UTF-8">
+    <title>HiddenEdge</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<style>
-body {
-    margin:0;
-    font-family:Arial;
-    color:white;
-    background: radial-gradient(circle at top, #140a2e, #050010);
-    text-align:center;
-}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0b0f2a;
+            color: white;
+            text-align: center;
+            padding: 40px;
+        }
 
-.hero {
-    padding:80px 20px;
-}
+        h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
 
-.title {
-    font-size:42px;
-    text-shadow:0 0 20px #4ea3ff;
-}
+        .subtitle {
+            opacity: 0.8;
+            margin-bottom: 40px;
+        }
 
-.subtitle {
-    margin-top:10px;
-    font-size:18px;
-    color:#cfe3ff;
-}
+        textarea, input {
+            width: 80%;
+            max-width: 600px;
+            margin: 10px auto;
+            padding: 10px;
+            border-radius: 6px;
+            border: none;
+        }
 
-.start-btn {
-    margin-top:30px;
-    padding:18px 50px;
-    font-size:22px;
-    background:#4ea3ff;
-    border:none;
-    border-radius:12px;
-    color:white;
-    cursor:pointer;
-    box-shadow:0 0 25px #4ea3ff;
-    transition:0.2s;
-}
+        button {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            background: #4da6ff;
+            color: white;
+        }
 
-.start-btn:hover {
-    transform:scale(1.05);
-}
+        button:hover {
+            background: #3399ff;
+        }
 
-.counter {
-    margin-top:10px;
-    font-size:14px;
-    color:#aaa;
-}
-
-.cards {
-    display:flex;
-    justify-content:center;
-    gap:40px;
-    margin-top:60px;
-    flex-wrap:wrap;
-}
-
-.card {
-    width:420px;
-    padding:25px;
-    border-radius:20px;
-    background: rgba(255,255,255,0.05);
-    box-shadow:0 0 40px rgba(0,0,0,0.7);
-    text-align:left;
-}
-
-.card h3 {
-    color:#4ea3ff;
-}
-
-.flow {
-    margin-top:80px;
-    font-size:16px;
-    color:#bbb;
-}
-</style>
+        #result {
+            margin-top: 30px;
+            font-size: 20px;
+        }
+    </style>
 </head>
 
 <body>
 
-<div class="hero">
-
-    <div style="font-size:80px;">🤖</div>
-
-    <div class="title">HiddenEdge</div>
-    <div class="subtitle">
-        Know if you should apply — before you waste time.<br>
-        Then fix your CV to win the role.
-    </div>
-
-    <button class="start-btn" onclick="start()">
-        🚀 Analyze My CV
-    </button>
-
-    <div class="counter" id="counterText">
-        You have Free Trials left: 03
-    </div>
-
+<h1>HiddenEdge</h1>
+<div class="subtitle">
+    Know if you should apply — before you waste time.<br>
+    Then fix your CV to win the role.
 </div>
 
-<div class="cards">
+<input id="email" placeholder="Your email" readonly>
 
-    <div class="card">
-        <h3>🧠 NESTOR</h3>
-        <h2>Should you apply?</h2>
-        <ul>
-            <li>✔ Fit score (realistic, not optimistic)</li>
-            <li>✔ Missing skills & gaps</li>
-            <li>✔ Clear recommendation: Apply or Skip</li>
-        </ul>
-    </div>
+<br><br>
 
-    <div class="card">
-        <h3>⚡ ALEC</h3>
-        <h2>Fix your CV instantly</h2>
-        <ul>
-            <li>✔ Tailored to the job</li>
-            <li>✔ Stronger positioning</li>
-            <li>✔ ATS-friendly rewrite</li>
-        </ul>
-    </div>
+<textarea id="cv" rows="6" placeholder="Paste your CV text..."></textarea>
+<br>
+<textarea id="job" rows="6" placeholder="Paste job description..."></textarea>
 
-</div>
+<br>
 
-<div class="flow">
-    Upload → Analyze → Improve → Apply
-</div>
+<button onclick="analyze()">🚀 Analyze My CV</button>
+
+<div id="result"></div>
+
+<br><br>
+
+<button onclick="startCheckout()">💳 Upgrade to Full Access (€9/month)</button>
 
 <script>
+/* ------------------------
+   EMAIL HANDLING (FIX LOOP)
+------------------------ */
 
-// FREE COUNTER DISPLAY
-let count = localStorage.getItem("usage") || 0;
-let remaining = 3 - count;
-if(remaining < 0) remaining = 0;
+function initEmail() {
+    let email = localStorage.getItem("user_email");
 
-document.getElementById("counterText").innerText =
-"Free Trials left: " + remaining.toString().padStart(2,'0');
+    if (!email) {
+        email = prompt("Enter your email:");
 
-function start(){
-    const email = prompt("Enter your email:");
-    if(email){
-        localStorage.setItem("email", email);
-        window.location="/app"; // 🔒 unchanged (safe)
+        if (email && email.trim() !== "") {
+            localStorage.setItem("user_email", email);
+        } else {
+            alert("Email is required");
+            return initEmail(); // retry until valid
+        }
+    }
+
+    document.getElementById("email").value = email;
+}
+
+initEmail();
+
+/* ------------------------
+   ANALYZE
+------------------------ */
+
+async function analyze() {
+    const cv = document.getElementById("cv").value;
+    const job = document.getElementById("job").value;
+    const resultDiv = document.getElementById("result");
+
+    resultDiv.innerHTML = "Analyzing...";
+
+    try {
+        const response = await fetch("/analyze", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                cv_text: cv,
+                job_description: job
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            resultDiv.innerHTML = "❌ " + (data.error || "Error");
+            return;
+        }
+
+        resultDiv.innerHTML =
+            "✅ Score: " + data.score + "<br>" +
+            "Decision: " + data.decision;
+
+    } catch (error) {
+        console.error(error);
+        resultDiv.innerHTML = "❌ Analyze failed";
     }
 }
 
+/* ------------------------
+   STRIPE CHECKOUT
+------------------------ */
+
+async function startCheckout() {
+    try {
+        const response = await fetch("/create_checkout", {
+            method: "POST"
+        });
+
+        const data = await response.json();
+
+        if (data.url) {
+            window.location.href = data.url;
+        } else {
+            alert("Checkout failed");
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert("Checkout error");
+    }
+}
 </script>
 
 </body>
