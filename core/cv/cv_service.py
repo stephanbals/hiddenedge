@@ -51,16 +51,12 @@ def evaluate_fit(texts, job_text):
     prompt = f"""
 Analyze CV vs job.
 
-Return JSON:
+Return STRICT JSON ONLY (no markdown, no explanation):
+
 {{
- "decision": "...",
+ "decision": "Strong Match | Potential Match | No Match",
  "fit_score": number,
- "heatmap": {{"skills":0-100,"experience":0-100,"tools":0-100,"domain":0-100,"seniority":0-100}},
- "domain_analysis": "...",
- "strengths": [],
- "gaps": [],
- "risk_flags": [],
- "cv_diff": []
+ "gaps": []
 }}
 
 CV:
@@ -74,10 +70,14 @@ JOB:
         r = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3
+            temperature=0.2
         )
 
-        return json.loads(r.choices[0].message.content)
+        content = r.choices[0].message.content.strip()
+
+        print("RAW MODEL OUTPUT:", content)
+
+        return json.loads(content)
 
     except Exception as e:
         print("EVALUATE ERROR:", str(e))
@@ -85,12 +85,7 @@ JOB:
         return {
             "decision": "Error",
             "fit_score": 0,
-            "heatmap": {"skills": 0, "experience": 0, "tools": 0, "domain": 0, "seniority": 0},
-            "domain_analysis": "Failed to analyze",
-            "strengths": [],
-            "gaps": ["Analysis failed"],
-            "risk_flags": ["Backend error"],
-            "cv_diff": []
+            "gaps": ["Analysis failed"]
         }
 
 
@@ -131,7 +126,7 @@ JOB:
 
 
 # -------------------------------
-# OPTIONAL SAFE FALLBACKS
+# SAFE FALLBACKS (KEEP PIPELINE STABLE)
 # -------------------------------
 
 def simulate_improvement(*args, **kwargs):
