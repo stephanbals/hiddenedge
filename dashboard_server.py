@@ -231,7 +231,7 @@ def create_checkout():
         mode="subscription",
         customer_email=email,
         line_items=[{
-            "price": "price_1TKFETRsFYMAfQV15jNJ365D",
+            "price": "price_1TKzL42KtXZSLAsWCVnaTxHW",  # ✅ YOUR LIVE PRICE ID
             "quantity": 1
         }],
         success_url=BASE_URL + "/app?paid=true",

@@ -37,6 +37,11 @@ body {
     color:white;
     cursor:pointer;
     box-shadow:0 0 25px #4ea3ff;
+    transition:0.2s;
+}
+
+.start-btn:hover {
+    transform:scale(1.05);
 }
 
 .counter {
@@ -59,6 +64,17 @@ body {
     border-radius:20px;
     background: rgba(255,255,255,0.05);
     box-shadow:0 0 40px rgba(0,0,0,0.7);
+    text-align:left;
+}
+
+.card h3 {
+    color:#4ea3ff;
+}
+
+.flow {
+    margin-top:80px;
+    font-size:16px;
+    color:#bbb;
 }
 </style>
 </head>
@@ -69,11 +85,14 @@ body {
 
     <div style="font-size:80px;">🤖</div>
 
-    <div class="title">Welcome to HiddenEdge</div>
-    <div class="subtitle">Let’s make your CV get noticed.</div>
+    <div class="title">HiddenEdge</div>
+    <div class="subtitle">
+        Know if you should apply — before you waste time.<br>
+        Then fix your CV to win the role.
+    </div>
 
     <button class="start-btn" onclick="start()">
-        🚀 START HERE
+        🚀 Analyze My CV
     </button>
 
     <div class="counter" id="counterText">
@@ -85,24 +104,29 @@ body {
 <div class="cards">
 
     <div class="card">
-        <h3>NESTOR ANALYZES</h3>
+        <h3>🧠 NESTOR</h3>
         <h2>Should you apply?</h2>
         <ul>
-            <li>Strong Match</li>
-            <li>Stretch Opportunity</li>
-            <li>Do NOT Apply</li>
+            <li>✔ Fit score (realistic, not optimistic)</li>
+            <li>✔ Missing skills & gaps</li>
+            <li>✔ Clear recommendation: Apply or Skip</li>
         </ul>
     </div>
 
     <div class="card">
-        <h3>ALEC REFINES</h3>
-        <h2>Fit the role perfectly</h2>
+        <h3>⚡ ALEC</h3>
+        <h2>Fix your CV instantly</h2>
         <ul>
-            <li>Tailored CV</li>
-            <li>Upgrade your CV</li>
+            <li>✔ Tailored to the job</li>
+            <li>✔ Stronger positioning</li>
+            <li>✔ ATS-friendly rewrite</li>
         </ul>
     </div>
 
+</div>
+
+<div class="flow">
+    Upload → Analyze → Improve → Apply
 </div>
 
 <script>
@@ -119,7 +143,7 @@ function start(){
     const email = prompt("Enter your email:");
     if(email){
         localStorage.setItem("email", email);
-        window.location="/app";
+        window.location="/app"; // 🔒 unchanged (safe)
     }
 }
 
