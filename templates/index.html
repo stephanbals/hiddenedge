@@ -14,22 +14,14 @@ body {
     padding: 40px;
 }
 
-input, textarea {
-    width: 80%;
-    max-width: 600px;
-    margin: 10px auto;
-    padding: 10px;
-    border-radius: 6px;
-    border: none;
-}
-
 button {
-    margin-top: 20px;
-    padding: 15px 30px;
-    border-radius: 10px;
+    margin-top: 15px;
+    padding: 12px 20px;
+    border-radius: 8px;
     background: #4da6ff;
     color: white;
     border: none;
+    cursor: pointer;
 }
 
 .card {
@@ -41,6 +33,10 @@ button {
     text-align: left;
 }
 
+.good { color: #4dff88; }
+.warn { color: #ffcc00; }
+.bad { color: #ff6666; }
+
 .robot-title {
     display: flex;
     align-items: center;
@@ -51,93 +47,22 @@ button {
 .robot {
     width: 40px;
 }
-
-.footer {
-    margin-top: 50px;
-    font-size: 12px;
-    opacity: 0.6;
-}
-
-.modal {
-    position: fixed;
-    top:0; left:0;
-    width:100%; height:100%;
-    background: rgba(0,0,0,0.8);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-}
-
-.modal-content {
-    background:#141a3a;
-    padding:30px;
-    border-radius:10px;
-    max-width:600px;
-}
 </style>
 </head>
 
 <body>
 
-<!-- EULA -->
-<div id="eulaModal" class="modal">
-    <div class="modal-content">
-        <h2>Terms of Use</h2>
-
-        <p>This tool uses AI and provides advisory output only.</p>
-
-        <label>
-            <input type="checkbox" id="acceptEula">
-            I accept the terms
-        </label>
-
-        <br><br>
-
-        <button onclick="acceptEULA()">Continue</button>
-    </div>
-</div>
-
 <h1>HiddenEdge</h1>
 
 <input id="email" readonly>
-
-<!-- Helper robot near upload -->
-<div class="robot-title">
-    <img src="/static/robots/helper.png" class="robot">
-    Upload your CV
-</div>
-
 <input type="file" id="cv_file">
-
 <textarea id="job" rows="6" placeholder="Paste job description..."></textarea>
 
 <button onclick="analyze()">Analyze</button>
 
 <div id="result"></div>
 
-<button onclick="startCheckout()">Upgrade</button>
-
-<div class="footer">
-HiddenEdgeInfo@proton.me<br>
-SB3PM Advisory & Services Ltd.<br>
-ProductiveYou range<br>
-All rights reserved
-</div>
-
 <script>
-
-function acceptEULA() {
-    if (!document.getElementById("acceptEula").checked) {
-        alert("Accept terms first");
-        return;
-    }
-    localStorage.setItem("eulaAccepted", "true");
-    document.getElementById("eulaModal").style.display = "none";
-}
-
-if (localStorage.getItem("eulaAccepted") === "true") {
-    document.getElementById("eulaModal").style.display = "none";
-}
 
 function initEmail() {
     let email = localStorage.getItem("user_email");
@@ -180,7 +105,15 @@ async function analyze() {
     renderResult(data);
 }
 
+function getDecision(score) {
+    if (score >= 80) return {text: "Strong YES — apply", class: "good"};
+    if (score >= 60) return {text: "Maybe — improve before applying", class: "warn"};
+    return {text: "No — not competitive yet", class: "bad"};
+}
+
 function renderResult(data) {
+
+    const decision = getDecision(data.score);
 
     document.getElementById("result").innerHTML = `
         <div class="card">
@@ -190,23 +123,21 @@ function renderResult(data) {
             </div>
 
             <h2>${data.score}</h2>
+            <p class="${decision.class}"><b>${decision.text}</b></p>
             <p>${data.decision}</p>
+
             <p>${data.paid ? "💎 Premium" : "Free left: " + data.remaining}</p>
+
+            <button onclick="analyze()">🔁 Run Again</button>
         </div>
 
         <div class="card">
-            <div class="robot-title">
-                <img src="/static/robots/nestor.png" class="robot">
-                Strengths
-            </div>
+            <h3>Strengths</h3>
             <ul>${data.strengths.map(s => `<li>${s}</li>`).join("")}</ul>
         </div>
 
         <div class="card">
-            <div class="robot-title">
-                <img src="/static/robots/nestor.png" class="robot">
-                Gaps
-            </div>
+            <h3>Gaps</h3>
             <ul>${data.gaps.map(g => `<li>${g}</li>`).join("")}</ul>
         </div>
 
@@ -215,6 +146,9 @@ function renderResult(data) {
                 <img src="/static/robots/alec.png" class="robot">
                 CV Improvements
             </div>
+
+            <p><b>Fix these to increase your chances:</b></p>
+
             <ul>${data.improvements.map(i => `<li>${i}</li>`).join("")}</ul>
         </div>
     `;
@@ -224,6 +158,7 @@ function showPaywall() {
     document.getElementById("result").innerHTML = `
         <div class="card">
             <h2>Free limit reached</h2>
+            <p>You’ve used all free analyses.</p>
             <button onclick="startCheckout()">Unlock</button>
         </div>
     `;

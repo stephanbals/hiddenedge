@@ -2,10 +2,13 @@ import os
 import stripe
 import sqlite3
 import logging
-from flask import Flask, request, jsonify, render_template
 import io
+import json
+
+from flask import Flask, request, jsonify, render_template
 from docx import Document
 import PyPDF2
+from openai import OpenAI
 
 # ---------------- CONFIG ----------------
 
@@ -15,14 +18,28 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
 BASE_URL = os.getenv("BASE_URL")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+if not STRIPE_SECRET_KEY:
+    raise ValueError("Missing STRIPE_SECRET_KEY")
+
+if not STRIPE_WEBHOOK_SECRET:
+    raise ValueError("Missing STRIPE_WEBHOOK_SECRET")
+
+if not STRIPE_PRICE_ID:
+    raise ValueError("Missing STRIPE_PRICE_ID")
+
+if not OPENAI_API_KEY:
+    raise ValueError("Missing OPENAI_API_KEY")
 
 stripe.api_key = STRIPE_SECRET_KEY
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 FREE_LIMIT = 3
 DB_FILE = "users.db"
 LOG_FILE = "app.log"
 
-# ---------------- LOGGING SETUP ----------------
+# ---------------- LOGGING ----------------
 
 logging.basicConfig(
     level=logging.INFO,
@@ -105,6 +122,63 @@ def extract_text(filename, file_bytes):
 
     return file_bytes.decode("utf-8", errors="ignore")
 
+# ---------------- AI ANALYSIS ----------------
+
+def analyze_with_ai(cv_text, job_text):
+    prompt = f"""
+You are a senior recruiter.
+
+Evaluate how well this CV matches the job.
+
+Return ONLY valid JSON.
+
+Format:
+{{
+  "score": number (0-100),
+  "decision": "Strong Match" | "Moderate Match" | "Weak Match",
+  "strengths": ["specific strengths tied to job"],
+  "gaps": ["specific missing elements vs job"],
+  "improvements": ["concrete, actionable improvements"],
+  "advice": "clear recommendation whether to apply and why"
+}}
+
+Rules:
+- Be specific (mention skills, tools, experience)
+- Avoid generic phrases
+- Improvements must be actionable
+- Max 5 items per list
+
+CV:
+{cv_text}
+
+JOB:
+{job_text}
+"""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
+        )
+
+        raw = response.choices[0].message.content.strip()
+        parsed = json.loads(raw)
+
+        return parsed
+
+    except Exception as e:
+        logger.exception("AI PARSE ERROR")
+
+        return {
+            "score": 50,
+            "decision": "Moderate Match",
+            "strengths": ["Unable to extract strengths"],
+            "gaps": ["AI parsing failed"],
+            "improvements": ["Retry analysis"],
+            "advice": "Unable to determine recommendation"
+        }
+
 # ---------------- ROUTES ----------------
 
 @app.route("/")
@@ -123,7 +197,6 @@ def analyze():
         email = request.form.get("email")
 
         if not email:
-            logger.warning("ANALYZE FAILED: missing email")
             return jsonify({"error": "Missing email"}), 400
 
         user = get_user(email)
@@ -139,32 +212,18 @@ def analyze():
         job = request.form.get("job_description")
 
         if not file or not job:
-            logger.warning(f"ANALYZE FAILED INPUT: {email}")
             return jsonify({"error": "Missing input"}), 400
 
         file_bytes = file.read()
         cv_text = extract_text(file.filename, file_bytes)
 
-        score = min(95, 50 + len(cv_text) % 50)
-
-        result = {
-            "score": score,
-            "decision": "Strong Match" if score > 75 else "Moderate Match",
-            "strengths": ["Relevant experience", "Clear structure"],
-            "gaps": ["Missing metrics", "Weak keyword alignment"],
-            "improvements": [
-                "Add measurable results",
-                "Tailor summary",
-                "Align keywords"
-            ]
-        }
+        result = analyze_with_ai(cv_text, job)
 
         # TRACK USAGE
         if not user["paid"]:
             new_usage = user["usage"] + 1
             update_user(email, usage=new_usage)
             result["remaining"] = FREE_LIMIT - new_usage
-            logger.info(f"USAGE UPDATED: {email} → {new_usage}")
         else:
             result["remaining"] = "∞"
 
@@ -173,7 +232,7 @@ def analyze():
         return jsonify(result)
 
     except Exception as e:
-        logger.exception("ANALYZE CRASH")
+        logger.exception("ANALYZE ERROR")
         return jsonify({"error": "Analyze failed"}), 500
 
 # ---------------- STRIPE CHECKOUT ----------------
@@ -216,7 +275,7 @@ def webhook():
             payload, sig_header, STRIPE_WEBHOOK_SECRET
         )
     except Exception as e:
-        logger.exception("WEBHOOK SIGNATURE ERROR")
+        logger.exception("WEBHOOK ERROR")
         return "", 400
 
     if event["type"] == "checkout.session.completed":
@@ -225,7 +284,7 @@ def webhook():
 
         if email:
             update_user(email, paid=1)
-            logger.info(f"PAYMENT SUCCESS → USER UNLOCKED: {email}")
+            logger.info(f"USER UNLOCKED: {email}")
 
     return "", 200
 
