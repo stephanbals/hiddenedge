@@ -16,17 +16,12 @@ body {
     padding:40px 20px;
 }
 
-textarea {
+input, textarea {
     width:80%;
-    height:160px;
-    margin-top:10px;
+    padding:12px;
     border-radius:10px;
     border:none;
-    padding:10px;
-}
-
-input[type="file"] {
-    margin-top:20px;
+    margin-top:10px;
 }
 
 button {
@@ -62,13 +57,21 @@ button {
 
 <h1>HiddenEdge</h1>
 
-<!-- STEP 1 -->
+<!-- EMAIL CAPTURE -->
+<div class="card" id="emailBox">
+    <h2>Enter your email to start</h2>
+    <input type="email" id="emailInput" placeholder="your@email.com">
+    <button onclick="saveEmail()">Start</button>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" class="hidden">
+
 <div class="card">
     <h2>1. Upload your CV</h2>
     <input type="file" id="files" multiple>
 </div>
 
-<!-- STEP 2 -->
 <div class="card">
     <h2>2. Paste Job Description</h2>
     <textarea id="job"></textarea>
@@ -76,13 +79,10 @@ button {
 
 <button id="analyzeBtn" onclick="analyze()">Analyze</button>
 
-<!-- NESTOR OUTPUT -->
 <div id="analysisBox" class="card hidden">
     <h2>🧠 Nestor Analysis</h2>
     <p id="decision"></p>
     <p id="score"></p>
-
-    <h3>Gaps</h3>
     <ul id="gaps"></ul>
 
     <button onclick="goToPayment()" style="background:#00c853;">
@@ -90,11 +90,11 @@ button {
     </button>
 </div>
 
-<!-- ALEC OUTPUT -->
 <div id="cvBox" class="card hidden">
     <h2>⚡ Alec Optimized CV</h2>
     <textarea id="cv"></textarea>
-    <button onclick="download()">Download CV</button>
+</div>
+
 </div>
 
 </div>
@@ -102,38 +102,39 @@ button {
 <script>
 
 let email = localStorage.getItem("email");
-let files = [];
-let job = "";
 
-// 🔒 Ensure email exists
-if (!email) {
-    email = prompt("Enter your email:");
-    if (email) {
-        localStorage.setItem("email", email);
-    } else {
-        alert("Email is required.");
-    }
+// INIT
+if (email) {
+    showApp();
 }
 
+// SAVE EMAIL
+function saveEmail() {
+    const input = document.getElementById("emailInput").value;
+    if (!input) {
+        alert("Enter email");
+        return;
+    }
+    localStorage.setItem("email", input);
+    email = input;
+    showApp();
+}
+
+function showApp() {
+    document.getElementById("emailBox").style.display = "none";
+    document.getElementById("mainApp").classList.remove("hidden");
+}
 
 // ANALYZE
 async function analyze() {
 
-    email = localStorage.getItem("email");
-    job = document.getElementById("job").value;
-    files = document.getElementById("files").files;
-
-    if (!email) {
-        alert("Missing email. Go back and start again.");
-        return;
-    }
+    const job = document.getElementById("job").value;
+    const files = document.getElementById("files").files;
 
     if (!job || files.length === 0) {
-        alert("Upload CV and paste job description.");
+        alert("Upload CV and paste job.");
         return;
     }
-
-    document.getElementById("analyzeBtn").innerText = "Analyzing...";
 
     let formData = new FormData();
     formData.append("email", email);
@@ -143,147 +144,60 @@ async function analyze() {
         formData.append("files", files[i]);
     }
 
-    try {
+    const res = await fetch("/analyze", {
+        method: "POST",
+        body: formData
+    });
 
-        const res = await fetch("/analyze", {
-            method: "POST",
-            body: formData
-        });
+    const data = await res.json();
+    const a = data.nestor;
 
-        const data = await res.json();
-        const a = data.nestor;
+    document.getElementById("analysisBox").classList.remove("hidden");
+    document.getElementById("decision").innerText = "Decision: " + a.decision;
+    document.getElementById("score").innerText = "Fit Score: " + a.fit_score;
 
-        document.getElementById("analysisBox").classList.remove("hidden");
-        document.getElementById("decision").innerText = "Decision: " + a.decision;
-        document.getElementById("score").innerText = "Fit Score: " + a.fit_score;
+    let gapsList = document.getElementById("gaps");
+    gapsList.innerHTML = "";
 
-        let gapsList = document.getElementById("gaps");
-        gapsList.innerHTML = "";
-
-        (a.gaps || []).forEach(g => {
-            let li = document.createElement("li");
-            li.innerText = g;
-            gapsList.appendChild(li);
-        });
-
-        // Scroll to analysis
-        document.getElementById("analysisBox").scrollIntoView({behavior:"smooth"});
-
-    } catch (err) {
-        alert("Analysis failed. Try again.");
-    }
-
-    document.getElementById("analyzeBtn").innerText = "Analyze";
+    (a.gaps || []).forEach(g => {
+        let li = document.createElement("li");
+        li.innerText = g;
+        gapsList.appendChild(li);
+    });
 }
 
-
-// STRIPE CHECKOUT
+// STRIPE
 async function goToPayment() {
+    const res = await fetch("/create_checkout", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ email })
+    });
 
-    try {
-        const res = await fetch("/create_checkout", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                email: email
-            })
-        });
-
-        const data = await res.json();
-
-        if (data.url) {
-            window.location.href = data.url;
-        } else {
-            alert("Payment session failed");
-        }
-
-    } catch (err) {
-        alert("Error connecting to payment.");
-    }
+    const data = await res.json();
+    window.location.href = data.url;
 }
 
-
-// GENERATE CV AFTER PAYMENT
+// RETURN FLOW
 async function generateCV() {
 
     const params = new URLSearchParams(window.location.search);
-    const paid = params.get("paid") === "true";
+    if (params.get("paid") !== "true") return;
 
-    if (!paid) return;
+    const res = await fetch("/regenerate", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ email })
+    });
 
-    if (!email) {
-        alert("Session lost. Please start again.");
-        return;
-    }
+    const data = await res.json();
 
-    try {
-
-        const res = await fetch("/regenerate", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                email: email
-            })
-        });
-
-        const data = await res.json();
-
-        if (data.paywall) {
-            alert("Please complete payment first.");
-            return;
-        }
-
-        if (!data.cv) {
-            alert("CV generation failed.");
-            return;
-        }
-
+    if (data.cv) {
         document.getElementById("cvBox").classList.remove("hidden");
         document.getElementById("cv").value = data.cv;
-
-    } catch (err) {
-        alert("Error generating CV.");
     }
 }
 
-
-// DOWNLOAD CV
-async function download() {
-
-    let cv = document.getElementById("cv").value;
-
-    try {
-
-        const res = await fetch("/download_cv", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                cv: cv,
-                template: "default"
-            })
-        });
-
-        const blob = await res.blob();
-
-        let url = window.URL.createObjectURL(blob);
-        let a = document.createElement("a");
-        a.href = url;
-        a.download = "HiddenEdge_CV.docx";
-        a.click();
-
-    } catch (err) {
-        alert("Download failed.");
-    }
-}
-
-
-// AUTO RUN AFTER PAYMENT RETURN
 generateCV();
 
 </script>
