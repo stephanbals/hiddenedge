@@ -42,7 +42,7 @@ button {
 
 <script>
 
-// 🔹 preload email if stored
+// preload email
 document.getElementById("email").value =
     localStorage.getItem("email") || "";
 
@@ -59,7 +59,6 @@ async function analyze(){
         return;
     }
 
-    // 🔹 store email so user doesn't re-enter
     localStorage.setItem("email", email);
 
     let fd = new FormData();
@@ -69,16 +68,25 @@ async function analyze(){
 
     try {
 
-        const res = await fetch("/analyze", {
-            method:"POST",
+        console.log("SENDING REQUEST...");
+
+        const res = await fetch("https://hiddenedge-live.onrender.com/analyze", {
+            method: "POST",
             body: fd
         });
 
-        console.log("RESPONSE STATUS:", res.status);
+        console.log("STATUS:", res.status);
 
-        const data = await res.json();
+        const text = await res.text();
+        console.log("RAW RESPONSE:", text);
 
-        console.log("DATA:", data);
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch(e) {
+            alert("Server returned non-JSON (check logs)");
+            return;
+        }
 
         document.getElementById("result").innerHTML =
             "Decision: " + data.decision +
@@ -86,8 +94,8 @@ async function analyze(){
             "<br><button type='button' onclick='pay()'>Improve CV</button>";
 
     } catch(err){
-        console.error("ERROR:", err);
-        alert("Analyze failed — check console");
+        console.error("FETCH ERROR:", err);
+        alert("Analyze failed — network/backend issue");
     }
 }
 
@@ -95,7 +103,7 @@ async function pay(){
 
     const email = document.getElementById("email").value;
 
-    const res = await fetch("/create_checkout", {
+    const res = await fetch("https://hiddenedge-live.onrender.com/create_checkout", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body: JSON.stringify({email})
