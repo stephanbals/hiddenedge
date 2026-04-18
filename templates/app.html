@@ -1,204 +1,87 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html>
 <head>
 <title>HiddenEdge</title>
-
 <style>
-body {
-    margin:0;
-    font-family:Arial;
-    color:white;
-    background: radial-gradient(circle at top, #140a2e, #050010);
-    text-align:center;
-}
-
-.container {
-    padding:40px 20px;
-}
-
-input, textarea {
-    width:80%;
-    padding:12px;
-    border-radius:10px;
-    border:none;
-    margin-top:10px;
-}
-
-button {
-    margin-top:20px;
-    padding:14px 40px;
-    font-size:18px;
-    background:#4ea3ff;
-    border:none;
-    border-radius:10px;
-    color:white;
-    cursor:pointer;
-    box-shadow:0 0 15px #4ea3ff;
-}
-
-.card {
-    margin:40px auto;
-    width:80%;
-    padding:25px;
-    border-radius:20px;
-    background: rgba(255,255,255,0.05);
-    text-align:left;
-}
-
-.hidden {
-    display:none;
-}
+body { font-family:Arial; background:#111; color:white; text-align:center; }
+textarea { width:80%; height:120px; }
+button { padding:10px 20px; margin-top:20px; }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<h2>Email</h2>
+<input id="email"><br><br>
 
-<h1>HiddenEdge</h1>
+<h2>Upload CV</h2>
+<input type="file" id="files"><br><br>
 
-<!-- EMAIL CAPTURE -->
-<div class="card" id="emailBox">
-    <h2>Enter your email to start</h2>
-    <input type="email" id="emailInput" placeholder="your@email.com">
-    <button onclick="saveEmail()">Start</button>
-</div>
+<h2>Job Description</h2>
+<textarea id="job"></textarea><br>
 
-<!-- MAIN APP -->
-<div id="mainApp" class="hidden">
+<button onclick="analyze()">Analyze</button>
 
-<div class="card">
-    <h2>1. Upload your CV</h2>
-    <input type="file" id="files" multiple>
-</div>
-
-<div class="card">
-    <h2>2. Paste Job Description</h2>
-    <textarea id="job"></textarea>
-</div>
-
-<button id="analyzeBtn" onclick="analyze()">Analyze</button>
-
-<div id="analysisBox" class="card hidden">
-    <h2>🧠 Nestor Analysis</h2>
-    <p id="decision"></p>
-    <p id="score"></p>
-    <ul id="gaps"></ul>
-
-    <button onclick="goToPayment()" style="background:#00c853;">
-        Improve My CV
-    </button>
-</div>
-
-<div id="cvBox" class="card hidden">
-    <h2>⚡ Alec Optimized CV</h2>
-    <textarea id="cv"></textarea>
-</div>
-
-</div>
-
-</div>
+<div id="result"></div>
 
 <script>
 
-let email = localStorage.getItem("email");
+async function analyze(){
 
-// INIT
-if (email) {
-    showApp();
-}
+    console.log("ANALYZE CLICKED");
 
-// SAVE EMAIL
-function saveEmail() {
-    const input = document.getElementById("emailInput").value;
-    if (!input) {
-        alert("Enter email");
-        return;
-    }
-    localStorage.setItem("email", input);
-    email = input;
-    showApp();
-}
-
-function showApp() {
-    document.getElementById("emailBox").style.display = "none";
-    document.getElementById("mainApp").classList.remove("hidden");
-}
-
-// ANALYZE
-async function analyze() {
-
+    const email = document.getElementById("email").value;
     const job = document.getElementById("job").value;
     const files = document.getElementById("files").files;
 
-    if (!job || files.length === 0) {
-        alert("Upload CV and paste job.");
+    if(!email || files.length === 0 || !job){
+        alert("Fill all fields");
         return;
     }
 
-    let formData = new FormData();
-    formData.append("email", email);
-    formData.append("job", job);
+    let fd = new FormData();
+    fd.append("email", email);
+    fd.append("job", job);
+    fd.append("files", files[0]);
 
-    for (let i = 0; i < files.length; i++) {
-        formData.append("files", files[i]);
+    try {
+
+        const res = await fetch("/analyze", {
+            method:"POST",
+            body:fd
+        });
+
+        console.log("RESPONSE STATUS:", res.status);
+
+        const data = await res.json();
+
+        console.log("DATA:", data);
+
+        document.getElementById("result").innerHTML =
+            "Decision: " + data.decision +
+            "<br>Score: " + data.fit_score +
+            "<br><button onclick='pay()'>Improve CV</button>";
+
+    } catch(err){
+        console.error("ERROR:", err);
+        alert("Analyze failed — check console");
     }
-
-    const res = await fetch("/analyze", {
-        method: "POST",
-        body: formData
-    });
-
-    const data = await res.json();
-    const a = data.nestor;
-
-    document.getElementById("analysisBox").classList.remove("hidden");
-    document.getElementById("decision").innerText = "Decision: " + a.decision;
-    document.getElementById("score").innerText = "Fit Score: " + a.fit_score;
-
-    let gapsList = document.getElementById("gaps");
-    gapsList.innerHTML = "";
-
-    (a.gaps || []).forEach(g => {
-        let li = document.createElement("li");
-        li.innerText = g;
-        gapsList.appendChild(li);
-    });
 }
 
-// STRIPE
-async function goToPayment() {
+async function pay(){
+
+    const email = document.getElementById("email").value;
+
     const res = await fetch("/create_checkout", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ email })
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({email})
     });
 
     const data = await res.json();
+
     window.location.href = data.url;
 }
-
-// RETURN FLOW
-async function generateCV() {
-
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("paid") !== "true") return;
-
-    const res = await fetch("/regenerate", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ email })
-    });
-
-    const data = await res.json();
-
-    if (data.cv) {
-        document.getElementById("cvBox").classList.remove("hidden");
-        document.getElementById("cv").value = data.cv;
-    }
-}
-
-generateCV();
 
 </script>
 
