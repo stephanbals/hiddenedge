@@ -41,6 +41,31 @@ hr {
     margin: 30px 0;
     border: 1px solid #2a2f55;
 }
+
+/* MODAL */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+}
+
+.modal-content {
+    background: #1a1f3d;
+    margin: 10% auto;
+    padding: 20px;
+    width: 400px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.modal button {
+    margin-top: 15px;
+}
 </style>
 </head>
 
@@ -52,7 +77,7 @@ hr {
 <textarea id="job" rows="6" placeholder="Paste job description"></textarea><br>
 
 <button onclick="analyze()">Analyze</button>
-<button onclick="tailor()">✨ Improve CV (Alec)</button>
+<button onclick="handleAlec()">✨ Improve CV (Alec)</button>
 
 <div id="result"></div>
 
@@ -61,7 +86,19 @@ hr {
 <h2>✨ Tailored CV Output</h2>
 <div id="alecResult"></div>
 
+<!-- MODAL -->
+<div id="alecModal" class="modal">
+    <div class="modal-content">
+        <h3 id="modalTitle"></h3>
+        <p id="modalMessage"></p>
+        <button onclick="proceedAlec()">Proceed Anyway</button>
+        <button onclick="closeModal()">Cancel</button>
+    </div>
+</div>
+
 <script>
+
+let lastAnalysis = null;
 
 async function analyze(){
     const file = document.getElementById("cv_file").files[0];
@@ -80,6 +117,8 @@ async function analyze(){
 
     const res = await fetch("/analyze", { method:"POST", body: formData });
     const data = await res.json();
+
+    lastAnalysis = data;
 
     document.getElementById("result").innerHTML = `
         <h2>Score: ${data.score}</h2>
@@ -113,14 +152,57 @@ async function analyze(){
     `;
 }
 
-async function tailor(){
-    const file = document.getElementById("cv_file").files[0];
-    const job = document.getElementById("job").value;
+function handleAlec(){
 
-    if(!file || !job){
-        alert("Upload CV and job first");
+    if(!lastAnalysis){
+        alert("Run analysis first");
         return;
     }
+
+    const score = lastAnalysis.score;
+    const decision = lastAnalysis.apply_recommendation?.decision;
+
+    // STRONG WARNING
+    if(score < 20 || decision === "Do Not Apply"){
+        showModal(
+            "Low Fit Detected",
+            "Nestor recommends not applying. This role has a fundamental mismatch with your profile. Tailoring your CV is unlikely to change the outcome."
+        );
+        return;
+    }
+
+    // SOFT WARNING
+    if(score < 60 || decision === "Consider"){
+        showModal(
+            "Stretch Role",
+            "This role is a partial match. Tailoring your CV may improve your chances, but stronger candidates may exist."
+        );
+        return;
+    }
+
+    // STRONG MATCH → no warning
+    runAlec();
+}
+
+function showModal(title, message){
+    document.getElementById("modalTitle").innerText = title;
+    document.getElementById("modalMessage").innerText = message;
+    document.getElementById("alecModal").style.display = "block";
+}
+
+function closeModal(){
+    document.getElementById("alecModal").style.display = "none";
+}
+
+function proceedAlec(){
+    closeModal();
+    runAlec();
+}
+
+async function runAlec(){
+
+    const file = document.getElementById("cv_file").files[0];
+    const job = document.getElementById("job").value;
 
     document.getElementById("alecResult").innerHTML = "Improving CV...";
 
