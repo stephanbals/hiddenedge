@@ -3,49 +3,36 @@
 <head>
 <meta charset="UTF-8">
 <title>HiddenEdge</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
 body {
-    font-family: Arial, sans-serif;
+    font-family: Arial;
     background: #0b0f2a;
     color: white;
     text-align: center;
     padding: 40px;
 }
 
+input, textarea {
+    width: 400px;
+    margin: 10px;
+    padding: 10px;
+}
+
 button {
-    margin-top: 15px;
-    padding: 12px 20px;
-    border-radius: 8px;
+    padding: 10px 20px;
+    margin-top: 10px;
     background: #4da6ff;
-    color: white;
     border: none;
+    color: white;
     cursor: pointer;
 }
 
-.card {
-    background: #141a3a;
-    padding: 20px;
-    border-radius: 10px;
-    margin: 15px auto;
-    max-width: 700px;
+#result {
+    margin-top: 30px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
     text-align: left;
-}
-
-.good { color: #4dff88; }
-.warn { color: #ffcc00; }
-.bad { color: #ff6666; }
-
-.robot-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: bold;
-}
-
-.robot {
-    width: 40px;
 }
 </style>
 </head>
@@ -54,9 +41,14 @@ button {
 
 <h1>HiddenEdge</h1>
 
-<input id="email" readonly>
+<input type="email" id="email" placeholder="Your email">
+<br>
+
 <input type="file" id="cv_file">
-<textarea id="job" rows="6" placeholder="Paste job description..."></textarea>
+<br>
+
+<textarea id="job" rows="6" placeholder="Paste job description"></textarea>
+<br>
 
 <button onclick="analyze()">Analyze</button>
 
@@ -64,118 +56,48 @@ button {
 
 <script>
 
-function initEmail() {
-    let email = localStorage.getItem("user_email");
-    if (!email) {
-        email = prompt("Enter your email:");
-        if (!email) return initEmail();
-        localStorage.setItem("user_email", email);
-    }
-    document.getElementById("email").value = email;
-}
-initEmail();
-
-async function analyze() {
+async function analyze(){
 
     const file = document.getElementById("cv_file").files[0];
     const job = document.getElementById("job").value;
 
-    if (!file || !job) {
-        alert("Upload CV + job description");
+    if(!file || !job){
+        alert("Missing input");
         return;
     }
+
+    document.getElementById("result").innerHTML = "Analyzing...";
 
     const formData = new FormData();
     formData.append("cv_file", file);
     formData.append("job_description", job);
-    formData.append("email", localStorage.getItem("user_email"));
 
     const res = await fetch("/analyze", {
-        method: "POST",
+        method:"POST",
         body: formData
     });
 
-    if (res.status === 403) {
-        showPaywall();
-        return;
-    }
-
     const data = await res.json();
 
-    renderResult(data);
-}
-
-function getDecision(score) {
-    if (score >= 80) return {text: "Strong YES — apply", class: "good"};
-    if (score >= 60) return {text: "Maybe — improve before applying", class: "warn"};
-    return {text: "No — not competitive yet", class: "bad"};
-}
-
-function renderResult(data) {
-
-    const decision = getDecision(data.score);
-
     document.getElementById("result").innerHTML = `
-        <div class="card">
-            <div class="robot-title">
-                <img src="/static/robots/nestor.png" class="robot">
-                Nestor — Decision Engine
-            </div>
+        <h2>Score: ${data.score}</h2>
+        <h3>${data.decision}</h3>
 
-            <h2>${data.score}</h2>
-            <p class="${decision.class}"><b>${decision.text}</b></p>
-            <p>${data.decision}</p>
+        <h4>Key Requirements</h4>
+        <ul>${(data.key_requirements || []).map(x=>`<li>${x}</li>`).join("")}</ul>
 
-            <p>${data.paid ? "💎 Premium" : "Free left: " + data.remaining}</p>
+        <h4>Strengths</h4>
+        <ul>${(data.strengths || []).map(x=>`<li>${x}</li>`).join("")}</ul>
 
-            <button onclick="analyze()">🔁 Run Again</button>
-        </div>
+        <h4>Gaps</h4>
+        <ul>${(data.gaps || []).map(x=>`<li>${x}</li>`).join("")}</ul>
 
-        <div class="card">
-            <h3>Strengths</h3>
-            <ul>${data.strengths.map(s => `<li>${s}</li>`).join("")}</ul>
-        </div>
+        <h4>Improvements</h4>
+        <ul>${(data.improvements || []).map(x=>`<li>${x}</li>`).join("")}</ul>
 
-        <div class="card">
-            <h3>Gaps</h3>
-            <ul>${data.gaps.map(g => `<li>${g}</li>`).join("")}</ul>
-        </div>
-
-        <div class="card">
-            <div class="robot-title">
-                <img src="/static/robots/alec.png" class="robot">
-                CV Improvements
-            </div>
-
-            <p><b>Fix these to increase your chances:</b></p>
-
-            <ul>${data.improvements.map(i => `<li>${i}</li>`).join("")}</ul>
-        </div>
+        <h4>Advice</h4>
+        <p>${data.final_advice || ""}</p>
     `;
-}
-
-function showPaywall() {
-    document.getElementById("result").innerHTML = `
-        <div class="card">
-            <h2>Free limit reached</h2>
-            <p>You’ve used all free analyses.</p>
-            <button onclick="startCheckout()">Unlock</button>
-        </div>
-    `;
-}
-
-async function startCheckout() {
-    const res = await fetch("/create_checkout", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            email: localStorage.getItem("user_email")
-        })
-    });
-
-    const data = await res.json();
-
-    if (data.url) window.location.href = data.url;
 }
 
 </script>
