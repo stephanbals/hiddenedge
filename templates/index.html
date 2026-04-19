@@ -82,29 +82,47 @@ async function analyze(){
         <h3>${data.decision}</h3>
         <h3>Hiring Signal: ${data.hiring_signal}</h3>
 
-        <h4>Context</h4>
-        <p>Role: ${data.context?.role_type}</p>
-        <p>Seniority: ${data.context?.seniority}</p>
-        <p>Domain: ${data.context?.domain}</p>
-        <p>Environment: ${data.context?.environment}</p>
+        <hr>
 
-        <h4>Strengths</h4>
-        <ul>${(data.strengths || []).map(x=>`<li>${x}</li>`).join("")}</ul>
+        <h3>🧾 Recruiter View</h3>
+        <p><strong>Decision:</strong> ${data.recruiter_view?.screening_decision}</p>
+        <p><strong>Risk:</strong> ${data.recruiter_view?.risk_level}</p>
 
-        <h4>Gaps</h4>
-        <ul>${(data.gaps || []).map(x=>`<li>${x}</li>`).join("")}</ul>
+        <ul>${(data.recruiter_view?.observations || []).map(x=>`<li>${x}</li>`).join("")}</ul>
 
-        <h4>Deal Breakers</h4>
-        <ul>${(data.deal_breakers || []).map(x=>`<li>${x}</li>`).join("")}</ul>
+        <p><strong>Concerns:</strong></p>
+        <ul>${(data.recruiter_view?.concerns || []).map(x=>`<li>${x}</li>`).join("")}</ul>
 
-        <h4>Risk Factors</h4>
-        <ul>${(data.risk_factors || []).map(x=>`<li>${x}</li>`).join("")}</ul>
+        <p>${data.recruiter_view?.verdict}</p>
 
-        <h4>Hiring Manager View</h4>
+        <hr>
+
+        <h3>🧠 Hiring Manager View</h3>
         <p><strong>Confidence:</strong> ${data.hiring_manager_view?.confidence_level}</p>
-        <p><strong>Verdict:</strong> ${data.hiring_manager_view?.verdict}</p>
 
-        <h4>Final Advice</h4>
+        <ul>${(data.hiring_manager_view?.strengths || []).map(x=>`<li>${x}</li>`).join("")}</ul>
+
+        <p><strong>Concerns:</strong></p>
+        <ul>${(data.hiring_manager_view?.concerns || []).map(x=>`<li>${x}</li>`).join("")}</ul>
+
+        <p>${data.hiring_manager_view?.verdict}</p>
+
+        <hr>
+
+        <h3>🚀 Improvement Plan</h3>
+
+        <p><strong>Priority Actions:</strong></p>
+        <ul>${(data.improvement_plan?.priority_actions || []).map(x=>`<li>${x}</li>`).join("")}</ul>
+
+        <p><strong>Quick Wins:</strong></p>
+        <ul>${(data.improvement_plan?.quick_wins || []).map(x=>`<li>${x}</li>`).join("")}</ul>
+
+        <p><strong>Strategic Changes:</strong></p>
+        <ul>${(data.improvement_plan?.strategic_changes || []).map(x=>`<li>${x}</li>`).join("")}</ul>
+
+        <hr>
+
+        <h3>Final Advice</h3>
         <p>${data.final_advice}</p>
     `;
 }

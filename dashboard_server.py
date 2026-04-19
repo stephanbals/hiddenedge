@@ -53,7 +53,7 @@ def safe_json_parse(text):
                 pass
     return None
 
-# ---------------- ADAPTIVE AI ENGINE ----------------
+# ---------------- AI ENGINE ----------------
 
 def analyze_with_ai(cv_text, job_text):
 
@@ -63,18 +63,23 @@ def analyze_with_ai(cv_text, job_text):
             "decision": "Moderate Match",
             "hiring_signal": "Medium",
             "context": {},
-            "key_requirements": [],
-            "strengths": ["AI not configured"],
-            "gaps": [],
-            "deal_breakers": [],
-            "risk_factors": [],
-            "improvements": [],
-            "competitive_position": "AI not active",
+            "recruiter_view": {
+                "screening_decision": "Moderate Match",
+                "risk_level": "Medium",
+                "observations": [],
+                "concerns": [],
+                "verdict": "AI not active"
+            },
             "hiring_manager_view": {
                 "confidence_level": "Low",
                 "strengths": [],
                 "concerns": [],
                 "verdict": "AI not active"
+            },
+            "improvement_plan": {
+                "priority_actions": [],
+                "quick_wins": [],
+                "strategic_changes": []
             },
             "final_advice": "Set OpenAI API key"
         }
@@ -82,18 +87,24 @@ def analyze_with_ai(cv_text, job_text):
     prompt = f"""
 You are simulating TWO perspectives:
 
-1. A recruiter screening candidates
-2. A hiring manager deciding who to hire
+1. Recruiter (screening)
+2. Hiring Manager (decision)
 
-FIRST:
-Infer the context of the job from the description:
+STEP 1:
+Infer context:
 - role_type
 - seniority
 - domain
 - environment
 
-THEN:
-Evaluate the CV based on THAT context.
+STEP 2:
+Evaluate CV vs job
+
+STEP 3:
+Provide:
+- recruiter view
+- hiring manager view
+- improvement plan
 
 Return STRICT JSON:
 
@@ -105,37 +116,39 @@ Return STRICT JSON:
     "environment": ""
   }},
 
-  "score": number (0-100),
-  "decision": "Strong Match" | "Moderate Match" | "Weak Match",
-  "hiring_signal": "High" | "Medium" | "Low",
+  "score": number,
+  "decision": "",
+  "hiring_signal": "",
 
-  "key_requirements": [],
-  "strengths": [],
-  "gaps": [],
-
-  "deal_breakers": [],
-  "risk_factors": [],
-
-  "improvements": [],
-
-  "competitive_position": "",
+  "recruiter_view": {{
+    "screening_decision": "",
+    "risk_level": "",
+    "observations": [],
+    "concerns": [],
+    "verdict": ""
+  }},
 
   "hiring_manager_view": {{
-    "confidence_level": "High" | "Medium" | "Low",
+    "confidence_level": "",
     "strengths": [],
     "concerns": [],
     "verdict": ""
+  }},
+
+  "improvement_plan": {{
+    "priority_actions": [],
+    "quick_wins": [],
+    "strategic_changes": []
   }},
 
   "final_advice": ""
 }}
 
 RULES:
-- Adapt to ANY domain (IT, finance, engineering, etc.)
-- Be realistic and critical
-- Think like real recruiters and hiring managers
-- Avoid generic language
-- No placeholders
+- Be specific, not generic
+- Prioritize actions by impact
+- Avoid repeating same points
+- Keep improvement plan actionable
 
 CV:
 {cv_text}
@@ -167,20 +180,25 @@ JOB:
             "decision": "Moderate Match",
             "hiring_signal": "Medium",
             "context": {},
-            "key_requirements": [],
-            "strengths": ["General experience present"],
-            "gaps": ["Detailed analysis unavailable"],
-            "deal_breakers": [],
-            "risk_factors": ["Analysis fallback"],
-            "improvements": ["Retry"],
-            "competitive_position": "Unable to determine",
+            "recruiter_view": {
+                "screening_decision": "Moderate Match",
+                "risk_level": "Medium",
+                "observations": [],
+                "concerns": [],
+                "verdict": "Fallback"
+            },
             "hiring_manager_view": {
                 "confidence_level": "Medium",
                 "strengths": [],
                 "concerns": [],
-                "verdict": "Fallback response"
+                "verdict": "Fallback"
             },
-            "final_advice": "System fallback"
+            "improvement_plan": {
+                "priority_actions": ["Retry analysis"],
+                "quick_wins": [],
+                "strategic_changes": []
+            },
+            "final_advice": "Fallback response"
         }
 
 # ---------------- ROUTES ----------------
@@ -198,8 +216,7 @@ def analyze():
     if not file or not job:
         return jsonify({"error": "Missing input"}), 400
 
-    file_bytes = file.read()
-    cv_text = extract_text(file.filename, file_bytes)
+    cv_text = extract_text(file.filename, file.read())
 
     result = analyze_with_ai(cv_text, job)
 
