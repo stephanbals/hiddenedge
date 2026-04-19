@@ -42,7 +42,7 @@ hr {
     border: 1px solid #2a2f55;
 }
 
-/* MODAL */
+/* MODALS */
 .modal {
     display: none;
     position: fixed;
@@ -58,7 +58,7 @@ hr {
     background: #1a1f3d;
     margin: 5% auto;
     padding: 20px;
-    width: 600px;
+    width: 650px;
     border-radius: 10px;
     text-align: left;
 }
@@ -71,6 +71,12 @@ table {
 td, th {
     border: 1px solid #444;
     padding: 8px;
+}
+
+.note {
+    font-size: 12px;
+    color: #b0b5ff;
+    margin-bottom: 10px;
 }
 </style>
 </head>
@@ -110,6 +116,12 @@ td, th {
 <div id="trackerModal" class="modal">
     <div class="modal-content">
         <h2>📋 My Applications</h2>
+
+        <div class="note">
+            ⚠️ Note: Your application tracker is currently stored on your device (this browser).
+            It may not be available on other devices.
+        </div>
+
         <table id="trackerTable">
             <tr>
                 <th>Date</th>
@@ -119,6 +131,7 @@ td, th {
                 <th>Action</th>
             </tr>
         </table>
+
         <button onclick="closeTracker()">Close</button>
     </div>
 </div>
@@ -265,13 +278,13 @@ function handleAlec(){
 
     if(score < 20 || decision === "Do Not Apply"){
         showModal("Low Fit Detected",
-        "Nestor recommends not applying. Tailoring CV is unlikely to change outcome.");
+        "Nestor recommends not applying. Tailoring your CV is unlikely to change the outcome.");
         return;
     }
 
     if(score < 60 || decision === "Consider"){
         showModal("Stretch Role",
-        "This is a stretch role. Tailoring may help slightly.");
+        "This is a stretch role. Tailoring your CV may improve your chances, but competition may be strong.");
         return;
     }
 
