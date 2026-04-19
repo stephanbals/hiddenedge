@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>HiddenEdge</title>
+
 <style>
 body {
     font-family: Arial;
@@ -82,6 +83,7 @@ async function analyze(){
     document.getElementById("result").innerHTML = `
         <h2>Score: ${data.score}</h2>
         <h3>${data.decision}</h3>
+        <h3>Hiring Signal: ${data.hiring_signal}</h3>
 
         <h4>Key Requirements</h4>
         <ul>${(data.key_requirements || []).map(x=>`<li>${x}</li>`).join("")}</ul>
@@ -92,10 +94,19 @@ async function analyze(){
         <h4>Gaps</h4>
         <ul>${(data.gaps || []).map(x=>`<li>${x}</li>`).join("")}</ul>
 
+        <h4>Deal Breakers</h4>
+        <ul>${(data.deal_breakers || []).map(x=>`<li>${x}</li>`).join("")}</ul>
+
+        <h4>Risk Factors</h4>
+        <ul>${(data.risk_factors || []).map(x=>`<li>${x}</li>`).join("")}</ul>
+
         <h4>Improvements</h4>
         <ul>${(data.improvements || []).map(x=>`<li>${x}</li>`).join("")}</ul>
 
-        <h4>Advice</h4>
+        <h4>Competitive Position</h4>
+        <p>${data.competitive_position || ""}</p>
+
+        <h4>Final Advice</h4>
         <p>${data.final_advice || ""}</p>
     `;
 }

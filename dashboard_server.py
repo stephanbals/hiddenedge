@@ -53,7 +53,7 @@ def safe_json_parse(text):
                 pass
     return None
 
-# ---------------- ANALYSIS ----------------
+# ---------------- DECISION ENGINE ----------------
 
 def analyze_with_ai(cv_text, job_text):
 
@@ -61,39 +61,49 @@ def analyze_with_ai(cv_text, job_text):
         return {
             "score": 50,
             "decision": "Moderate Match",
+            "hiring_signal": "Medium",
             "key_requirements": [],
             "strengths": ["AI not configured"],
             "gaps": [],
+            "deal_breakers": [],
+            "risk_factors": [],
             "improvements": [],
+            "competitive_position": "AI not active",
             "final_advice": "Set OpenAI API key"
         }
 
     prompt = f"""
-You are a senior IT recruiter evaluating a candidate.
+You are a senior IT recruiter making a hiring decision.
 
-Your job:
-1. Extract key requirements from the job
-2. Compare CV vs those requirements
-3. Give a realistic hiring-style assessment
+STEP 1: Extract the most important requirements.
+STEP 2: Compare CV vs requirements.
+STEP 3: Evaluate hiring likelihood vs typical candidates.
 
 Return STRICT JSON:
 
 {{
   "score": number (0-100),
   "decision": "Strong Match" | "Moderate Match" | "Weak Match",
+  "hiring_signal": "High" | "Medium" | "Low",
 
   "key_requirements": [],
   "strengths": [],
   "gaps": [],
+
+  "deal_breakers": [],
+  "risk_factors": [],
+
   "improvements": [],
+
+  "competitive_position": "",
   "final_advice": ""
 }}
 
 Rules:
-- Be critical and realistic
-- No generic statements
-- No placeholders like "AI failed"
-- Base everything on actual comparison
+- Be realistic and critical
+- Identify if candidate would actually get hired
+- Highlight what stronger candidates may have
+- Do NOT be polite — be accurate
 
 CV:
 {cv_text}
@@ -117,17 +127,21 @@ JOB:
 
         raise Exception("Parse failed")
 
-    except Exception as e:
+    except Exception:
         logging.exception("AI ERROR")
 
         return {
             "score": 60,
             "decision": "Moderate Match",
+            "hiring_signal": "Medium",
             "key_requirements": [],
             "strengths": ["General experience present"],
             "gaps": ["Detailed analysis unavailable"],
-            "improvements": ["Retry analysis"],
-            "final_advice": "System fallback triggered"
+            "deal_breakers": [],
+            "risk_factors": ["Analysis fallback triggered"],
+            "improvements": ["Retry"],
+            "competitive_position": "Unable to determine",
+            "final_advice": "System fallback"
         }
 
 # ---------------- ROUTES ----------------
