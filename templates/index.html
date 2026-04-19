@@ -30,7 +30,7 @@ button {
 
 #result {
     margin-top: 30px;
-    max-width: 800px;
+    max-width: 900px;
     margin-left: auto;
     margin-right: auto;
     text-align: left;
@@ -41,9 +41,6 @@ button {
 <body>
 
 <h1>HiddenEdge</h1>
-
-<input type="email" id="email" placeholder="Your email">
-<br>
 
 <input type="file" id="cv_file">
 <br>
@@ -85,8 +82,11 @@ async function analyze(){
         <h3>${data.decision}</h3>
         <h3>Hiring Signal: ${data.hiring_signal}</h3>
 
-        <h4>Key Requirements</h4>
-        <ul>${(data.key_requirements || []).map(x=>`<li>${x}</li>`).join("")}</ul>
+        <h4>Context</h4>
+        <p>Role: ${data.context?.role_type}</p>
+        <p>Seniority: ${data.context?.seniority}</p>
+        <p>Domain: ${data.context?.domain}</p>
+        <p>Environment: ${data.context?.environment}</p>
 
         <h4>Strengths</h4>
         <ul>${(data.strengths || []).map(x=>`<li>${x}</li>`).join("")}</ul>
@@ -100,14 +100,12 @@ async function analyze(){
         <h4>Risk Factors</h4>
         <ul>${(data.risk_factors || []).map(x=>`<li>${x}</li>`).join("")}</ul>
 
-        <h4>Improvements</h4>
-        <ul>${(data.improvements || []).map(x=>`<li>${x}</li>`).join("")}</ul>
-
-        <h4>Competitive Position</h4>
-        <p>${data.competitive_position || ""}</p>
+        <h4>Hiring Manager View</h4>
+        <p><strong>Confidence:</strong> ${data.hiring_manager_view?.confidence_level}</p>
+        <p><strong>Verdict:</strong> ${data.hiring_manager_view?.verdict}</p>
 
         <h4>Final Advice</h4>
-        <p>${data.final_advice || ""}</p>
+        <p>${data.final_advice}</p>
     `;
 }
 

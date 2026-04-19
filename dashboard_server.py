@@ -53,7 +53,7 @@ def safe_json_parse(text):
                 pass
     return None
 
-# ---------------- DECISION ENGINE ----------------
+# ---------------- ADAPTIVE AI ENGINE ----------------
 
 def analyze_with_ai(cv_text, job_text):
 
@@ -62,6 +62,7 @@ def analyze_with_ai(cv_text, job_text):
             "score": 50,
             "decision": "Moderate Match",
             "hiring_signal": "Medium",
+            "context": {},
             "key_requirements": [],
             "strengths": ["AI not configured"],
             "gaps": [],
@@ -69,19 +70,41 @@ def analyze_with_ai(cv_text, job_text):
             "risk_factors": [],
             "improvements": [],
             "competitive_position": "AI not active",
+            "hiring_manager_view": {
+                "confidence_level": "Low",
+                "strengths": [],
+                "concerns": [],
+                "verdict": "AI not active"
+            },
             "final_advice": "Set OpenAI API key"
         }
 
     prompt = f"""
-You are a senior IT recruiter making a hiring decision.
+You are simulating TWO perspectives:
 
-STEP 1: Extract the most important requirements.
-STEP 2: Compare CV vs requirements.
-STEP 3: Evaluate hiring likelihood vs typical candidates.
+1. A recruiter screening candidates
+2. A hiring manager deciding who to hire
+
+FIRST:
+Infer the context of the job from the description:
+- role_type
+- seniority
+- domain
+- environment
+
+THEN:
+Evaluate the CV based on THAT context.
 
 Return STRICT JSON:
 
 {{
+  "context": {{
+    "role_type": "",
+    "seniority": "",
+    "domain": "",
+    "environment": ""
+  }},
+
   "score": number (0-100),
   "decision": "Strong Match" | "Moderate Match" | "Weak Match",
   "hiring_signal": "High" | "Medium" | "Low",
@@ -96,14 +119,23 @@ Return STRICT JSON:
   "improvements": [],
 
   "competitive_position": "",
+
+  "hiring_manager_view": {{
+    "confidence_level": "High" | "Medium" | "Low",
+    "strengths": [],
+    "concerns": [],
+    "verdict": ""
+  }},
+
   "final_advice": ""
 }}
 
-Rules:
+RULES:
+- Adapt to ANY domain (IT, finance, engineering, etc.)
 - Be realistic and critical
-- Identify if candidate would actually get hired
-- Highlight what stronger candidates may have
-- Do NOT be polite — be accurate
+- Think like real recruiters and hiring managers
+- Avoid generic language
+- No placeholders
 
 CV:
 {cv_text}
@@ -134,13 +166,20 @@ JOB:
             "score": 60,
             "decision": "Moderate Match",
             "hiring_signal": "Medium",
+            "context": {},
             "key_requirements": [],
             "strengths": ["General experience present"],
             "gaps": ["Detailed analysis unavailable"],
             "deal_breakers": [],
-            "risk_factors": ["Analysis fallback triggered"],
+            "risk_factors": ["Analysis fallback"],
             "improvements": ["Retry"],
             "competitive_position": "Unable to determine",
+            "hiring_manager_view": {
+                "confidence_level": "Medium",
+                "strengths": [],
+                "concerns": [],
+                "verdict": "Fallback response"
+            },
             "final_advice": "System fallback"
         }
 
