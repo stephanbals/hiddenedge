@@ -53,12 +53,33 @@ def safe_json_parse(text):
                 pass
     return None
 
+# ---------------- RECOMMENDATION LOGIC ----------------
+
+def compute_recommendation(score, signal):
+
+    if score >= 75 and signal == "High":
+        return {
+            "decision": "Apply",
+            "reason": "Your profile strongly matches the role and you are likely to progress."
+        }
+
+    if score < 50 or signal == "Low":
+        return {
+            "decision": "Do Not Apply",
+            "reason": "There is a fundamental mismatch with the core requirements of this role."
+        }
+
+    return {
+        "decision": "Consider",
+        "reason": "There is partial alignment, but you may face stronger competing candidates."
+    }
+
 # ---------------- AI ENGINE ----------------
 
 def analyze_with_ai(cv_text, job_text):
 
     if not client:
-        return {
+        fallback = {
             "score": 50,
             "decision": "Moderate Match",
             "hiring_signal": "Medium",
@@ -84,27 +105,14 @@ def analyze_with_ai(cv_text, job_text):
             "final_advice": "Set OpenAI API key"
         }
 
+        fallback["apply_recommendation"] = compute_recommendation(50, "Medium")
+        return fallback
+
     prompt = f"""
 You are simulating TWO perspectives:
 
 1. Recruiter (screening)
 2. Hiring Manager (decision)
-
-STEP 1:
-Infer context:
-- role_type
-- seniority
-- domain
-- environment
-
-STEP 2:
-Evaluate CV vs job
-
-STEP 3:
-Provide:
-- recruiter view
-- hiring manager view
-- improvement plan
 
 Return STRICT JSON:
 
@@ -115,21 +123,20 @@ Return STRICT JSON:
     "domain": "",
     "environment": ""
   }},
-
   "score": number,
-  "decision": "",
-  "hiring_signal": "",
+  "decision": "Strong Match" | "Moderate Match" | "Weak Match",
+  "hiring_signal": "High" | "Medium" | "Low",
 
   "recruiter_view": {{
     "screening_decision": "",
-    "risk_level": "",
+    "risk_level": "Low" | "Medium" | "High",
     "observations": [],
     "concerns": [],
     "verdict": ""
   }},
 
   "hiring_manager_view": {{
-    "confidence_level": "",
+    "confidence_level": "High" | "Medium" | "Low",
     "strengths": [],
     "concerns": [],
     "verdict": ""
@@ -144,11 +151,10 @@ Return STRICT JSON:
   "final_advice": ""
 }}
 
-RULES:
-- Be specific, not generic
-- Prioritize actions by impact
-- Avoid repeating same points
-- Keep improvement plan actionable
+Rules:
+- Be realistic and critical
+- Avoid generic statements
+- Keep recruiter and manager perspectives distinct
 
 CV:
 {cv_text}
@@ -164,42 +170,34 @@ JOB:
             temperature=0.2
         )
 
-        raw = response.choices[0].message.content.strip()
-        parsed = safe_json_parse(raw)
+        parsed = safe_json_parse(response.choices[0].message.content)
 
-        if parsed:
-            return parsed
+        if not parsed:
+            raise Exception("Parse failed")
 
-        raise Exception("Parse failed")
+        parsed["apply_recommendation"] = compute_recommendation(
+            parsed.get("score", 50),
+            parsed.get("hiring_signal", "Medium")
+        )
+
+        return parsed
 
     except Exception:
         logging.exception("AI ERROR")
 
-        return {
+        fallback = {
             "score": 60,
             "decision": "Moderate Match",
             "hiring_signal": "Medium",
             "context": {},
-            "recruiter_view": {
-                "screening_decision": "Moderate Match",
-                "risk_level": "Medium",
-                "observations": [],
-                "concerns": [],
-                "verdict": "Fallback"
-            },
-            "hiring_manager_view": {
-                "confidence_level": "Medium",
-                "strengths": [],
-                "concerns": [],
-                "verdict": "Fallback"
-            },
-            "improvement_plan": {
-                "priority_actions": ["Retry analysis"],
-                "quick_wins": [],
-                "strategic_changes": []
-            },
+            "recruiter_view": {},
+            "hiring_manager_view": {},
+            "improvement_plan": {},
             "final_advice": "Fallback response"
         }
+
+        fallback["apply_recommendation"] = compute_recommendation(60, "Medium")
+        return fallback
 
 # ---------------- ROUTES ----------------
 

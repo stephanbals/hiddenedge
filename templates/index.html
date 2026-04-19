@@ -82,6 +82,10 @@ async function analyze(){
         <h3>${data.decision}</h3>
         <h3>Hiring Signal: ${data.hiring_signal}</h3>
 
+        <h3>🎯 Recommendation</h3>
+        <p><strong>${data.apply_recommendation?.decision}</strong></p>
+        <p>${data.apply_recommendation?.reason}</p>
+
         <hr>
 
         <h3>🧾 Recruiter View</h3>
