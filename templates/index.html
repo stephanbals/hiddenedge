@@ -56,15 +56,21 @@ hr {
 
 .modal-content {
     background: #1a1f3d;
-    margin: 10% auto;
+    margin: 5% auto;
     padding: 20px;
-    width: 400px;
+    width: 600px;
     border-radius: 10px;
-    text-align: center;
+    text-align: left;
 }
 
-.modal button {
-    margin-top: 15px;
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+td, th {
+    border: 1px solid #444;
+    padding: 8px;
 }
 </style>
 </head>
@@ -72,6 +78,10 @@ hr {
 <body>
 
 <h1>HiddenEdge</h1>
+
+<button onclick="openTracker()">📋 My Applications</button>
+
+<br>
 
 <input type="file" id="cv_file"><br>
 <textarea id="job" rows="6" placeholder="Paste job description"></textarea><br>
@@ -86,7 +96,7 @@ hr {
 <h2>✨ Tailored CV Output</h2>
 <div id="alecResult"></div>
 
-<!-- MODAL -->
+<!-- ALEC MODAL -->
 <div id="alecModal" class="modal">
     <div class="modal-content">
         <h3 id="modalTitle"></h3>
@@ -96,9 +106,29 @@ hr {
     </div>
 </div>
 
+<!-- TRACKER MODAL -->
+<div id="trackerModal" class="modal">
+    <div class="modal-content">
+        <h2>📋 My Applications</h2>
+        <table id="trackerTable">
+            <tr>
+                <th>Date</th>
+                <th>Job</th>
+                <th>Company</th>
+                <th>Recruiter</th>
+                <th>Action</th>
+            </tr>
+        </table>
+        <button onclick="closeTracker()">Close</button>
+    </div>
+</div>
+
 <script>
 
 let lastAnalysis = null;
+let lastJobText = "";
+
+// ---------- ANALYZE ----------
 
 async function analyze(){
     const file = document.getElementById("cv_file").files[0];
@@ -108,6 +138,8 @@ async function analyze(){
         alert("Missing input");
         return;
     }
+
+    lastJobText = job;
 
     document.getElementById("result").innerHTML = "Analyzing...";
 
@@ -123,34 +155,103 @@ async function analyze(){
     document.getElementById("result").innerHTML = `
         <h2>Score: ${data.score}</h2>
         <h3>${data.decision}</h3>
-        <h3>Hiring Signal: ${data.hiring_signal}</h3>
 
         <h3>🎯 Recommendation</h3>
         <p><strong>${data.apply_recommendation?.decision}</strong></p>
-        <p>${data.apply_recommendation?.reason}</p>
+
+        <button onclick="applyJob()">✅ Apply</button>
+        <button onclick="skipJob()">❌ Skip</button>
+
+        <hr>
 
         <h3>🔁 Better-Fit Roles</h3>
         <ul>${(data.better_fit_roles || []).map(x=>`<li>${x}</li>`).join("")}</ul>
-
-        <hr>
-
-        <h3>🧾 Recruiter View</h3>
-        <p>${data.recruiter_view?.verdict}</p>
-
-        <h3>🧠 Hiring Manager View</h3>
-        <p>${data.hiring_manager_view?.verdict}</p>
-
-        <hr>
-
-        <h3>🚀 Improvement Plan</h3>
-        <ul>${(data.improvement_plan?.priority_actions || []).map(x=>`<li>${x}</li>`).join("")}</ul>
-
-        <hr>
-
-        <h3>Final Advice</h3>
-        <p>${data.final_advice}</p>
     `;
 }
+
+// ---------- APPLY / SKIP ----------
+
+function applyJob(){
+
+    const entry = {
+        date: new Date().toLocaleDateString(),
+        job: extractJobTitle(lastJobText),
+        company: extractCompany(lastJobText),
+        recruiter: extractRecruiter(lastJobText)
+    };
+
+    let apps = JSON.parse(localStorage.getItem("applications") || "[]");
+    apps.push(entry);
+    localStorage.setItem("applications", JSON.stringify(apps));
+
+    alert("Application saved");
+}
+
+function skipJob(){
+    alert("Skipped");
+}
+
+// ---------- TRACKER ----------
+
+function openTracker(){
+    document.getElementById("trackerModal").style.display = "block";
+    loadTracker();
+}
+
+function closeTracker(){
+    document.getElementById("trackerModal").style.display = "none";
+}
+
+function loadTracker(){
+
+    let table = document.getElementById("trackerTable");
+    table.innerHTML = `
+        <tr>
+            <th>Date</th>
+            <th>Job</th>
+            <th>Company</th>
+            <th>Recruiter</th>
+            <th>Action</th>
+        </tr>
+    `;
+
+    let apps = JSON.parse(localStorage.getItem("applications") || "[]");
+
+    apps.forEach((app, index) => {
+        table.innerHTML += `
+            <tr>
+                <td>${app.date}</td>
+                <td>${app.job}</td>
+                <td>${app.company}</td>
+                <td>${app.recruiter}</td>
+                <td><button onclick="deleteApp(${index})">Delete</button></td>
+            </tr>
+        `;
+    });
+}
+
+function deleteApp(index){
+    let apps = JSON.parse(localStorage.getItem("applications") || "[]");
+    apps.splice(index, 1);
+    localStorage.setItem("applications", JSON.stringify(apps));
+    loadTracker();
+}
+
+// ---------- HELPERS ----------
+
+function extractJobTitle(text){
+    return text.split("\n")[0] || "Unknown";
+}
+
+function extractCompany(text){
+    return text.includes("·") ? text.split("·")[1].trim() : "Unknown";
+}
+
+function extractRecruiter(text){
+    return "Unknown";
+}
+
+// ---------- ALEC ----------
 
 function handleAlec(){
 
@@ -162,25 +263,18 @@ function handleAlec(){
     const score = lastAnalysis.score;
     const decision = lastAnalysis.apply_recommendation?.decision;
 
-    // STRONG WARNING
     if(score < 20 || decision === "Do Not Apply"){
-        showModal(
-            "Low Fit Detected",
-            "Nestor recommends not applying. This role has a fundamental mismatch with your profile. Tailoring your CV is unlikely to change the outcome."
-        );
+        showModal("Low Fit Detected",
+        "Nestor recommends not applying. Tailoring CV is unlikely to change outcome.");
         return;
     }
 
-    // SOFT WARNING
     if(score < 60 || decision === "Consider"){
-        showModal(
-            "Stretch Role",
-            "This role is a partial match. Tailoring your CV may improve your chances, but stronger candidates may exist."
-        );
+        showModal("Stretch Role",
+        "This is a stretch role. Tailoring may help slightly.");
         return;
     }
 
-    // STRONG MATCH → no warning
     runAlec();
 }
 
