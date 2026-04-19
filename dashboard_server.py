@@ -111,8 +111,11 @@ def analyze_with_ai(cv_text, job_text):
     prompt = f"""
 You are simulating TWO perspectives:
 
-1. Recruiter (screening)
-2. Hiring Manager (decision)
+1. Recruiter (screening gatekeeper)
+2. Hiring Manager (final decision maker)
+
+Additionally:
+You are advising the CANDIDATE on what to do next.
 
 Return STRICT JSON:
 
@@ -123,6 +126,7 @@ Return STRICT JSON:
     "domain": "",
     "environment": ""
   }},
+
   "score": number,
   "decision": "Strong Match" | "Moderate Match" | "Weak Match",
   "hiring_signal": "High" | "Medium" | "Low",
@@ -151,10 +155,18 @@ Return STRICT JSON:
   "final_advice": ""
 }}
 
-Rules:
-- Be realistic and critical
+IMPORTANT RULES:
+- Recruiter view = screening perspective
+- Hiring manager view = delivery & trust perspective
+
+- Improvement Plan MUST be written TO THE CANDIDATE
+- Final Advice MUST be written TO THE CANDIDATE
+- NEVER give advice to employer or hiring team
+- NEVER say "seek candidates" or "refine job description"
+- Always speak directly to the person applying (use "you")
+
+- Be realistic, critical, and specific
 - Avoid generic statements
-- Keep recruiter and manager perspectives distinct
 
 CV:
 {cv_text}
@@ -192,8 +204,12 @@ JOB:
             "context": {},
             "recruiter_view": {},
             "hiring_manager_view": {},
-            "improvement_plan": {},
-            "final_advice": "Fallback response"
+            "improvement_plan": {
+                "priority_actions": ["Retry analysis"],
+                "quick_wins": [],
+                "strategic_changes": []
+            },
+            "final_advice": "Retry the analysis."
         }
 
         fallback["apply_recommendation"] = compute_recommendation(60, "Medium")
