@@ -21,23 +21,20 @@ input, textarea {
 
 button {
     padding: 10px 20px;
-    margin-top: 10px;
+    margin: 10px;
     background: #4da6ff;
     border: none;
     color: white;
     cursor: pointer;
 }
 
-#result {
+#result, #alecResult {
     margin-top: 30px;
     max-width: 900px;
     margin-left: auto;
     margin-right: auto;
     text-align: left;
-}
-
-.section {
-    margin-top: 25px;
+    white-space: pre-wrap;
 }
 
 hr {
@@ -51,20 +48,22 @@ hr {
 
 <h1>HiddenEdge</h1>
 
-<input type="file" id="cv_file">
-<br>
-
-<textarea id="job" rows="6" placeholder="Paste job description"></textarea>
-<br>
+<input type="file" id="cv_file"><br>
+<textarea id="job" rows="6" placeholder="Paste job description"></textarea><br>
 
 <button onclick="analyze()">Analyze</button>
+<button onclick="tailor()">✨ Improve CV (Alec)</button>
 
 <div id="result"></div>
+
+<hr>
+
+<h2>✨ Tailored CV Output</h2>
+<div id="alecResult"></div>
 
 <script>
 
 async function analyze(){
-
     const file = document.getElementById("cv_file").files[0];
     const job = document.getElementById("job").value;
 
@@ -79,82 +78,60 @@ async function analyze(){
     formData.append("cv_file", file);
     formData.append("job_description", job);
 
-    const res = await fetch("/analyze", {
-        method:"POST",
-        body: formData
-    });
-
+    const res = await fetch("/analyze", { method:"POST", body: formData });
     const data = await res.json();
 
     document.getElementById("result").innerHTML = `
-
         <h2>Score: ${data.score}</h2>
         <h3>${data.decision}</h3>
         <h3>Hiring Signal: ${data.hiring_signal}</h3>
 
-        <div class="section">
-            <h3>🎯 Recommendation</h3>
-            <p><strong>${data.apply_recommendation?.decision}</strong></p>
-            <p>${data.apply_recommendation?.reason}</p>
-        </div>
+        <h3>🎯 Recommendation</h3>
+        <p><strong>${data.apply_recommendation?.decision}</strong></p>
+        <p>${data.apply_recommendation?.reason}</p>
 
-        <div class="section">
-            <h3>🔁 Better-Fit Roles</h3>
-            <ul>${(data.better_fit_roles || []).map(x=>`<li>${x}</li>`).join("")}</ul>
-        </div>
+        <h3>🔁 Better-Fit Roles</h3>
+        <ul>${(data.better_fit_roles || []).map(x=>`<li>${x}</li>`).join("")}</ul>
 
         <hr>
 
-        <div class="section">
-            <h3>🧾 Recruiter View</h3>
-            <p><strong>Decision:</strong> ${data.recruiter_view?.screening_decision}</p>
-            <p><strong>Risk:</strong> ${data.recruiter_view?.risk_level}</p>
+        <h3>🧾 Recruiter View</h3>
+        <p>${data.recruiter_view?.verdict}</p>
 
-            <ul>${(data.recruiter_view?.observations || []).map(x=>`<li>${x}</li>`).join("")}</ul>
-
-            <p><strong>Concerns:</strong></p>
-            <ul>${(data.recruiter_view?.concerns || []).map(x=>`<li>${x}</li>`).join("")}</ul>
-
-            <p>${data.recruiter_view?.verdict}</p>
-        </div>
+        <h3>🧠 Hiring Manager View</h3>
+        <p>${data.hiring_manager_view?.verdict}</p>
 
         <hr>
 
-        <div class="section">
-            <h3>🧠 Hiring Manager View</h3>
-            <p><strong>Confidence:</strong> ${data.hiring_manager_view?.confidence_level}</p>
-
-            <ul>${(data.hiring_manager_view?.strengths || []).map(x=>`<li>${x}</li>`).join("")}</ul>
-
-            <p><strong>Concerns:</strong></p>
-            <ul>${(data.hiring_manager_view?.concerns || []).map(x=>`<li>${x}</li>`).join("")}</ul>
-
-            <p>${data.hiring_manager_view?.verdict}</p>
-        </div>
+        <h3>🚀 Improvement Plan</h3>
+        <ul>${(data.improvement_plan?.priority_actions || []).map(x=>`<li>${x}</li>`).join("")}</ul>
 
         <hr>
 
-        <div class="section">
-            <h3>🚀 How to Improve Your Chances</h3>
-
-            <p><strong>Priority Actions:</strong></p>
-            <ul>${(data.improvement_plan?.priority_actions || []).map(x=>`<li>${x}</li>`).join("")}</ul>
-
-            <p><strong>Quick Wins:</strong></p>
-            <ul>${(data.improvement_plan?.quick_wins || []).map(x=>`<li>${x}</li>`).join("")}</ul>
-
-            <p><strong>Strategic Changes:</strong></p>
-            <ul>${(data.improvement_plan?.strategic_changes || []).map(x=>`<li>${x}</li>`).join("")}</ul>
-        </div>
-
-        <hr>
-
-        <div class="section">
-            <h3>Final Advice</h3>
-            <p>${data.final_advice}</p>
-        </div>
-
+        <h3>Final Advice</h3>
+        <p>${data.final_advice}</p>
     `;
+}
+
+async function tailor(){
+    const file = document.getElementById("cv_file").files[0];
+    const job = document.getElementById("job").value;
+
+    if(!file || !job){
+        alert("Upload CV and job first");
+        return;
+    }
+
+    document.getElementById("alecResult").innerHTML = "Improving CV...";
+
+    const formData = new FormData();
+    formData.append("cv_file", file);
+    formData.append("job_description", job);
+
+    const res = await fetch("/tailor", { method:"POST", body: formData });
+    const data = await res.json();
+
+    document.getElementById("alecResult").innerText = data.tailored_cv;
 }
 
 </script>
