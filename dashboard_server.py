@@ -6,12 +6,36 @@ import os
 
 from docx import Document
 import PyPDF2
-
 from openai import OpenAI
+
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = Flask(__name__)
 cv_service = CVService()
+
+# =========================================
+# ROUTES (FORCED CLEAN)
+# =========================================
+
+@app.route("/")
+def landing():
+    return open("templates/landing.html").read()
+
+
+@app.route("/eula")
+def eula():
+    return open("templates/eula.html").read()
+
+
+@app.route("/email")
+def email():
+    return "<h1>Email step next</h1>"
+
+
+@app.route("/app")
+def app_page():
+    return open("templates/index.html").read()
+
 
 # =========================================
 # FILE EXTRACTION
@@ -55,26 +79,7 @@ def extract_text_from_file(filename, file_bytes):
 
 
 # =========================================
-# ROUTES (UPDATED)
-# =========================================
-
-@app.route("/")
-def landing():
-    return open("templates/landing.html").read()
-
-
-@app.route("/app")
-def index():
-    return open("templates/index.html").read()
-
-
-@app.route("/eula")
-def eula():
-    return "<h1>EULA page not implemented yet</h1>"
-
-
-# =========================================
-# UPLOAD CV
+# UPLOAD
 # =========================================
 
 @app.route("/upload_cv", methods=["POST"])
@@ -121,37 +126,8 @@ def upload_cv():
 
 
 # =========================================
-# ANALYZE
+# ANALYZE (TEMP LIMITED)
 # =========================================
-
-def compute_match_score(cv_text, job_text):
-
-    try:
-        prompt = f"""
-Evaluate how well this candidate matches the job.
-Return ONLY a number between 0 and 100.
-
-CV:
-{cv_text[:3000]}
-
-JOB:
-{job_text[:1500]}
-"""
-
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0
-        )
-
-        score_text = response.choices[0].message.content.strip()
-        score = int(''.join(filter(str.isdigit, score_text)))
-
-        return max(0, min(score, 100))
-
-    except:
-        return 50
-
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
@@ -160,37 +136,16 @@ def analyze():
     texts = data.get("texts", [])
     job_text = data.get("job_text", "")
 
-    combined_cv = "\n".join(texts)
+    combined = "\n".join(texts)
 
-    score = compute_match_score(combined_cv, job_text)
-
+    # TEMP STATIC SCORE (just to verify flow)
     return jsonify({
-        "match_score": score,
+        "match_score": 65,
         "confidence": "Medium",
         "final_decision": "TRY",
-        "recruiter_view": "Locked",
-        "hiring_manager_view": "Locked",
+        "recruiter_view": "LOCKED",
+        "hiring_manager_view": "LOCKED",
         "advice": "Upgrade required"
-    })
-
-
-# =========================================
-# TAILOR
-# =========================================
-
-@app.route("/tailor_cv", methods=["POST"])
-def tailor_cv():
-
-    data = request.json
-    texts = data.get("texts", [])
-    job_text = data.get("job_text", "")
-
-    master = cv_service.generate_master_cv(texts)
-    tailored = cv_service.tailor_cv_to_job(texts, job_text)
-
-    return jsonify({
-        "master_cv": master.get("cv", ""),
-        "tailored_cv": tailored.get("cv", "")
     })
 
 
