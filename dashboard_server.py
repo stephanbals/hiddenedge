@@ -10,6 +10,7 @@ import PyPDF2
 from openai import OpenAI
 import stripe
 
+# ===== CONFIG =====
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
@@ -35,8 +36,8 @@ def email():
 def app_page():
     return render_template("index.html")
 
-# 🚨 CRITICAL FIX: prevent caching
+# 🚨 FORCE NO CACHE
 @app.after_request
 def add_header(response):
-    response.headers["Cache-Control"] = "no-store"
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     return response

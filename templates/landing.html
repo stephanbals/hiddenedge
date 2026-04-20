@@ -10,9 +10,20 @@ body {
     background:black;
     color:white;
     text-align:center;
+    font-family:Arial;
 }
 
-/* 🌌 VERY VISIBLE */
+/* LOGO */
+.logo {
+    position:fixed;
+    top:15px;
+    left:20px;
+    font-size:20px;
+    font-weight:bold;
+    color:#9fd3ff;
+}
+
+/* 🌌 STRONG GALAXY */
 body::before {
     content:"";
     position:fixed;
@@ -27,7 +38,7 @@ body::before {
     z-index:-2;
 }
 
-/* ✨ OBVIOUS STARS */
+/* ✨ STARS */
 body::after {
     content:"";
     position:fixed;
@@ -46,7 +57,8 @@ body::after {
     to {opacity:1;}
 }
 
-img {
+/* ROBOTS */
+.robots img {
     width:200px;
     margin:20px;
 }
@@ -56,17 +68,25 @@ button {
     font-size:18px;
     background:#4da6ff;
     border:none;
+    cursor:pointer;
+    margin-top:20px;
 }
 </style>
 </head>
 
 <body>
 
-<img src="/static/robots/nestor.png">
-<img src="/static/robots/alec.png">
-<img src="/static/robots/helper.png">
+<div class="logo">HiddenEdge</div>
 
-<h2>Welcome to HiddenEdge — where your chances for successful job applications really come to life</h2>
+<div class="robots">
+    <img src="/static/robots/nestor.png">
+    <img src="/static/robots/alec.png">
+    <img src="/static/robots/helper.png">
+</div>
+
+<h2>
+Welcome to HiddenEdge — where your chances for successful job applications really come to life
+</h2>
 
 <h1>HiddenEdge</h1>
 

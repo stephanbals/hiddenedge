@@ -3,17 +3,49 @@
 <head>
 <title>EULA</title>
 <link rel="icon" href="/static/favicon.ico">
+
+<style>
+body {
+    margin:0;
+    background:black;
+    color:white;
+    text-align:center;
+    font-family:Arial;
+}
+
+.logo {
+    position:fixed;
+    top:15px;
+    left:20px;
+    color:#9fd3ff;
+}
+
+.container {
+    margin-top:120px;
+}
+
+button {
+    padding:12px 25px;
+    background:#4da6ff;
+    border:none;
+    cursor:pointer;
+}
+</style>
 </head>
 
-<body style="background:black; color:white; text-align:center;">
+<body>
 
-<h2>Terms</h2>
+<div class="logo">HiddenEdge</div>
 
-<input type="checkbox" id="agree"> I agree
+<div class="container">
+    <h2>Terms</h2>
 
-<br><br>
+    <input type="checkbox" id="agree"> I agree
 
-<button onclick="go()">Continue</button>
+    <br><br>
+
+    <button onclick="go()">Continue</button>
+</div>
 
 <script>
 function go() {
