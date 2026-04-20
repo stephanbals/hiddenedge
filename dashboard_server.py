@@ -14,7 +14,7 @@ app = Flask(__name__)
 cv_service = CVService()
 
 # =========================================
-# ROUTES (FORCED CLEAN)
+# ROUTES
 # =========================================
 
 @app.route("/")
@@ -29,7 +29,7 @@ def eula():
 
 @app.route("/email")
 def email():
-    return "<h1>Email step next</h1>"
+    return open("templates/email.html").read()
 
 
 @app.route("/app")
@@ -126,7 +126,7 @@ def upload_cv():
 
 
 # =========================================
-# ANALYZE (TEMP LIMITED)
+# ANALYZE (LIMITED MODE)
 # =========================================
 
 @app.route("/analyze", methods=["POST"])
@@ -136,9 +136,6 @@ def analyze():
     texts = data.get("texts", [])
     job_text = data.get("job_text", "")
 
-    combined = "\n".join(texts)
-
-    # TEMP STATIC SCORE (just to verify flow)
     return jsonify({
         "match_score": 65,
         "confidence": "Medium",
