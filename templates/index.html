@@ -12,19 +12,24 @@ body {
     font-family: Arial;
     background: radial-gradient(circle at center, #0b0f2a, #000);
     color: white;
-    text-align: center;
 }
 
 /* SCREENS */
 .screen {
     display: none;
-    padding: 40px;
     min-height: 100vh;
     position: relative;
+    padding: 40px 20px;
 }
 
 .active {
     display: block;
+}
+
+/* CENTER CONTAINER */
+.app-container {
+    max-width: 900px;
+    margin: auto;
 }
 
 /* LOGO */
@@ -43,17 +48,27 @@ body {
     background: #4da6ff;
 }
 
+/* SECTIONS */
+.section {
+    margin-top: 25px;
+}
+
+.section h3 {
+    margin-bottom: 10px;
+}
+
 /* INPUTS */
 input, textarea {
-    width: 400px;
-    margin: 10px;
+    width: 100%;
     padding: 10px;
+    border-radius: 6px;
+    border: none;
 }
 
 /* BUTTONS */
 button {
     padding: 10px 20px;
-    margin: 10px;
+    margin-top: 10px;
     background: #4da6ff;
     border: none;
     cursor: pointer;
@@ -71,9 +86,8 @@ button {
 
 /* FOOTER */
 .footer {
-    position: absolute;
-    bottom: 10px;
-    width: 100%;
+    text-align: center;
+    margin-top: 40px;
     font-size: 12px;
     color: #888;
 }
@@ -100,7 +114,6 @@ button {
     text-align: left;
 }
 
-/* CLOSE BUTTON */
 .close-btn {
     position: absolute;
     top: 10px;
@@ -118,102 +131,117 @@ button {
 
 <!-- LANDING -->
 <div id="landing" class="screen active">
-    <h1>HiddenEdge</h1>
+    <div class="app-container">
+        <h1>HiddenEdge</h1>
 
-    <p>
-        HiddenEdge helps you decide if a job is worth applying to.<br><br>
-        Jobseekers spend hours applying to roles where they are not a strong match.<br>
-        We help you understand your match score and improve your chances.
-    </p>
+        <p>
+            HiddenEdge helps you decide if a job is worth applying to.<br><br>
+            Jobseekers spend hours applying to roles where they are not a strong match.<br>
+            We help you understand your match score and improve your chances.
+        </p>
 
-    <button onclick="showEULA()">Start</button>
+        <button onclick="showEULA()">Start</button>
 
-    <div class="footer">
-        HiddenEdgeInfo@proton.me<br>
-        © 2026 HiddenEdge — All rights reserved
+        <div class="footer">
+            HiddenEdgeInfo@proton.me<br>
+            © 2026 HiddenEdge — All rights reserved
+        </div>
     </div>
 </div>
 
 <!-- EULA -->
 <div id="eula" class="screen">
-    <h2>Terms & Usage</h2>
+    <div class="app-container">
+        <h2>Terms & Usage</h2>
 
-    <p>
-        This tool uses AI to provide guidance based on the information you provide.<br><br>
+        <p>
+            This tool uses AI to provide guidance based on the information you provide.<br><br>
 
-        While we aim to deliver accurate and useful insights, all results are indicative only 
-        and should not be considered guaranteed outcomes or professional, legal, or career advice.<br><br>
+            While we aim to deliver accurate and useful insights, all results are indicative only 
+            and should not be considered guaranteed outcomes or professional, legal, or career advice.<br><br>
 
-        HiddenEdge makes no representations or warranties regarding the accuracy, completeness, 
-        or suitability of the information provided.<br><br>
+            HiddenEdge makes no representations or warranties regarding the accuracy, completeness, 
+            or suitability of the information provided.<br><br>
 
-        Users remain solely responsible for their application decisions and any actions taken 
-        based on the tool’s output.<br><br>
+            Users remain solely responsible for their application decisions and any actions taken 
+            based on the tool’s output.<br><br>
 
-        <strong>Payments & Subscriptions</strong><br><br>
+            <strong>Payments & Subscriptions</strong><br><br>
 
-        By purchasing access to HiddenEdge services, you agree to the following:<br><br>
+            - All payments are non-refundable.<br>
+            - Subscription services may be cancelled via HiddenEdgeInfo@proton.me.<br>
+            - Cancellation may take up to 30 days to take effect.<br>
+            - One final billing cycle may occur depending on timing.<br>
+        </p>
 
-        - All payments are non-refundable.<br>
-        - Subscription services may be cancelled at any time by contacting HiddenEdgeInfo@proton.me.<br>
-        - Cancellation will stop future billing, but may take up to 30 days to take effect.<br>
-        - You may be charged for one final billing cycle depending on your cancellation timing.<br>
-        - Continued access to the service will remain active until the end of the paid period.<br><br>
+        <input type="checkbox" id="agree">
+        I have read and agree to the Terms of Use
 
-        By using this tool, you acknowledge and accept these terms.
-    </p>
+        <br><br>
 
-    <input type="checkbox" id="agree"> 
-    I have read and agree to the Terms of Use
-    <br><br>
+        <button onclick="continueToEmail()">Continue</button>
 
-    <button onclick="continueToEmail()">Continue</button>
-
-    <div class="footer">
-        HiddenEdgeInfo@proton.me<br>
-        © 2026 HiddenEdge — All rights reserved
+        <div class="footer">
+            HiddenEdgeInfo@proton.me<br>
+            © 2026 HiddenEdge — All rights reserved
+        </div>
     </div>
 </div>
 
 <!-- EMAIL -->
 <div id="email" class="screen">
-    <h2>Enter your email</h2>
+    <div class="app-container">
+        <h2>Enter your email</h2>
 
-    <input type="email" id="userEmail" placeholder="your@email.com"><br>
+        <input type="email" id="userEmail" placeholder="your@email.com">
 
-    <button onclick="enterApp()">Enter Platform</button>
+        <button onclick="enterApp()">Enter Platform</button>
 
-    <div class="footer">
-        HiddenEdgeInfo@proton.me<br>
-        © 2026 HiddenEdge — All rights reserved
+        <div class="footer">
+            HiddenEdgeInfo@proton.me<br>
+            © 2026 HiddenEdge — All rights reserved
+        </div>
     </div>
 </div>
 
 <!-- MAIN APP -->
 <div id="app" class="screen">
+    <div class="app-container">
 
-    <h1>HiddenEdge</h1>
+        <h1>HiddenEdge</h1>
 
-    <button onclick="openTracker()">📋 My Applications</button><br>
+        <div class="section">
+            <button onclick="openTracker()">📋 My Applications</button>
+        </div>
 
-    <input type="file" id="cv_file"><br>
-    <textarea id="job" rows="6" placeholder="Paste job description"></textarea><br>
+        <div class="section">
+            <h3>Upload CV</h3>
+            <input type="file" id="cv_file">
+        </div>
 
-    <button onclick="analyze()">Analyze</button>
-    <button onclick="handleAlec()">✨ Improve CV</button>
+        <div class="section">
+            <h3>Job Description</h3>
+            <textarea id="job" rows="6"></textarea>
+        </div>
 
-    <div id="result"></div>
+        <div class="section">
+            <button onclick="analyze()">Analyze</button>
+            <button onclick="handleAlec()">✨ Improve CV</button>
+        </div>
 
-    <hr>
+        <div id="result"></div>
 
-    <h2>✨ Tailored CV</h2>
-    <div id="alecResult"></div>
+        <hr>
 
-    <div class="footer">
-        HiddenEdgeInfo@proton.me<br>
-        © 2026 HiddenEdge — All rights reserved
+        <h2>✨ Tailored CV</h2>
+        <div id="alecResult"></div>
+
+        <div class="footer">
+            HiddenEdgeInfo@proton.me<br>
+            © 2026 HiddenEdge — All rights reserved
+        </div>
+
     </div>
-
 </div>
 
 <!-- HELP MODAL -->
@@ -221,64 +249,54 @@ button {
     <div class="modal-content">
         <span class="close-btn" onclick="closeHelp()">✖</span>
         <h3>How to use HiddenEdge</h3>
-
         <p>
         1. Upload your CV<br>
         2. Paste the job description<br>
         3. Click Analyze<br>
-        4. Review your match score and recommendation<br>
-        5. Use “Improve CV” to tailor your application<br>
-        6. Track your applications using the tracker
+        4. Review your match score<br>
+        5. Improve your CV<br>
+        6. Track applications
         </p>
     </div>
 </div>
 
 <script>
 
-// ---------- SCREEN FLOW ----------
-
-function showEULA(){
-    switchScreen("eula");
-}
-
+// FLOW
+function showEULA(){ switchScreen("eula"); }
 function continueToEmail(){
     if(!document.getElementById("agree").checked){
-        alert("Please accept the Terms of Use to continue");
+        alert("Please accept the Terms of Use");
         return;
     }
     switchScreen("email");
 }
-
 function enterApp(){
     const email = document.getElementById("userEmail").value;
-    if(!email){
-        alert("Enter email");
-        return;
-    }
+    if(!email){ alert("Enter email"); return; }
     localStorage.setItem("userEmail", email);
     switchScreen("app");
 }
-
 function switchScreen(id){
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
     document.getElementById(id).classList.add("active");
 }
 
-// ---------- HELP ----------
+// HELP
+function openHelp(){ document.getElementById("helpModal").style.display="block"; }
+function closeHelp(){ document.getElementById("helpModal").style.display="none"; }
 
-function openHelp(){
-    document.getElementById("helpModal").style.display = "block";
-}
-
-function closeHelp(){
-    document.getElementById("helpModal").style.display = "none";
-}
-
-// ---------- ANALYZE ----------
-
+// ANALYZE
 async function analyze(){
     const file = document.getElementById("cv_file").files[0];
     const job = document.getElementById("job").value;
+
+    if(!file || !job){
+        alert("Upload CV and job description");
+        return;
+    }
+
+    document.getElementById("result").innerHTML = "Analyzing...";
 
     const formData = new FormData();
     formData.append("cv_file", file);
