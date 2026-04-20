@@ -1,348 +1,284 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>HiddenEdge</title>
-<link rel="icon" href="/static/favicon.ico">
+    <title>HiddenEdge</title>
 
-<style>
-body {
-    margin: 0;
-    font-family: Arial;
-    background: #0b0f2a;
-    color: white;
-    text-align: center;
-}
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #0b0f1a;
+            color: white;
+            overflow-x: hidden;
+        }
 
-/* SCREENS */
-.screen {
-    display: none;
-    padding: 60px 20px;
-    min-height: 100vh;
-}
-.active { display: block; }
+        textarea {
+            width: 100%;
+            height: 220px;
+            margin-top: 10px;
+            background: rgba(255,255,255,0.05);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 10px;
+        }
 
-/* CONTENT BOX */
-.box {
-    max-width: 700px;
-    margin: auto;
-}
+        button {
+            padding: 10px 15px;
+            margin-top: 10px;
+            cursor: pointer;
+            background: #1f6feb;
+            color: white;
+            border: none;
+        }
 
-/* INPUTS */
-input, textarea {
-    width: 100%;
-    margin: 10px 0;
-    padding: 10px;
-}
+        .container {
+            display: flex;
+            gap: 20px;
+        }
 
-/* BUTTONS */
-button {
-    padding: 10px 20px;
-    margin-top: 15px;
-    background: #4da6ff;
-    border: none;
-    cursor: pointer;
-}
+        .box {
+            width: 50%;
+        }
 
-/* RESULT */
-#result {
-    margin-top: 30px;
-    text-align: left;
-}
+        .bar-container {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
 
-/* CHECKBOX */
-.checkbox {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 20px;
-}
+        .bar {
+            height: 20px;
+            width: 0%;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+        }
 
-/* FOOTER */
-.footer {
-    position: absolute;
-    bottom: 10px;
-    width: 100%;
-    font-size: 12px;
-    color: #aaa;
-}
+        /* ===== SPACE BACKGROUND ===== */
 
-/* HELP BUTTON */
-.help-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-}
+        #space-bg {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            background: radial-gradient(ellipse at bottom, #0b0f1a 0%, #05070d 100%);
+        }
 
-/* MODAL */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 2000;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.7);
-}
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            opacity: 0.8;
+            border-radius: 50%;
+        }
 
-.modal-content {
-    background: #1a1f3d;
-    margin: 8% auto;
-    padding: 20px;
-    width: 600px;
-    border-radius: 10px;
-    text-align: left;
-    position: relative;
-}
+        #milkyway {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+            background: radial-gradient(ellipse at center,
+                rgba(255,255,255,0.08) 0%,
+                rgba(255,255,255,0.04) 20%,
+                rgba(255,255,255,0.01) 40%,
+                transparent 60%);
+            transform: rotate(25deg);
+            filter: blur(40px);
+        }
 
-.close-btn {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    cursor: pointer;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-td, th {
-    border: 1px solid #444;
-    padding: 8px;
-}
-</style>
+        /* Dim background when results active */
+        .results-active #space-bg {
+            opacity: 0.15;
+        }
+    </style>
 </head>
 
 <body>
 
-<button class="help-btn" onclick="openHelp()">Help</button>
-
-<!-- LANDING -->
-<div id="landing" class="screen active">
-    <div class="box">
-        <h1>HiddenEdge</h1>
-
-        <p>
-            Decide if a job is worth applying to — before you waste time.<br><br>
-            HiddenEdge analyzes your CV against job descriptions,<br>
-            shows your real match, and helps you improve your chances.
-        </p>
-
-        <button onclick="showEULA()">Start</button>
-    </div>
-
-    <div class="footer">HiddenEdgeInfo@proton.me</div>
+<!-- 🌌 SPACE BACKGROUND -->
+<div id="space-bg">
+    <div id="milkyway"></div>
 </div>
 
-<!-- EULA -->
-<div id="eula" class="screen">
-    <div class="box">
+<h2>Upload CV(s)</h2>
 
-        <h2>Before you continue</h2>
+<input type="file" id="file" multiple>
+<button onclick="upload()">Upload</button>
 
-        <p>
-            HiddenEdge uses AI to analyze your CV and provide guidance.<br><br>
-            Results are indicative and not guaranteed.<br>
-            You remain responsible for your decisions.
-        </p>
-
-        <div class="checkbox">
-            <input type="checkbox" id="agree">
-            <label for="agree">I understand and agree</label>
-        </div>
-
-        <button onclick="continueToEmail()">Continue</button>
-    </div>
-
-    <div class="footer">HiddenEdgeInfo@proton.me</div>
+<div class="bar-container">
+    <div id="uploadBar" class="bar"></div>
 </div>
 
-<!-- EMAIL -->
-<div id="email" class="screen">
-    <div class="box">
+<h2>Job Description</h2>
+<textarea id="job"></textarea>
+<button onclick="tailor()">Analyze</button>
 
-        <h2>Enter your email</h2>
-
-        <p>
-            We use your email to store your session and improve your experience.<br>
-            No spam. No sharing.
-        </p>
-
-        <input type="email" id="userEmail" placeholder="your@email.com">
-
-        <button onclick="enterApp()">Enter Platform</button>
-    </div>
-
-    <div class="footer">HiddenEdgeInfo@proton.me</div>
+<div class="bar-container">
+    <div id="tailorBar" class="bar"></div>
 </div>
 
-<!-- APP -->
-<div id="app" class="screen">
+<h2>Compare (Delta)</h2>
+
+<div class="container">
+    <div class="box">
+        <h3>Master CV</h3>
+        <textarea id="master"></textarea>
+    </div>
 
     <div class="box">
-
-        <h2>Analyze Your CV</h2>
-
-        <button onclick="openTracker()">📋 My Applications</button><br>
-
-        <input type="file" id="cv_file"><br>
-        <textarea id="job" rows="6" placeholder="Paste job description"></textarea><br>
-
-        <button onclick="analyze()">Analyze</button>
-
-        <div id="result"></div>
-
-    </div>
-
-    <div class="footer">HiddenEdgeInfo@proton.me</div>
-</div>
-
-<!-- HELP MODAL -->
-<div id="helpModal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="closeHelp()">✖</span>
-        <h3>How to use HiddenEdge</h3>
-        <p>
-        1. Upload your CV<br>
-        2. Paste job description<br>
-        3. Click Analyze<br>
-        4. Review match + recommendation<br>
-        5. Track applications
-        </p>
+        <h3>Tailored CV (Editable)</h3>
+        <textarea id="tailored"></textarea>
     </div>
 </div>
 
-<!-- TRACKER -->
-<div id="trackerModal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="closeTracker()">✖</span>
-        <h3>📋 My Applications</h3>
-
-        <p style="font-size:12px;color:#aaa;">
-        Stored on this device
-        </p>
-
-        <table id="trackerTable"></table>
-    </div>
-</div>
+<br>
+<button onclick="download()">Download Tailored CV</button>
 
 <script>
 
-/* SAFE HELPERS */
-function safe(val, fallback=""){ return val ?? fallback; }
-function safeArray(arr){ return Array.isArray(arr) ? arr : []; }
+let texts = [];
 
-/* FLOW */
-function showEULA(){ switchScreen("eula"); }
+/* ===== STAR GENERATION ===== */
 
-function continueToEmail(){
-    if(!document.getElementById("agree").checked){
-        alert("Please agree first"); return;
+function generateStars(count = 150) {
+    const container = document.getElementById("space-bg");
+
+    for (let i = 0; i < count; i++) {
+        let star = document.createElement("div");
+        star.className = "star";
+
+        star.style.top = Math.random() * 100 + "%";
+        star.style.left = Math.random() * 100 + "%";
+        star.style.opacity = Math.random();
+
+        container.appendChild(star);
     }
-    switchScreen("email");
 }
 
-function enterApp(){
-    const email = document.getElementById("userEmail").value;
-    if(!email){ alert("Enter email"); return; }
-    switchScreen("app");
+generateStars();
+
+/* ===== UI HELPERS ===== */
+
+function setBar(id, val) {
+    document.getElementById(id).style.width = val + "%";
 }
 
-function switchScreen(id){
-    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-    document.getElementById(id).classList.add("active");
-}
+/* ===== UPLOAD ===== */
 
-/* HELP */
-function openHelp(){ document.getElementById("helpModal").style.display="block"; }
-function closeHelp(){ document.getElementById("helpModal").style.display="none"; }
+function upload() {
 
-/* TRACKER */
-function openTracker(){
-    document.getElementById("trackerModal").style.display="block";
-    loadTracker();
-}
-function closeTracker(){
-    document.getElementById("trackerModal").style.display="none";
-}
+    let files = document.getElementById("file").files;
 
-function loadTracker(){
-    let apps = JSON.parse(localStorage.getItem("apps") || "[]");
-    let table = document.getElementById("trackerTable");
+    if (!files.length) {
+        alert("Select at least one file");
+        return;
+    }
 
-    table.innerHTML = "<tr><th>Date</th><th>Job</th><th>Action</th></tr>";
+    let form = new FormData();
 
-    apps.forEach((a,i)=>{
-        table.innerHTML += `
-        <tr>
-            <td>${safe(a.date)}</td>
-            <td>${safe(a.job)}</td>
-            <td><button onclick="deleteApp(${i})">Delete</button></td>
-        </tr>`;
+    for (let i = 0; i < files.length; i++) {
+        form.append("files", files[i]);
+    }
+
+    setBar("uploadBar", 20);
+
+    fetch("/upload_cv", {
+        method: "POST",
+        body: form
+    })
+    .then(r => r.json())
+    .then(data => {
+
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+
+        texts = data.texts || [];
+        document.getElementById("master").value = data.master_cv || "";
+
+        setBar("uploadBar", 100);
     });
 }
 
-function deleteApp(i){
-    let apps = JSON.parse(localStorage.getItem("apps") || "[]");
-    apps.splice(i,1);
-    localStorage.setItem("apps", JSON.stringify(apps));
-    loadTracker();
-}
+/* ===== ANALYZE ===== */
 
-/* ANALYZE */
+function tailor() {
 
-let lastJob = "";
+    let job = document.getElementById("job").value;
 
-async function analyze(){
-
-    const file = document.getElementById("cv_file").files[0];
-    const job = document.getElementById("job").value;
-
-    if(!file || !job){
-        alert("Upload CV + job"); return;
+    if (!texts.length) {
+        alert("Upload CV first");
+        return;
     }
 
-    lastJob = job.split("\n")[0];
+    if (!job) {
+        alert("Paste job description");
+        return;
+    }
 
-    const formData = new FormData();
-    formData.append("cv_file", file);
-    formData.append("job_description", job);
+    // 🔥 Dim background when analysis starts
+    document.body.classList.add("results-active");
 
-    const res = await fetch("/analyze", { method:"POST", body: formData });
-    const data = await res.json();
+    let progress = 10;
+    let interval = setInterval(() => {
+        if (progress < 90) {
+            progress += 10;
+            setBar("tailorBar", progress);
+        }
+    }, 200);
 
-    document.getElementById("result").innerHTML = `
-        <h2>Score: ${safe(data.score,"-")}</h2>
-        <h3>${safe(data.decision)}</h3>
+    fetch("/tailor_cv", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            texts: texts,
+            job_text: job
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
 
-        <h3>🎯 Recommendation</h3>
-        <p>${safe(data.apply_recommendation?.decision)}</p>
+        clearInterval(interval);
+        setBar("tailorBar", 100);
 
-        <button onclick="saveApplication()">Apply</button>
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
 
-        <h3>🧾 Recruiter</h3>
-        <p>${safe(data.recruiter_view?.verdict)}</p>
-
-        <h3>🧠 Hiring Manager</h3>
-        <p>${safe(data.hiring_manager_view?.verdict)}</p>
-
-        <h3>⚠️ Gaps</h3>
-        <ul>${safeArray(data.gaps).map(g=>`<li>${g}</li>`).join("")}</ul>
-
-        <h3>🚀 Improvements</h3>
-        <ul>${safeArray(data.improvements).map(i=>`<li>${i}</li>`).join("")}</ul>
-    `;
+        document.getElementById("master").value = data.master_cv || "";
+        document.getElementById("tailored").value = data.tailored_cv || "";
+    });
 }
 
-function saveApplication(){
-    let apps = JSON.parse(localStorage.getItem("apps") || "[]");
+/* ===== DOWNLOAD ===== */
 
-    apps.push({
-        date: new Date().toLocaleDateString(),
-        job: lastJob
+function download() {
+
+    let cv = document.getElementById("tailored").value;
+
+    if (!cv) {
+        alert("No CV to download");
+        return;
+    }
+
+    fetch("/download_cv", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ cv: cv })
+    })
+    .then(res => res.blob())
+    .then(blob => {
+        let url = window.URL.createObjectURL(blob);
+        let a = document.createElement("a");
+        a.href = url;
+        a.download = "Tailored_CV.docx";
+        a.click();
     });
-
-    localStorage.setItem("apps", JSON.stringify(apps));
-    alert("Saved to tracker");
 }
 
 </script>
