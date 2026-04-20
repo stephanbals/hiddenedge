@@ -19,7 +19,7 @@ app = Flask(__name__)
 cv_service = CVService()
 
 # =========================================
-# DOMAIN DETECTION ENGINE
+# DOMAIN DETECTION
 # =========================================
 
 DOMAIN_KEYWORDS = {
@@ -44,6 +44,34 @@ def detect_domain(text):
         return "unknown"
 
     return best_domain
+
+
+# =========================================
+# CONTEXT MESSAGE ENGINE
+# =========================================
+
+def build_context(score, cv_domain, job_domain):
+
+    if cv_domain != job_domain and cv_domain != "unknown" and job_domain != "unknown":
+        return f"Strong domain mismatch detected ({cv_domain} vs {job_domain})"
+
+    if score < 20:
+        return "Very low alignment with core role requirements"
+
+    elif score < 40:
+        return "Limited overlap with role expectations"
+
+    elif score < 60:
+        return "Partial alignment — significant gaps present"
+
+    elif score < 75:
+        return "Good alignment with some gaps"
+
+    elif score < 90:
+        return "Strong alignment with minor gaps"
+
+    else:
+        return "Excellent fit for the role"
 
 
 # =========================================
@@ -178,7 +206,7 @@ def upload_cv():
 
 
 # =========================================
-# ANALYZE (DOMAIN-AWARE)
+# ANALYZE (WITH CONTEXT LINE)
 # =========================================
 
 @app.route("/analyze", methods=["POST"])
@@ -190,19 +218,22 @@ def analyze():
 
     combined_cv = "\n".join(texts)
 
-    # DOMAIN DETECTION
     cv_domain = detect_domain(combined_cv)
     job_domain = detect_domain(job_text)
 
     # HARD DOMAIN MISMATCH
     if cv_domain != "unknown" and job_domain != "unknown" and cv_domain != job_domain:
+        score = 3
+        context = build_context(score, cv_domain, job_domain)
+
         return jsonify({
-            "match_score": 3,
+            "match_score": score,
+            "context_line": context,
             "confidence": "High",
             "final_decision": "DO NOT APPLY",
-            "recruiter_view": f"Domain mismatch: CV is {cv_domain}, job is {job_domain}.",
-            "hiring_manager_view": "Candidate does not meet baseline professional domain.",
-            "advice": "Do not apply. This role requires a fundamentally different professional background."
+            "recruiter_view": "Domain mismatch detected.",
+            "hiring_manager_view": "Candidate does not meet baseline requirements.",
+            "advice": "Do not apply."
         })
 
     # AI SCORING
@@ -211,11 +242,6 @@ def analyze():
 You are a strict recruiter.
 
 Score match between CV and job from 0 to 100.
-
-Be realistic:
-- Different professions = near 0
-- Partial overlap = medium
-- Strong alignment = high
 
 CV:
 {combined_cv[:3000]}
@@ -237,8 +263,11 @@ Return ONLY a number.
     except:
         score = 50
 
+    context = build_context(score, cv_domain, job_domain)
+
     return jsonify({
         "match_score": max(0, min(score, 100)),
+        "context_line": context,
         "confidence": "Medium",
         "final_decision": "TRY",
         "recruiter_view": "Locked",
