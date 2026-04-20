@@ -5,11 +5,52 @@
 
     <style>
         body {
-            margin: 0;
+            margin: 30px;
             font-family: Arial;
             background: black;
             color: white;
             overflow-x: hidden;
+        }
+
+        textarea {
+            width: 100%;
+            height: 220px;
+            margin-top: 10px;
+            background: rgba(255,255,255,0.05);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 10px;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin-top: 10px;
+            cursor: pointer;
+            background: #1f6feb;
+            color: white;
+            border: none;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .box {
+            width: 50%;
+        }
+
+        .bar-container {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .bar {
+            height: 20px;
+            width: 0%;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
         }
 
         /* ===== STARFIELD ===== */
@@ -20,7 +61,7 @@
             height: 100%;
             top: 0;
             left: 0;
-            z-index: 0;
+            z-index: -1;
             background: black;
         }
 
@@ -37,57 +78,69 @@
             height: 200%;
             top: -50%;
             left: -50%;
-            background: radial-gradient(circle, rgba(255,255,255,0.15), transparent 60%);
+            background: radial-gradient(circle,
+                rgba(255,255,255,0.15) 0%,
+                rgba(255,255,255,0.05) 30%,
+                transparent 60%);
             transform: rotate(25deg);
+            filter: blur(30px);
         }
 
-        /* CONTENT ABOVE STARS */
-        .content {
-            position: relative;
-            z-index: 2;
-            padding: 30px;
+        /* Dim after analysis */
+        .results-active #space-bg {
+            opacity: 0.2;
         }
 
-        textarea {
-            width: 100%;
-            height: 220px;
-            margin-top: 10px;
-        }
-
-        button {
-            padding: 10px 15px;
-            margin-top: 10px;
-            cursor: pointer;
-        }
     </style>
 </head>
 
 <body>
 
+<!-- ⭐ BACKGROUND -->
 <div id="space-bg">
     <div id="milkyway"></div>
 </div>
-
-<div class="content">
 
 <h2>Upload CV(s)</h2>
 
 <input type="file" id="file" multiple>
 <button onclick="upload()">Upload</button>
 
+<div class="bar-container">
+    <div id="uploadBar" class="bar"></div>
+</div>
+
 <h2>Job Description</h2>
 <textarea id="job"></textarea>
-<button onclick="analyze()">Analyze</button>
+<button onclick="tailor()">Analyze</button>
 
-<h2>Results</h2>
-
-<div id="results"></div>
-
+<div class="bar-container">
+    <div id="tailorBar" class="bar"></div>
 </div>
+
+<h2>Compare (Delta)</h2>
+
+<div class="container">
+    <div class="box">
+        <h3>Master CV</h3>
+        <textarea id="master"></textarea>
+    </div>
+
+    <div class="box">
+        <h3>Tailored CV (Editable)</h3>
+        <textarea id="tailored"></textarea>
+    </div>
+</div>
+
+<br>
+<button onclick="download()">Download Tailored CV</button>
 
 <script>
 
-/* ===== FORCE STAR VISIBILITY ===== */
+let texts = [];
+
+/* ===== STAR GENERATION (FORCED VISIBLE) ===== */
+
 function generateStars(count = 300) {
     const container = document.getElementById("space-bg");
 
@@ -104,12 +157,22 @@ function generateStars(count = 300) {
 
 window.onload = generateStars;
 
-let texts = [];
+/* ===== UI HELPERS ===== */
+
+function setBar(id, val) {
+    document.getElementById(id).style.width = val + "%";
+}
 
 /* ===== UPLOAD ===== */
 
 function upload() {
+
     let files = document.getElementById("file").files;
+
+    if (!files.length) {
+        alert("Select at least one file");
+        return;
+    }
 
     let form = new FormData();
 
@@ -117,23 +180,55 @@ function upload() {
         form.append("files", files[i]);
     }
 
+    setBar("uploadBar", 20);
+
     fetch("/upload_cv", {
         method: "POST",
         body: form
     })
     .then(r => r.json())
     .then(data => {
+
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+
         texts = data.texts || [];
+        document.getElementById("master").value = data.master_cv || "";
+
+        setBar("uploadBar", 100);
     });
 }
 
 /* ===== ANALYZE ===== */
 
-function analyze() {
+function tailor() {
 
     let job = document.getElementById("job").value;
 
-    fetch("/analyze", {
+    if (!texts.length) {
+        alert("Upload CV first");
+        return;
+    }
+
+    if (!job) {
+        alert("Paste job description");
+        return;
+    }
+
+    // 🔥 dim background when analysis starts
+    document.body.classList.add("results-active");
+
+    let progress = 10;
+    let interval = setInterval(() => {
+        if (progress < 90) {
+            progress += 10;
+            setBar("tailorBar", progress);
+        }
+    }, 200);
+
+    fetch("/tailor_cv", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
@@ -144,20 +239,42 @@ function analyze() {
     .then(r => r.json())
     .then(data => {
 
-        document.getElementById("results").innerHTML = `
-            <h2>Score: ${data.match_score}</h2>
+        clearInterval(interval);
+        setBar("tailorBar", 100);
 
-            <h3>${data.final_decision}</h3>
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
 
-            <h3>Recruiter View</h3>
-            <p>${data.recruiter_view}</p>
+        document.getElementById("master").value = data.master_cv || "";
+        document.getElementById("tailored").value = data.tailored_cv || "";
+    });
+}
 
-            <h3>Hiring Manager View</h3>
-            <p>${data.hiring_manager_view}</p>
+/* ===== DOWNLOAD ===== */
 
-            <h3>Advice</h3>
-            <p>${data.advice}</p>
-        `;
+function download() {
+
+    let cv = document.getElementById("tailored").value;
+
+    if (!cv) {
+        alert("No CV to download");
+        return;
+    }
+
+    fetch("/download_cv", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ cv: cv })
+    })
+    .then(res => res.blob())
+    .then(blob => {
+        let url = window.URL.createObjectURL(blob);
+        let a = document.createElement("a");
+        a.href = url;
+        a.download = "Tailored_CV.docx";
+        a.click();
     });
 }
 
