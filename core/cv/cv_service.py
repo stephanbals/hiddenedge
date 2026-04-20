@@ -10,6 +10,10 @@ if not OPENAI_API_KEY:
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 
+# =========================================
+# EXISTING FUNCTION (UNCHANGED)
+# =========================================
+
 def tailor_cv(texts, job, evaluation):
     """
     Takes:
@@ -50,7 +54,7 @@ Provide the improved CV only.
 """
 
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",  # stable & available
+            model="gpt-4.1-mini",
             messages=[
                 {"role": "user", "content": prompt}
             ],
@@ -67,3 +71,30 @@ Provide the improved CV only.
     except Exception as e:
         print("❌ OpenAI CV generation failed:", str(e))
         raise
+
+
+# =========================================
+# REQUIRED CLASS (NEW — WRAPPER ONLY)
+# =========================================
+
+class CVService:
+
+    def generate_master_cv(self, texts):
+        """
+        Simple aggregation of CV inputs
+        (keeps your existing behavior intact)
+        """
+        return {"cv": "\n\n".join(texts)}
+
+    def tailor_cv_to_job(self, texts, job_text):
+        """
+        Uses existing tailor_cv function
+        """
+        combined_cv = "\n\n".join(texts)
+
+        # Minimal evaluation placeholder (safe)
+        evaluation = "Initial match analysis placeholder"
+
+        improved = tailor_cv(combined_cv, job_text, evaluation)
+
+        return {"cv": improved}
