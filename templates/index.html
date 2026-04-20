@@ -1,204 +1,301 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>HiddenEdge</title>
+<meta charset="UTF-8">
+<title>HiddenEdge</title>
 
-    <style>
-        body {
-            margin: 30px;
-            font-family: Arial;
-            background: black;
-            color: white;
-        }
+<link rel="icon" href="/static/favicon.ico">
 
-        textarea {
-            width: 100%;
-            height: 200px;
-            margin-top: 10px;
-            background: rgba(255,255,255,0.05);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.2);
-            padding: 10px;
-        }
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: radial-gradient(circle at center, #0b0f2a, #000);
+    color: white;
+    text-align: center;
+}
 
-        button {
-            padding: 10px 15px;
-            margin-top: 10px;
-            cursor: pointer;
-            background: #1f6feb;
-            color: white;
-            border: none;
-        }
+/* SCREENS */
+.screen {
+    display: none;
+    padding: 40px;
+    min-height: 100vh;
+    position: relative;
+}
 
-        .topbar {
-            margin-bottom: 20px;
-            padding: 10px;
-            background: rgba(255,255,255,0.05);
-        }
+.active {
+    display: block;
+}
 
-        .uses {
-            color: #aaa;
-        }
+/* LOGO */
+.logo {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 80px;
+}
 
-        #analysisResults {
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(255,255,255,0.05);
-        }
+/* HELP BUTTON */
+.help-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: #4da6ff;
+}
 
-        .upgrade {
-            margin-top: 20px;
-            padding: 15px;
-            background: rgba(255,255,255,0.05);
-        }
+/* INPUTS */
+input, textarea {
+    width: 400px;
+    margin: 10px;
+    padding: 10px;
+}
 
-        .footer {
-            margin-top: 50px;
-            text-align: center;
-            font-size: 12px;
-            color: #777;
-        }
-    </style>
+/* BUTTONS */
+button {
+    padding: 10px 20px;
+    margin: 10px;
+    background: #4da6ff;
+    border: none;
+    cursor: pointer;
+}
+
+/* CONTENT */
+#result, #alecResult {
+    margin-top: 30px;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
+    white-space: pre-wrap;
+}
+
+/* FOOTER */
+.footer {
+    position: absolute;
+    bottom: 10px;
+    width: 100%;
+    font-size: 12px;
+    color: #888;
+}
+
+/* MODALS */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+}
+
+.modal-content {
+    background: #1a1f3d;
+    margin: 8% auto;
+    padding: 20px;
+    width: 500px;
+    border-radius: 10px;
+    position: relative;
+    text-align: left;
+}
+
+/* CLOSE BUTTON */
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    cursor: pointer;
+    font-size: 18px;
+}
+</style>
 </head>
 
 <body>
 
-<div class="topbar">
-    <div id="userEmail"></div>
-    <div class="uses" id="usesDisplay"></div>
+<img src="/static/logo.png" class="logo">
+<button class="help-btn" onclick="openHelp()">Help</button>
+
+<!-- LANDING -->
+<div id="landing" class="screen active">
+    <h1>HiddenEdge</h1>
+
+    <p>
+        HiddenEdge helps you decide if a job is worth applying to.<br><br>
+        Jobseekers spend hours applying to roles where they are not a strong match.<br>
+        We help you understand your match score and improve your chances.
+    </p>
+
+    <button onclick="showEULA()">Start</button>
+
+    <div class="footer">
+        HiddenEdgeInfo@proton.me<br>
+        © 2026 HiddenEdge — All rights reserved
+    </div>
 </div>
 
-<h2>Upload CV(s)</h2>
-<input type="file" id="file" multiple>
-<button onclick="upload()">Upload</button>
+<!-- EULA -->
+<div id="eula" class="screen">
+    <h2>Terms & Usage</h2>
 
-<h2>Job Description</h2>
-<textarea id="job"></textarea>
-<button onclick="analyze()">Analyze</button>
+    <p>
+        This tool uses AI to provide guidance based on the information you provide.<br><br>
 
-<div id="analysisResults"></div>
+        While we aim to deliver accurate and useful insights, all results are indicative only 
+        and should not be considered guaranteed outcomes or professional, legal, or career advice.<br><br>
 
-<div class="footer">
-    For contact please email to HiddenEdgeInfo@proton.me<br>
-    HiddenEdge, all rights reserved 2026 (C)
+        HiddenEdge makes no representations or warranties regarding the accuracy, completeness, 
+        or suitability of the information provided.<br><br>
+
+        Users remain solely responsible for their application decisions and any actions taken 
+        based on the tool’s output.<br><br>
+
+        <strong>Payments & Subscriptions</strong><br><br>
+
+        By purchasing access to HiddenEdge services, you agree to the following:<br><br>
+
+        - All payments are non-refundable.<br>
+        - Subscription services may be cancelled at any time by contacting HiddenEdgeInfo@proton.me.<br>
+        - Cancellation will stop future billing, but may take up to 30 days to take effect.<br>
+        - You may be charged for one final billing cycle depending on your cancellation timing.<br>
+        - Continued access to the service will remain active until the end of the paid period.<br><br>
+
+        By using this tool, you acknowledge and accept these terms.
+    </p>
+
+    <input type="checkbox" id="agree"> 
+    I have read and agree to the Terms of Use
+    <br><br>
+
+    <button onclick="continueToEmail()">Continue</button>
+
+    <div class="footer">
+        HiddenEdgeInfo@proton.me<br>
+        © 2026 HiddenEdge — All rights reserved
+    </div>
+</div>
+
+<!-- EMAIL -->
+<div id="email" class="screen">
+    <h2>Enter your email</h2>
+
+    <input type="email" id="userEmail" placeholder="your@email.com"><br>
+
+    <button onclick="enterApp()">Enter Platform</button>
+
+    <div class="footer">
+        HiddenEdgeInfo@proton.me<br>
+        © 2026 HiddenEdge — All rights reserved
+    </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" class="screen">
+
+    <h1>HiddenEdge</h1>
+
+    <button onclick="openTracker()">📋 My Applications</button><br>
+
+    <input type="file" id="cv_file"><br>
+    <textarea id="job" rows="6" placeholder="Paste job description"></textarea><br>
+
+    <button onclick="analyze()">Analyze</button>
+    <button onclick="handleAlec()">✨ Improve CV</button>
+
+    <div id="result"></div>
+
+    <hr>
+
+    <h2>✨ Tailored CV</h2>
+    <div id="alecResult"></div>
+
+    <div class="footer">
+        HiddenEdgeInfo@proton.me<br>
+        © 2026 HiddenEdge — All rights reserved
+    </div>
+
+</div>
+
+<!-- HELP MODAL -->
+<div id="helpModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeHelp()">✖</span>
+        <h3>How to use HiddenEdge</h3>
+
+        <p>
+        1. Upload your CV<br>
+        2. Paste the job description<br>
+        3. Click Analyze<br>
+        4. Review your match score and recommendation<br>
+        5. Use “Improve CV” to tailor your application<br>
+        6. Track your applications using the tracker
+        </p>
+    </div>
 </div>
 
 <script>
 
-let texts = [];
-let userEmail = "";
+// ---------- SCREEN FLOW ----------
 
-/* ===== INIT ===== */
-
-function init() {
-    userEmail = localStorage.getItem("hiddenedge_email") || "User";
-    document.getElementById("userEmail").innerText = userEmail;
-    updateUsesDisplay();
+function showEULA(){
+    switchScreen("eula");
 }
 
-/* ===== USAGE ===== */
-
-function getKey() {
-    return "hiddenedge_uses_" + userEmail;
-}
-
-function getUses() {
-    return parseInt(localStorage.getItem(getKey()) || "0");
-}
-
-function incrementUses() {
-    let uses = getUses() + 1;
-    localStorage.setItem(getKey(), uses.toString());
-}
-
-function remainingUses() {
-    return 3 - getUses();
-}
-
-function updateUsesDisplay() {
-    let remaining = remainingUses();
-    document.getElementById("usesDisplay").innerText =
-        remaining > 0
-        ? `${remaining} free analyses remaining`
-        : "Free limit reached — upgrade required";
-}
-
-/* ===== UPLOAD ===== */
-
-function upload() {
-    let files = document.getElementById("file").files;
-
-    let form = new FormData();
-    for (let i = 0; i < files.length; i++) {
-        form.append("files", files[i]);
-    }
-
-    fetch("/upload_cv", {
-        method: "POST",
-        body: form
-    })
-    .then(r => r.json())
-    .then(data => {
-        texts = data.texts || [];
-    });
-}
-
-/* ===== ANALYZE ===== */
-
-function analyze() {
-
-    let job = document.getElementById("job").value;
-
-    if (!texts.length || !job) {
-        alert("Upload CV and enter job description");
+function continueToEmail(){
+    if(!document.getElementById("agree").checked){
+        alert("Please accept the Terms of Use to continue");
         return;
     }
+    switchScreen("email");
+}
 
-    // 🔥 CLEAR OLD RESULT + SHOW LOADING
-    document.getElementById("analysisResults").innerHTML = `
-        <p>Analyzing...</p>
+function enterApp(){
+    const email = document.getElementById("userEmail").value;
+    if(!email){
+        alert("Enter email");
+        return;
+    }
+    localStorage.setItem("userEmail", email);
+    switchScreen("app");
+}
+
+function switchScreen(id){
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+}
+
+// ---------- HELP ----------
+
+function openHelp(){
+    document.getElementById("helpModal").style.display = "block";
+}
+
+function closeHelp(){
+    document.getElementById("helpModal").style.display = "none";
+}
+
+// ---------- ANALYZE ----------
+
+async function analyze(){
+    const file = document.getElementById("cv_file").files[0];
+    const job = document.getElementById("job").value;
+
+    const formData = new FormData();
+    formData.append("cv_file", file);
+    formData.append("job_description", job);
+
+    const res = await fetch("/analyze", { method:"POST", body: formData });
+    const data = await res.json();
+
+    document.getElementById("result").innerHTML = `
+        <h2>Score: ${data.score}</h2>
+        <h3>${data.apply_recommendation?.decision}</h3>
     `;
-
-    fetch("/analyze", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            texts: texts,
-            job_text: job
-        })
-    })
-    .then(r => r.json())
-    .then(data => {
-
-        // ONLY increment AFTER success
-        if (remainingUses() > 0) {
-            incrementUses();
-        }
-
-        updateUsesDisplay();
-
-        document.getElementById("analysisResults").innerHTML = `
-            <h2>Match Score: ${data.match_score}%</h2>
-            <p>${data.context_line || ""}</p>
-
-            <div class="upgrade">
-                <p>
-                    Unlock full recruiter & hiring manager insights<br><br>
-                    €9/month • Unlimited analyses • Cancel anytime
-                </p>
-                <button onclick="goToUpgrade()">Upgrade</button>
-            </div>
-        `;
-    });
 }
 
-/* ===== STRIPE ===== */
-
-function goToUpgrade() {
-    window.location.href = "/create-checkout-session";
+function handleAlec(){
+    alert("Alec connected below");
 }
-
-init();
 
 </script>
 
