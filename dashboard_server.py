@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, redirect
 from core.cv.cv_service import CVService
 import zipfile
 import io
@@ -7,7 +7,6 @@ import os
 from docx import Document
 import PyPDF2
 
-# ===== OPENAI =====
 from openai import OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -56,16 +55,26 @@ def extract_text_from_file(filename, file_bytes):
 
 
 # =========================================
-# HOME
+# ROUTES (UPDATED)
 # =========================================
 
 @app.route("/")
+def landing():
+    return open("templates/landing.html").read()
+
+
+@app.route("/app")
 def index():
     return open("templates/index.html").read()
 
 
+@app.route("/eula")
+def eula():
+    return "<h1>EULA page not implemented yet</h1>"
+
+
 # =========================================
-# UPLOAD CV(s)
+# UPLOAD CV
 # =========================================
 
 @app.route("/upload_cv", methods=["POST"])
@@ -112,24 +121,15 @@ def upload_cv():
 
 
 # =========================================
-# ELITE SCORING (FIXED)
+# ANALYZE
 # =========================================
 
 def compute_match_score(cv_text, job_text):
 
     try:
         prompt = f"""
-You are a senior hiring expert.
-
 Evaluate how well this candidate matches the job.
-
 Return ONLY a number between 0 and 100.
-
-Consider:
-- transferable experience
-- seniority
-- delivery capability
-- domain relevance
 
 CV:
 {cv_text[:3000]}
@@ -145,84 +145,13 @@ JOB:
         )
 
         score_text = response.choices[0].message.content.strip()
-
         score = int(''.join(filter(str.isdigit, score_text)))
 
         return max(0, min(score, 100))
 
-    except Exception as e:
-        print("Score fallback:", e)
+    except:
         return 50
 
-
-# =========================================
-# ELITE ANALYSIS
-# =========================================
-
-def elite_analysis(cv_text, job_text):
-
-    try:
-        prompt = f"""
-You are BOTH:
-
-1. Senior recruiter (ATS + screening logic)
-2. Hiring manager (delivery accountability)
-
-Be realistic, critical, and specific.
-
-RETURN FORMAT EXACTLY:
-
-RECRUITER VIEW:
-- Strong signals
-- Concerns
-- Screening Decision: PASS or REJECT
-- Reason
-
-HIRING MANAGER VIEW:
-- Strengths
-- Risks
-- Decision: HIRE or DO NOT HIRE
-- Reason
-
-NO GENERIC TEXT.
-
-CV:
-{cv_text[:4000]}
-
-JOB:
-{job_text[:2000]}
-"""
-
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3
-        )
-
-        return response.choices[0].message.content
-
-    except Exception as e:
-        print("AI analysis fallback:", e)
-        return None
-
-
-# =========================================
-# DECISION LOGIC
-# =========================================
-
-def decision_logic(score):
-
-    if score >= 75:
-        return "APPLY", "High"
-    elif score >= 50:
-        return "TRY", "Medium"
-    else:
-        return "DO NOT APPLY", "Low"
-
-
-# =========================================
-# ANALYZE
-# =========================================
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
@@ -231,40 +160,22 @@ def analyze():
     texts = data.get("texts", [])
     job_text = data.get("job_text", "")
 
-    if not texts or not job_text:
-        return jsonify({"error": "Missing input"}), 400
-
     combined_cv = "\n".join(texts)
 
-    # ===== SCORE =====
     score = compute_match_score(combined_cv, job_text)
-
-    decision, confidence = decision_logic(score)
-
-    # ===== ELITE ANALYSIS =====
-    ai_analysis = elite_analysis(combined_cv, job_text)
-
-    if not ai_analysis:
-        recruiter_view = "Recruiter analysis unavailable"
-        hiring_view = "Hiring manager analysis unavailable"
-    else:
-        parts = ai_analysis.split("HIRING MANAGER VIEW:")
-
-        recruiter_view = parts[0].strip()
-        hiring_view = "HIRING MANAGER VIEW:" + parts[1].strip() if len(parts) > 1 else ""
 
     return jsonify({
         "match_score": score,
-        "confidence": confidence,
-        "final_decision": decision,
-        "recruiter_view": recruiter_view,
-        "hiring_manager_view": hiring_view,
-        "advice": f"FINAL DECISION: {decision}\nConfidence: {confidence}"
+        "confidence": "Medium",
+        "final_decision": "TRY",
+        "recruiter_view": "Locked",
+        "hiring_manager_view": "Locked",
+        "advice": "Upgrade required"
     })
 
 
 # =========================================
-# TAILOR (UNCHANGED)
+# TAILOR
 # =========================================
 
 @app.route("/tailor_cv", methods=["POST"])
@@ -273,9 +184,6 @@ def tailor_cv():
     data = request.json
     texts = data.get("texts", [])
     job_text = data.get("job_text", "")
-
-    if not texts or not job_text:
-        return jsonify({"error": "Missing input"}), 400
 
     master = cv_service.generate_master_cv(texts)
     tailored = cv_service.tailor_cv_to_job(texts, job_text)
@@ -287,7 +195,7 @@ def tailor_cv():
 
 
 # =========================================
-# DOWNLOAD (UNCHANGED)
+# DOWNLOAD
 # =========================================
 
 @app.route("/download_cv", methods=["POST"])
@@ -295,9 +203,6 @@ def download_cv():
 
     data = request.json
     cv_text = data.get("cv", "")
-
-    if not cv_text:
-        return jsonify({"error": "Empty CV"}), 400
 
     doc = Document()
 
@@ -321,5 +226,4 @@ def download_cv():
 # =========================================
 
 if __name__ == "__main__":
-    print("🚀 Starting Flask server...")
     app.run(debug=True)
