@@ -4,37 +4,33 @@
 <meta charset="UTF-8">
 <title>HiddenEdge</title>
 
-<link rel="icon" href="/static/favicon.ico">
-
 <style>
 
 body {
     margin: 0;
-    font-family: Arial;
+    font-family: Arial, sans-serif;
     color: white;
+    background: black;
     overflow-x: hidden;
 }
 
-/* 🌌 MILKY WAY BAND */
+/* 🌌 STRONG MILKY WAY (VISIBLE) */
 body::before {
     content: "";
     position: fixed;
     width: 200%;
     height: 200%;
-
     background:
-        radial-gradient(ellipse at center, rgba(255,255,255,0.18), transparent 60%),
-        radial-gradient(circle at 30% 50%, rgba(120,180,255,0.35), transparent 70%),
-        radial-gradient(circle at 70% 40%, rgba(200,150,255,0.25), transparent 70%),
-        #000;
-
-    transform: rotate(-25deg);
-    filter: blur(45px);
-
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.35), transparent 40%),
+        radial-gradient(circle at 30% 60%, rgba(0,140,255,0.4), transparent 60%),
+        radial-gradient(circle at 70% 40%, rgba(180,100,255,0.4), transparent 60%),
+        black;
+    transform: rotate(-20deg);
+    filter: blur(70px);
     z-index: -3;
 }
 
-/* ✨ STARFIELD */
+/* ✨ CLEAR TWINKLING STARS */
 body::after {
     content: "";
     position: fixed;
@@ -42,93 +38,66 @@ body::after {
     height: 100%;
 
     background-image:
-        radial-gradient(2px 2px at 10% 20%, white, transparent),
-        radial-gradient(2px 2px at 30% 80%, white, transparent),
-        radial-gradient(1px 1px at 50% 40%, white, transparent),
-        radial-gradient(2px 2px at 80% 60%, white, transparent),
-        radial-gradient(1px 1px at 90% 10%, white, transparent),
-        radial-gradient(1px 1px at 60% 70%, white, transparent),
-        radial-gradient(2px 2px at 25% 55%, white, transparent);
+        radial-gradient(3px 3px at 20% 30%, white, transparent),
+        radial-gradient(2px 2px at 70% 60%, white, transparent),
+        radial-gradient(3px 3px at 40% 80%, white, transparent),
+        radial-gradient(2px 2px at 90% 20%, white, transparent),
+        radial-gradient(2px 2px at 10% 70%, white, transparent),
+        radial-gradient(3px 3px at 60% 50%, white, transparent);
 
-    animation: twinkle 3s infinite alternate;
-    opacity: 0.8;
-
+    animation: twinkle 1.5s infinite alternate;
     z-index: -2;
 }
 
 @keyframes twinkle {
-    0% { opacity: 0.4; }
+    0% { opacity: 0.3; }
     100% { opacity: 1; }
 }
 
-/* SCREENS */
+/* SCREEN */
 .screen {
     display: none;
     min-height: 100vh;
-    padding: 40px 20px;
-    position: relative;
 }
 
 .active {
     display: block;
 }
 
-/* CONTAINER */
-.app-container {
-    max-width: 900px;
-    margin: auto;
-    position: relative;
-    z-index: 2;
-}
-
-/* 🌌 LANDING VISUAL */
+/* 🔥 TOP ROBOT BAND */
 .landing-visual {
-    height: 33vh;
+    height: 40vh;
     display: flex;
-    justify-content: space-around;
+    justify-content: center;
     align-items: center;
+    gap: 80px;
 }
 
-/* 🤖 CHARACTERS */
+/* 🤖 BIG + CENTERED */
 .character {
-    width: 180px;
-    opacity: 0.9;
-    transition: transform 0.3s ease;
-}
-
-.character:hover {
-    transform: scale(1.05);
+    width: 200px;
 }
 
 /* TEXT */
-.landing-text {
+.center {
     text-align: center;
     margin-top: 20px;
 }
 
+/* 🔥 WELCOME BANNER */
+.banner {
+    font-size: 22px;
+    margin-bottom: 20px;
+    color: #9fd3ff;
+}
+
 /* BUTTON */
 button {
-    padding: 12px 24px;
-    margin-top: 15px;
+    padding: 15px 30px;
+    font-size: 18px;
     background: #4da6ff;
     border: none;
     cursor: pointer;
-    font-size: 16px;
-}
-
-/* INPUTS */
-input, textarea {
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
-}
-
-/* FOOTER */
-.footer {
-    text-align: center;
-    margin-top: 40px;
-    font-size: 12px;
-    color: #aaa;
 }
 
 </style>
@@ -136,127 +105,37 @@ input, textarea {
 
 <body>
 
-<!-- LANDING -->
 <div id="landing" class="screen active">
 
+    <!-- 🤖 ROBOTS (CENTERED & VISIBLE) -->
     <div class="landing-visual">
         <img src="/static/robots/nestor.png" class="character">
         <img src="/static/robots/alec.png" class="character">
         <img src="/static/robots/helper.png" class="character">
     </div>
 
-    <div class="app-container">
+    <div class="center">
 
-        <div class="landing-text">
-            <h1>HiddenEdge</h1>
-
-            <p>
-                Nestor evaluates your fit<br>
-                Alec improves your CV<br>
-                Helper guides you
-            </p>
-
-            <button onclick="showEULA()">Click here to start</button>
+        <!-- 🔥 NEW BANNER -->
+        <div class="banner">
+            Welcome to HiddenEdge — where your chances for successful job applications really come to life
         </div>
-
-        <div class="footer">
-            HiddenEdgeInfo@proton.me<br>
-            © 2026 HiddenEdge
-        </div>
-
-    </div>
-</div>
-
-<!-- EULA -->
-<div id="eula" class="screen">
-    <div class="app-container">
-
-        <h2>Terms & Usage</h2>
-
-        <p>
-            This tool uses AI to provide guidance based on the information you provide.<br><br>
-            Results are indicative only and not guaranteed.<br><br>
-            All payments are non-refundable.<br>
-            Subscription cancellation via HiddenEdgeInfo@proton.me.
-        </p>
-
-        <input type="checkbox" id="agree">
-        I have read and agree to the Terms of Use
-
-        <br><br>
-
-        <button onclick="continueToEmail()">Continue</button>
-
-    </div>
-</div>
-
-<!-- EMAIL -->
-<div id="email" class="screen">
-    <div class="app-container">
-
-        <h2>Email</h2>
-
-        <input type="email" id="userEmail">
-
-        <button onclick="enterApp()">Enter</button>
-
-    </div>
-</div>
-
-<!-- APP -->
-<div id="app" class="screen">
-    <div class="app-container">
 
         <h1>HiddenEdge</h1>
 
-        <input type="file" id="cv_file"><br><br>
-        <textarea id="job" rows="6"></textarea><br>
+        <p>
+            Nestor evaluates your fit<br>
+            Alec improves your CV<br>
+            Helper guides you
+        </p>
 
-        <button onclick="analyze()">Analyze</button>
-
-        <div id="result"></div>
+        <button onclick="window.location.href='/eula'">
+            Click here to start
+        </button>
 
     </div>
+
 </div>
-
-<script>
-
-function showEULA(){ switchScreen("eula"); }
-
-function continueToEmail(){
-    if(!document.getElementById("agree").checked){
-        alert("Accept terms");
-        return;
-    }
-    switchScreen("email");
-}
-
-function enterApp(){
-    switchScreen("app");
-}
-
-function switchScreen(id){
-    document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
-    document.getElementById(id).classList.add("active");
-}
-
-async function analyze(){
-    const file = document.getElementById("cv_file").files[0];
-    const job = document.getElementById("job").value;
-
-    const formData = new FormData();
-    formData.append("cv_file", file);
-    formData.append("job_description", job);
-
-    const res = await fetch("/analyze", { method:"POST", body: formData });
-    const data = await res.json();
-
-    document.getElementById("result").innerHTML =
-        `<h2>Score: ${data.score}</h2>
-         <h3>${data.apply_recommendation?.decision}</h3>`;
-}
-
-</script>
 
 </body>
 </html>
