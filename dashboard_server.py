@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file, redirect
+from flask import Flask, request, jsonify, send_file, redirect, render_template
 from core.cv.cv_service import CVService
 import zipfile
 import io
@@ -15,7 +15,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
 
-app = Flask(__name__)
+app = Flask(__name__)  # ✅ This enables /templates + /static automatically
 cv_service = CVService()
 
 # =========================================
@@ -29,7 +29,6 @@ DOMAIN_KEYWORDS = {
     "legal": ["law", "legal", "compliance", "contract"],
     "construction": ["construction", "site", "civil", "engineering"],
 }
-
 
 def detect_domain(text):
     text = text.lower()
@@ -45,7 +44,6 @@ def detect_domain(text):
 
     return best_domain
 
-
 # =========================================
 # CONTEXT MESSAGE ENGINE
 # =========================================
@@ -57,46 +55,36 @@ def build_context(score, cv_domain, job_domain):
 
     if score < 20:
         return "Very low alignment with core role requirements"
-
     elif score < 40:
         return "Limited overlap with role expectations"
-
     elif score < 60:
         return "Partial alignment — significant gaps present"
-
     elif score < 75:
         return "Good alignment with some gaps"
-
     elif score < 90:
         return "Strong alignment with minor gaps"
-
     else:
         return "Excellent fit for the role"
 
-
 # =========================================
-# ROUTES
+# ROUTES (FIXED)
 # =========================================
 
 @app.route("/")
 def landing():
-    return open("templates/landing.html").read()
-
+    return render_template("landing.html")
 
 @app.route("/eula")
 def eula():
-    return open("templates/eula.html").read()
-
+    return render_template("eula.html")
 
 @app.route("/email")
 def email():
-    return open("templates/email.html").read()
-
+    return render_template("email.html")
 
 @app.route("/app")
 def app_page():
-    return open("templates/index.html").read()
-
+    return render_template("index.html")
 
 # =========================================
 # STRIPE
@@ -116,7 +104,6 @@ def create_checkout_session():
     )
     return redirect(session.url, code=303)
 
-
 # =========================================
 # FILE EXTRACTION
 # =========================================
@@ -124,12 +111,10 @@ def create_checkout_session():
 def extract_text_from_txt(file_bytes):
     return file_bytes.decode("utf-8", errors="ignore")
 
-
 def extract_text_from_docx(file_bytes):
     file_stream = io.BytesIO(file_bytes)
     doc = Document(file_stream)
     return "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
-
 
 def extract_text_from_pdf(file_bytes):
     file_stream = io.BytesIO(file_bytes)
@@ -142,21 +127,17 @@ def extract_text_from_pdf(file_bytes):
             continue
     return "\n".join(text)
 
-
 def extract_text_from_file(filename, file_bytes):
     filename = filename.lower()
 
     if filename.endswith(".txt") or filename.endswith(".md"):
         return extract_text_from_txt(file_bytes)
-
     elif filename.endswith(".docx"):
         return extract_text_from_docx(file_bytes)
-
     elif filename.endswith(".pdf"):
         return extract_text_from_pdf(file_bytes)
 
     return None
-
 
 # =========================================
 # UPLOAD
@@ -204,9 +185,8 @@ def upload_cv():
         "master_cv": result.get("cv", "")
     })
 
-
 # =========================================
-# ANALYZE (WITH CONTEXT LINE)
+# ANALYZE
 # =========================================
 
 @app.route("/analyze", methods=["POST"])
@@ -221,7 +201,6 @@ def analyze():
     cv_domain = detect_domain(combined_cv)
     job_domain = detect_domain(job_text)
 
-    # HARD DOMAIN MISMATCH
     if cv_domain != "unknown" and job_domain != "unknown" and cv_domain != job_domain:
         score = 3
         context = build_context(score, cv_domain, job_domain)
@@ -236,11 +215,8 @@ def analyze():
             "advice": "Do not apply."
         })
 
-    # AI SCORING
     try:
         prompt = f"""
-You are a strict recruiter.
-
 Score match between CV and job from 0 to 100.
 
 CV:
@@ -274,34 +250,6 @@ Return ONLY a number.
         "hiring_manager_view": "Locked",
         "advice": "Upgrade required"
     })
-
-
-# =========================================
-# DOWNLOAD
-# =========================================
-
-@app.route("/download_cv", methods=["POST"])
-def download_cv():
-
-    data = request.json
-    cv_text = data.get("cv", "")
-
-    doc = Document()
-
-    for line in cv_text.split("\n"):
-        doc.add_paragraph(line)
-
-    stream = io.BytesIO()
-    doc.save(stream)
-    stream.seek(0)
-
-    return send_file(
-        stream,
-        as_attachment=True,
-        download_name="Tailored_CV.docx",
-        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    )
-
 
 # =========================================
 # RUN
