@@ -7,53 +7,12 @@
         body {
             margin: 0;
             font-family: Arial;
-            background: #0b0f1a;
+            background: black;
             color: white;
             overflow-x: hidden;
         }
 
-        textarea {
-            width: 100%;
-            height: 220px;
-            margin-top: 10px;
-            background: rgba(255,255,255,0.05);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.2);
-            padding: 10px;
-        }
-
-        button {
-            padding: 10px 15px;
-            margin-top: 10px;
-            cursor: pointer;
-            background: #1f6feb;
-            color: white;
-            border: none;
-        }
-
-        .container {
-            display: flex;
-            gap: 20px;
-        }
-
-        .box {
-            width: 50%;
-        }
-
-        .bar-container {
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-
-        .bar {
-            height: 20px;
-            width: 0%;
-            background: linear-gradient(90deg, #4facfe, #00f2fe);
-        }
-
-        /* ===== SPACE BACKGROUND ===== */
+        /* ===== STARFIELD ===== */
 
         #space-bg {
             position: fixed;
@@ -61,8 +20,8 @@
             height: 100%;
             top: 0;
             left: 0;
-            z-index: -1;
-            background: radial-gradient(ellipse at bottom, #0b0f1a 0%, #05070d 100%);
+            z-index: 0;
+            background: black;
         }
 
         .star {
@@ -70,8 +29,6 @@
             width: 2px;
             height: 2px;
             background: white;
-            opacity: 0.8;
-            border-radius: 50%;
         }
 
         #milkyway {
@@ -80,70 +37,58 @@
             height: 200%;
             top: -50%;
             left: -50%;
-            background: radial-gradient(ellipse at center,
-                rgba(255,255,255,0.08) 0%,
-                rgba(255,255,255,0.04) 20%,
-                rgba(255,255,255,0.01) 40%,
-                transparent 60%);
+            background: radial-gradient(circle, rgba(255,255,255,0.15), transparent 60%);
             transform: rotate(25deg);
-            filter: blur(40px);
         }
 
-        /* Dim background when results active */
-        .results-active #space-bg {
-            opacity: 0.15;
+        /* CONTENT ABOVE STARS */
+        .content {
+            position: relative;
+            z-index: 2;
+            padding: 30px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 220px;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin-top: 10px;
+            cursor: pointer;
         }
     </style>
 </head>
 
 <body>
 
-<!-- 🌌 SPACE BACKGROUND -->
 <div id="space-bg">
     <div id="milkyway"></div>
 </div>
+
+<div class="content">
 
 <h2>Upload CV(s)</h2>
 
 <input type="file" id="file" multiple>
 <button onclick="upload()">Upload</button>
 
-<div class="bar-container">
-    <div id="uploadBar" class="bar"></div>
-</div>
-
 <h2>Job Description</h2>
 <textarea id="job"></textarea>
-<button onclick="tailor()">Analyze</button>
+<button onclick="analyze()">Analyze</button>
 
-<div class="bar-container">
-    <div id="tailorBar" class="bar"></div>
+<h2>Results</h2>
+
+<div id="results"></div>
+
 </div>
-
-<h2>Compare (Delta)</h2>
-
-<div class="container">
-    <div class="box">
-        <h3>Master CV</h3>
-        <textarea id="master"></textarea>
-    </div>
-
-    <div class="box">
-        <h3>Tailored CV (Editable)</h3>
-        <textarea id="tailored"></textarea>
-    </div>
-</div>
-
-<br>
-<button onclick="download()">Download Tailored CV</button>
 
 <script>
 
-let texts = [];
-
-/* ===== STAR GENERATION ===== */
-
-function generateStars(count = 150) {
+/* ===== FORCE STAR VISIBILITY ===== */
+function generateStars(count = 300) {
     const container = document.getElementById("space-bg");
 
     for (let i = 0; i < count; i++) {
@@ -152,30 +97,19 @@ function generateStars(count = 150) {
 
         star.style.top = Math.random() * 100 + "%";
         star.style.left = Math.random() * 100 + "%";
-        star.style.opacity = Math.random();
 
         container.appendChild(star);
     }
 }
 
-generateStars();
+window.onload = generateStars;
 
-/* ===== UI HELPERS ===== */
-
-function setBar(id, val) {
-    document.getElementById(id).style.width = val + "%";
-}
+let texts = [];
 
 /* ===== UPLOAD ===== */
 
 function upload() {
-
     let files = document.getElementById("file").files;
-
-    if (!files.length) {
-        alert("Select at least one file");
-        return;
-    }
 
     let form = new FormData();
 
@@ -183,55 +117,23 @@ function upload() {
         form.append("files", files[i]);
     }
 
-    setBar("uploadBar", 20);
-
     fetch("/upload_cv", {
         method: "POST",
         body: form
     })
     .then(r => r.json())
     .then(data => {
-
-        if (data.error) {
-            alert(data.error);
-            return;
-        }
-
         texts = data.texts || [];
-        document.getElementById("master").value = data.master_cv || "";
-
-        setBar("uploadBar", 100);
     });
 }
 
 /* ===== ANALYZE ===== */
 
-function tailor() {
+function analyze() {
 
     let job = document.getElementById("job").value;
 
-    if (!texts.length) {
-        alert("Upload CV first");
-        return;
-    }
-
-    if (!job) {
-        alert("Paste job description");
-        return;
-    }
-
-    // 🔥 Dim background when analysis starts
-    document.body.classList.add("results-active");
-
-    let progress = 10;
-    let interval = setInterval(() => {
-        if (progress < 90) {
-            progress += 10;
-            setBar("tailorBar", progress);
-        }
-    }, 200);
-
-    fetch("/tailor_cv", {
+    fetch("/analyze", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
@@ -242,42 +144,20 @@ function tailor() {
     .then(r => r.json())
     .then(data => {
 
-        clearInterval(interval);
-        setBar("tailorBar", 100);
+        document.getElementById("results").innerHTML = `
+            <h2>Score: ${data.match_score}</h2>
 
-        if (data.error) {
-            alert(data.error);
-            return;
-        }
+            <h3>${data.final_decision}</h3>
 
-        document.getElementById("master").value = data.master_cv || "";
-        document.getElementById("tailored").value = data.tailored_cv || "";
-    });
-}
+            <h3>Recruiter View</h3>
+            <p>${data.recruiter_view}</p>
 
-/* ===== DOWNLOAD ===== */
+            <h3>Hiring Manager View</h3>
+            <p>${data.hiring_manager_view}</p>
 
-function download() {
-
-    let cv = document.getElementById("tailored").value;
-
-    if (!cv) {
-        alert("No CV to download");
-        return;
-    }
-
-    fetch("/download_cv", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ cv: cv })
-    })
-    .then(res => res.blob())
-    .then(blob => {
-        let url = window.URL.createObjectURL(blob);
-        let a = document.createElement("a");
-        a.href = url;
-        a.download = "Tailored_CV.docx";
-        a.click();
+            <h3>Advice</h3>
+            <p>${data.advice}</p>
+        `;
     });
 }
 
