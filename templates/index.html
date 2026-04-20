@@ -30,17 +30,16 @@
             border: none;
         }
 
-        .bar-container {
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
-            overflow: hidden;
-            margin-top: 10px;
+        .topbar {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
         }
 
-        .bar {
-            height: 20px;
-            width: 0%;
-            background: linear-gradient(90deg, #4facfe, #00f2fe);
+        .uses {
+            color: #aaa;
+            font-size: 14px;
         }
 
         #analysisResults {
@@ -61,67 +60,84 @@
             border: 1px solid rgba(255,255,255,0.2);
         }
 
-        .uses {
-            margin-top: 10px;
-            color: #aaa;
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
         }
     </style>
 </head>
 
 <body>
 
+<div class="topbar">
+    <div id="userEmail"></div>
+    <div class="uses" id="usesDisplay"></div>
+</div>
+
 <h2>Upload CV(s)</h2>
 
 <input type="file" id="file" multiple>
 <button onclick="upload()">Upload</button>
 
-<div class="bar-container">
-    <div id="uploadBar" class="bar"></div>
-</div>
-
 <h2>Job Description</h2>
 <textarea id="job"></textarea>
 <button onclick="analyze()">Analyze</button>
 
-<div class="bar-container">
-    <div id="analyzeBar" class="bar"></div>
-</div>
-
 <div id="analysisResults"></div>
+
+<div class="footer">
+    For contact please email to HiddenEdgeInfo@proton.me<br>
+    HiddenEdge, all rights reserved 2026 (C)
+</div>
 
 <script>
 
 let texts = [];
+let userEmail = "";
 
-/* ===== USAGE CONTROL ===== */
+/* ===== INIT ===== */
+
+function init() {
+    userEmail = localStorage.getItem("hiddenedge_email") || "User";
+    document.getElementById("userEmail").innerText = userEmail;
+    updateUsesDisplay();
+}
+
+/* ===== EMAIL-BASED STORAGE ===== */
+
+function getKey() {
+    return "hiddenedge_uses_" + userEmail;
+}
 
 function getUses() {
-    return parseInt(localStorage.getItem("hiddenedge_uses") || "0");
+    return parseInt(localStorage.getItem(getKey()) || "0");
 }
 
 function incrementUses() {
     let uses = getUses() + 1;
-    localStorage.setItem("hiddenedge_uses", uses.toString());
-    return uses;
+    localStorage.setItem(getKey(), uses.toString());
 }
 
 function remainingUses() {
     return 3 - getUses();
 }
 
+function updateUsesDisplay() {
+    let remaining = remainingUses();
+    document.getElementById("usesDisplay").innerText =
+        remaining > 0
+        ? `${remaining} free analyses remaining`
+        : "Free limit reached — upgrade required";
+}
+
 /* ===== UPLOAD ===== */
 
 function upload() {
-
     let files = document.getElementById("file").files;
 
-    if (!files.length) {
-        alert("Select a file");
-        return;
-    }
-
     let form = new FormData();
-
     for (let i = 0; i < files.length; i++) {
         form.append("files", files[i]);
     }
@@ -139,11 +155,6 @@ function upload() {
 /* ===== ANALYZE ===== */
 
 function analyze() {
-
-    if (remainingUses() <= 0) {
-        showLockedOnly();
-        return;
-    }
 
     let job = document.getElementById("job").value;
 
@@ -163,16 +174,14 @@ function analyze() {
     .then(r => r.json())
     .then(data => {
 
-        incrementUses();
+        if (remainingUses() > 0) {
+            incrementUses();
+        }
 
-        let remaining = remainingUses();
+        updateUsesDisplay();
 
         document.getElementById("analysisResults").innerHTML = `
             <h2>Match Score: ${data.match_score}%</h2>
-
-            <div class="uses">
-                ${remaining >= 0 ? remaining : 0} free analyses remaining
-            </div>
 
             <div class="locked">
                 <h3>👔 Recruiter Analysis</h3>
@@ -197,29 +206,15 @@ function analyze() {
     });
 }
 
-/* ===== LOCKED STATE ===== */
-
-function showLockedOnly() {
-
-    document.getElementById("analysisResults").innerHTML = `
-        <h2>Free limit reached</h2>
-
-        <div class="upgrade">
-            <p>
-                Unlock full recruiter & hiring manager insights<br><br>
-                €9/month • Unlimited analyses • Cancel anytime
-            </p>
-
-            <button onclick="goToUpgrade()">Upgrade</button>
-        </div>
-    `;
-}
-
 /* ===== STRIPE ===== */
 
 function goToUpgrade() {
     window.location.href = "/create-checkout-session";
 }
+
+/* ===== INIT ===== */
+
+init();
 
 </script>
 
