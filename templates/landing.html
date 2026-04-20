@@ -7,21 +7,52 @@
         body {
             margin: 0;
             font-family: Arial;
-            background: black;
             color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            text-align: center;
+            overflow: hidden;
         }
 
+        /* ===== SPACE BACKGROUND ===== */
+        #space-bg {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: black;
+            z-index: -1;
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+        }
+
+        #milkyway {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+            background: radial-gradient(circle,
+                rgba(255,255,255,0.15) 0%,
+                rgba(255,255,255,0.05) 30%,
+                transparent 60%);
+            transform: rotate(25deg);
+            filter: blur(40px);
+        }
+
+        /* ===== CONTENT ===== */
         .container {
-            max-width: 800px;
+            position: relative;
+            text-align: center;
+            top: 50%;
+            transform: translateY(-50%);
+            max-width: 900px;
+            margin: auto;
         }
 
         h1 {
-            font-size: 36px;
+            font-size: 42px;
             margin-bottom: 20px;
         }
 
@@ -31,27 +62,31 @@
         }
 
         .robots {
-            margin: 30px 0;
+            margin: 40px 0;
         }
 
         .robots img {
-            height: 120px;
+            height: 140px;
             margin: 10px;
         }
 
         button {
-            padding: 15px 25px;
-            font-size: 18px;
+            padding: 18px 30px;
+            font-size: 20px;
             background: #1f6feb;
             color: white;
             border: none;
             cursor: pointer;
-            margin-top: 30px;
+            margin-top: 40px;
         }
     </style>
 </head>
 
 <body>
+
+<div id="space-bg">
+    <div id="milkyway"></div>
+</div>
 
 <div class="container">
 
@@ -79,6 +114,21 @@
 function start() {
     window.location.href = "/eula";
 }
+
+/* ===== STARS ===== */
+function generateStars(count = 250) {
+    const container = document.getElementById("space-bg");
+
+    for (let i = 0; i < count; i++) {
+        let star = document.createElement("div");
+        star.className = "star";
+        star.style.top = Math.random() * 100 + "%";
+        star.style.left = Math.random() * 100 + "%";
+        container.appendChild(star);
+    }
+}
+
+window.onload = generateStars;
 </script>
 
 </body>

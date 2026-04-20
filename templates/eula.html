@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HiddenEdge - Terms</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: black;
+            color: white;
+            padding: 40px;
+        }
+
+        .box {
+            max-width: 800px;
+            margin: auto;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        p {
+            color: #ccc;
+            line-height: 1.6;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 12px 20px;
+            background: #1f6feb;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="box">
+
+    <h2>Before we begin</h2>
+
+    <p>
+        HiddenEdge uses AI to analyze your CV and job descriptions.
+        By continuing, you agree that:
+    </p>
+
+    <p>
+        - Your data is processed for analysis purposes<br>
+	- After you close your session no information is retained<br>
+        - No guarantees are provided for job outcomes<br>
+        - This tool provides advisory insights only<br>
+        - Data may be processed by AI systems in accordance with GDPR and AI Act guidelines
+    </p>
+
+    <br>
+
+    <label>
+        <input type="checkbox" id="agree">
+        I agree to Terms, GDPR and AI processing
+    </label>
+
+    <br>
+
+    <button onclick="continueFlow()">Continue</button>
+
+</div>
+
+<script>
+function continueFlow() {
+    let checked = document.getElementById("agree").checked;
+
+    if (!checked) {
+        alert("You must accept before continuing");
+        return;
+    }
+
+    window.location.href = "/email";
+}
+</script>
+
+</body>
+</html>
