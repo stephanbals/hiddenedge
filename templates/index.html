@@ -7,81 +7,99 @@
 <link rel="icon" href="/static/favicon.ico">
 
 <style>
+
 body {
     margin: 0;
     font-family: Arial;
-    background: radial-gradient(circle at center, #0b0f2a, #000);
     color: white;
+    overflow-x: hidden;
+}
+
+/* 🌌 BACKGROUND */
+body::before {
+    content: "";
+    position: fixed;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at center, #0b0f2a, #000);
+    z-index: -3;
+}
+
+/* ✨ STARS */
+body::after {
+    content: "";
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background-image:
+        radial-gradient(2px 2px at 20% 30%, white, transparent),
+        radial-gradient(1px 1px at 70% 60%, white, transparent),
+        radial-gradient(2px 2px at 40% 80%, white, transparent),
+        radial-gradient(1px 1px at 90% 20%, white, transparent);
+    animation: twinkle 6s infinite alternate;
+    opacity: 0.4;
+    z-index: -2;
+}
+
+@keyframes twinkle {
+    from { opacity: 0.2; }
+    to { opacity: 0.6; }
 }
 
 /* SCREENS */
 .screen {
     display: none;
     min-height: 100vh;
-    position: relative;
     padding: 40px 20px;
+    position: relative;
 }
 
 .active {
     display: block;
 }
 
-/* CENTER CONTAINER */
+/* CONTAINER */
 .app-container {
     max-width: 900px;
     margin: auto;
+    position: relative;
+    z-index: 2;
 }
 
-/* LOGO */
-.logo {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    width: 80px;
+/* 🌌 LANDING VISUAL BAND */
+.landing-visual {
+    height: 33vh;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    position: relative;
+    z-index: 1;
 }
 
-/* HELP BUTTON */
-.help-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: #4da6ff;
+/* CHARACTERS */
+.character {
+    width: 120px;
+    opacity: 0.85;
+    transition: transform 0.3s ease;
 }
 
-/* SECTIONS */
-.section {
-    margin-top: 25px;
+.character:hover {
+    transform: scale(1.05);
 }
 
-.section h3 {
-    margin-bottom: 10px;
+/* TEXT BLOCK */
+.landing-text {
+    margin-top: 20px;
+    text-align: center;
 }
 
-/* INPUTS */
-input, textarea {
-    width: 100%;
-    padding: 10px;
-    border-radius: 6px;
-    border: none;
-}
-
-/* BUTTONS */
+/* BUTTON */
 button {
     padding: 10px 20px;
-    margin-top: 10px;
+    margin-top: 15px;
     background: #4da6ff;
     border: none;
     cursor: pointer;
-}
-
-/* CONTENT */
-#result, #alecResult {
-    margin-top: 30px;
-    max-width: 900px;
-    margin-left: auto;
-    margin-right: auto;
-    text-align: left;
-    white-space: pre-wrap;
 }
 
 /* FOOTER */
@@ -89,89 +107,56 @@ button {
     text-align: center;
     margin-top: 40px;
     font-size: 12px;
-    color: #888;
+    color: #aaa;
 }
 
-/* MODALS */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 2000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.7);
-}
-
-.modal-content {
-    background: #1a1f3d;
-    margin: 8% auto;
-    padding: 20px;
-    width: 500px;
-    border-radius: 10px;
-    position: relative;
-    text-align: left;
-}
-
-.close-btn {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    cursor: pointer;
-    font-size: 18px;
-}
 </style>
 </head>
 
 <body>
 
-<img src="/static/logo.png" class="logo">
-<button class="help-btn" onclick="openHelp()">Help</button>
-
 <!-- LANDING -->
 <div id="landing" class="screen active">
+
+    <!-- VISUAL BAND -->
+    <div class="landing-visual">
+        <img src="/static/nestor.png" class="character">
+        <img src="/static/alec.png" class="character">
+        <img src="/static/helper.png" class="character">
+    </div>
+
     <div class="app-container">
-        <h1>HiddenEdge</h1>
 
-        <p>
-            HiddenEdge helps you decide if a job is worth applying to.<br><br>
-            Jobseekers spend hours applying to roles where they are not a strong match.<br>
-            We help you understand your match score and improve your chances.
-        </p>
+        <div class="landing-text">
+            <h1>HiddenEdge</h1>
 
-        <button onclick="showEULA()">Start</button>
+            <p>
+                Decide if a job is worth applying to.<br><br>
+                Stop wasting time on low-probability applications.
+            </p>
+
+            <button onclick="showEULA()">Start</button>
+        </div>
 
         <div class="footer">
             HiddenEdgeInfo@proton.me<br>
-            © 2026 HiddenEdge — All rights reserved
+            © 2026 HiddenEdge
         </div>
+
     </div>
 </div>
 
 <!-- EULA -->
 <div id="eula" class="screen">
     <div class="app-container">
+
         <h2>Terms & Usage</h2>
 
         <p>
             This tool uses AI to provide guidance based on the information you provide.<br><br>
-
-            While we aim to deliver accurate and useful insights, all results are indicative only 
-            and should not be considered guaranteed outcomes or professional, legal, or career advice.<br><br>
-
-            HiddenEdge makes no representations or warranties regarding the accuracy, completeness, 
-            or suitability of the information provided.<br><br>
-
-            Users remain solely responsible for their application decisions and any actions taken 
-            based on the tool’s output.<br><br>
-
-            <strong>Payments & Subscriptions</strong><br><br>
-
-            - All payments are non-refundable.<br>
-            - Subscription services may be cancelled via HiddenEdgeInfo@proton.me.<br>
-            - Cancellation may take up to 30 days to take effect.<br>
-            - One final billing cycle may occur depending on timing.<br>
+            Results are indicative only and not guaranteed.<br><br>
+            All payments are non-refundable.<br>
+            Subscription cancellation via HiddenEdgeInfo@proton.me.
         </p>
 
         <input type="checkbox" id="agree">
@@ -181,138 +166,57 @@ button {
 
         <button onclick="continueToEmail()">Continue</button>
 
-        <div class="footer">
-            HiddenEdgeInfo@proton.me<br>
-            © 2026 HiddenEdge — All rights reserved
-        </div>
     </div>
 </div>
 
 <!-- EMAIL -->
 <div id="email" class="screen">
     <div class="app-container">
-        <h2>Enter your email</h2>
 
-        <input type="email" id="userEmail" placeholder="your@email.com">
+        <h2>Email</h2>
 
-        <button onclick="enterApp()">Enter Platform</button>
+        <input type="email" id="userEmail">
 
-        <div class="footer">
-            HiddenEdgeInfo@proton.me<br>
-            © 2026 HiddenEdge — All rights reserved
-        </div>
+        <button onclick="enterApp()">Enter</button>
+
     </div>
 </div>
 
-<!-- MAIN APP -->
+<!-- APP -->
 <div id="app" class="screen">
     <div class="app-container">
 
         <h1>HiddenEdge</h1>
 
-        <div class="section">
-            <button onclick="openTracker()">📋 My Applications</button>
-        </div>
+        <input type="file" id="cv_file"><br><br>
+        <textarea id="job" rows="6"></textarea><br>
 
-        <div class="section">
-            <h3>Upload CV</h3>
-            <input type="file" id="cv_file">
-        </div>
-
-        <div class="section">
-            <h3>Job Description</h3>
-            <textarea id="job" rows="6"></textarea>
-        </div>
-
-        <div class="section">
-            <button onclick="analyze()">Analyze</button>
-            <button onclick="handleAlec()">✨ Improve CV</button>
-        </div>
+        <button onclick="analyze()">Analyze</button>
 
         <div id="result"></div>
 
-        <hr>
-
-        <h2>✨ Tailored CV</h2>
-        <div id="alecResult"></div>
-
-        <div class="footer">
-            HiddenEdgeInfo@proton.me<br>
-            © 2026 HiddenEdge — All rights reserved
-        </div>
-
-    </div>
-</div>
-
-<!-- HELP MODAL -->
-<div id="helpModal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="closeHelp()">✖</span>
-        <h3>How to use HiddenEdge</h3>
-        <p>
-        1. Upload your CV<br>
-        2. Paste the job description<br>
-        3. Click Analyze<br>
-        4. Review your match score<br>
-        5. Improve your CV<br>
-        6. Track applications
-        </p>
     </div>
 </div>
 
 <script>
 
-// FLOW
 function showEULA(){ switchScreen("eula"); }
+
 function continueToEmail(){
     if(!document.getElementById("agree").checked){
-        alert("Please accept the Terms of Use");
+        alert("Accept terms");
         return;
     }
     switchScreen("email");
 }
+
 function enterApp(){
-    const email = document.getElementById("userEmail").value;
-    if(!email){ alert("Enter email"); return; }
-    localStorage.setItem("userEmail", email);
     switchScreen("app");
 }
+
 function switchScreen(id){
-    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
     document.getElementById(id).classList.add("active");
-}
-
-// HELP
-function openHelp(){ document.getElementById("helpModal").style.display="block"; }
-function closeHelp(){ document.getElementById("helpModal").style.display="none"; }
-
-// ANALYZE
-async function analyze(){
-    const file = document.getElementById("cv_file").files[0];
-    const job = document.getElementById("job").value;
-
-    if(!file || !job){
-        alert("Upload CV and job description");
-        return;
-    }
-
-    document.getElementById("result").innerHTML = "Analyzing...";
-
-    const formData = new FormData();
-    formData.append("cv_file", file);
-    formData.append("job_description", job);
-
-    const res = await fetch("/analyze", { method:"POST", body: formData });
-    const data = await res.json();
-
-    document.getElementById("result").innerHTML = `
-        <h2>Score: ${data.score}</h2>
-        <h3>${data.apply_recommendation?.decision}</h3>
-    `;
-}
-
-function handleAlec(){
-    alert("Alec connected below");
 }
 
 </script>
