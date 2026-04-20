@@ -3,6 +3,7 @@ from core.cv.cv_service import CVService
 import zipfile
 import io
 import os
+import re
 
 from docx import Document
 import PyPDF2
@@ -12,12 +13,38 @@ import stripe
 # ===== CONFIG =====
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-
-# IMPORTANT: replace with your Stripe LIVE or TEST price ID
-STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")  # e.g. price_12345
+STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
 
 app = Flask(__name__)
 cv_service = CVService()
+
+# =========================================
+# DOMAIN DETECTION ENGINE
+# =========================================
+
+DOMAIN_KEYWORDS = {
+    "medical": ["doctor", "physician", "clinical", "surgery", "hospital", "patient", "orl", "ent"],
+    "tech": ["it", "cloud", "software", "sap", "aws", "azure", "digital", "devops"],
+    "finance": ["finance", "accounting", "audit", "tax", "banking"],
+    "legal": ["law", "legal", "compliance", "contract"],
+    "construction": ["construction", "site", "civil", "engineering"],
+}
+
+
+def detect_domain(text):
+    text = text.lower()
+    scores = {}
+
+    for domain, keywords in DOMAIN_KEYWORDS.items():
+        scores[domain] = sum(1 for k in keywords if k in text)
+
+    best_domain = max(scores, key=scores.get)
+
+    if scores[best_domain] == 0:
+        return "unknown"
+
+    return best_domain
+
 
 # =========================================
 # ROUTES
@@ -44,25 +71,22 @@ def app_page():
 
 
 # =========================================
-# STRIPE CHECKOUT
+# STRIPE
 # =========================================
 
 @app.route("/create-checkout-session")
 def create_checkout_session():
-    try:
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            mode="subscription",
-            line_items=[{
-                "price": STRIPE_PRICE_ID,
-                "quantity": 1,
-            }],
-            success_url="https://hiddenedge-live.onrender.com/app?paid=true",
-            cancel_url="https://hiddenedge-live.onrender.com/app",
-        )
-        return redirect(session.url, code=303)
-    except Exception as e:
-        return str(e), 400
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        mode="subscription",
+        line_items=[{
+            "price": STRIPE_PRICE_ID,
+            "quantity": 1,
+        }],
+        success_url="https://hiddenedge-live.onrender.com/app?paid=true",
+        cancel_url="https://hiddenedge-live.onrender.com/app",
+    )
+    return redirect(session.url, code=303)
 
 
 # =========================================
@@ -154,18 +178,71 @@ def upload_cv():
 
 
 # =========================================
-# ANALYZE (LIMITED)
+# ANALYZE (DOMAIN-AWARE)
 # =========================================
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
 
+    data = request.json
+    texts = data.get("texts", [])
+    job_text = data.get("job_text", "")
+
+    combined_cv = "\n".join(texts)
+
+    # DOMAIN DETECTION
+    cv_domain = detect_domain(combined_cv)
+    job_domain = detect_domain(job_text)
+
+    # HARD DOMAIN MISMATCH
+    if cv_domain != "unknown" and job_domain != "unknown" and cv_domain != job_domain:
+        return jsonify({
+            "match_score": 3,
+            "confidence": "High",
+            "final_decision": "DO NOT APPLY",
+            "recruiter_view": f"Domain mismatch: CV is {cv_domain}, job is {job_domain}.",
+            "hiring_manager_view": "Candidate does not meet baseline professional domain.",
+            "advice": "Do not apply. This role requires a fundamentally different professional background."
+        })
+
+    # AI SCORING
+    try:
+        prompt = f"""
+You are a strict recruiter.
+
+Score match between CV and job from 0 to 100.
+
+Be realistic:
+- Different professions = near 0
+- Partial overlap = medium
+- Strong alignment = high
+
+CV:
+{combined_cv[:3000]}
+
+JOB:
+{job_text[:1500]}
+
+Return ONLY a number.
+"""
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0
+        )
+
+        score_text = response.choices[0].message.content.strip()
+        score = int(re.sub("[^0-9]", "", score_text))
+
+    except:
+        score = 50
+
     return jsonify({
-        "match_score": 65,
+        "match_score": max(0, min(score, 100)),
         "confidence": "Medium",
         "final_decision": "TRY",
-        "recruiter_view": "LOCKED",
-        "hiring_manager_view": "LOCKED",
+        "recruiter_view": "Locked",
+        "hiring_manager_view": "Locked",
         "advice": "Upgrade required"
     })
 
