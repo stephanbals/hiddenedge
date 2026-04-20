@@ -86,17 +86,28 @@
             filter: blur(30px);
         }
 
-        /* Dim after analysis */
         .results-active #space-bg {
             opacity: 0.2;
         }
 
+        /* ===== ANALYSIS BLOCK ===== */
+
+        #analysisResults {
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        pre {
+            white-space: pre-wrap;
+        }
     </style>
 </head>
 
 <body>
 
-<!-- ⭐ BACKGROUND -->
+<!-- BACKGROUND -->
 <div id="space-bg">
     <div id="milkyway"></div>
 </div>
@@ -112,11 +123,14 @@
 
 <h2>Job Description</h2>
 <textarea id="job"></textarea>
-<button onclick="tailor()">Analyze</button>
+<button onclick="runFullAnalysis()">Analyze</button>
 
 <div class="bar-container">
     <div id="tailorBar" class="bar"></div>
 </div>
+
+<!-- 🔥 NEW ANALYSIS BLOCK -->
+<div id="analysisResults"></div>
 
 <h2>Compare (Delta)</h2>
 
@@ -139,7 +153,7 @@
 
 let texts = [];
 
-/* ===== STAR GENERATION (FORCED VISIBLE) ===== */
+/* ===== STARFIELD ===== */
 
 function generateStars(count = 300) {
     const container = document.getElementById("space-bg");
@@ -157,7 +171,7 @@ function generateStars(count = 300) {
 
 window.onload = generateStars;
 
-/* ===== UI HELPERS ===== */
+/* ===== HELPERS ===== */
 
 function setBar(id, val) {
     document.getElementById(id).style.width = val + "%";
@@ -180,7 +194,7 @@ function upload() {
         form.append("files", files[i]);
     }
 
-    setBar("uploadBar", 20);
+    setBar("uploadBar", 30);
 
     fetch("/upload_cv", {
         method: "POST",
@@ -201,9 +215,9 @@ function upload() {
     });
 }
 
-/* ===== ANALYZE ===== */
+/* ===== FULL ANALYSIS (NEW + SAFE) ===== */
 
-function tailor() {
+function runFullAnalysis() {
 
     let job = document.getElementById("job").value;
 
@@ -217,18 +231,12 @@ function tailor() {
         return;
     }
 
-    // 🔥 dim background when analysis starts
     document.body.classList.add("results-active");
 
-    let progress = 10;
-    let interval = setInterval(() => {
-        if (progress < 90) {
-            progress += 10;
-            setBar("tailorBar", progress);
-        }
-    }, 200);
+    setBar("tailorBar", 20);
 
-    fetch("/tailor_cv", {
+    // 🔥 STEP 1: ANALYZE (NEW)
+    fetch("/analyze", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
@@ -239,16 +247,46 @@ function tailor() {
     .then(r => r.json())
     .then(data => {
 
-        clearInterval(interval);
-        setBar("tailorBar", 100);
-
         if (data.error) {
             alert(data.error);
             return;
         }
 
-        document.getElementById("master").value = data.master_cv || "";
-        document.getElementById("tailored").value = data.tailored_cv || "";
+        document.getElementById("analysisResults").innerHTML = `
+            <h2>Match Score: ${data.match_score}%</h2>
+            <h3>Decision: ${data.final_decision} (${data.confidence})</h3>
+
+            <h3>👔 Recruiter View</h3>
+            <pre>${data.recruiter_view}</pre>
+
+            <h3>🧠 Hiring Manager View</h3>
+            <pre>${data.hiring_manager_view}</pre>
+
+            <h3>🎯 Advice</h3>
+            <pre>${data.advice}</pre>
+        `;
+
+        setBar("tailorBar", 60);
+
+        // 🔥 STEP 2: TAILOR (UNCHANGED)
+        return fetch("/tailor_cv", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                texts: texts,
+                job_text: job
+            })
+        });
+    })
+    .then(r => r.json())
+    .then(data => {
+
+        if (!data.error) {
+            document.getElementById("master").value = data.master_cv || "";
+            document.getElementById("tailored").value = data.tailored_cv || "";
+        }
+
+        setBar("tailorBar", 100);
     });
 }
 
