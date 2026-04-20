@@ -15,35 +15,50 @@ body {
     overflow-x: hidden;
 }
 
-/* 🌌 BACKGROUND */
+/* 🌌 MILKY WAY BAND */
 body::before {
     content: "";
     position: fixed;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle at center, #0b0f2a, #000);
+
+    background:
+        radial-gradient(ellipse at center, rgba(255,255,255,0.18), transparent 60%),
+        radial-gradient(circle at 30% 50%, rgba(120,180,255,0.35), transparent 70%),
+        radial-gradient(circle at 70% 40%, rgba(200,150,255,0.25), transparent 70%),
+        #000;
+
+    transform: rotate(-25deg);
+    filter: blur(45px);
+
     z-index: -3;
 }
 
-/* ✨ STARS */
+/* ✨ STARFIELD */
 body::after {
     content: "";
     position: fixed;
     width: 100%;
     height: 100%;
+
     background-image:
-        radial-gradient(2px 2px at 20% 30%, white, transparent),
-        radial-gradient(1px 1px at 70% 60%, white, transparent),
-        radial-gradient(2px 2px at 40% 80%, white, transparent),
-        radial-gradient(1px 1px at 90% 20%, white, transparent);
-    animation: twinkle 6s infinite alternate;
-    opacity: 0.4;
+        radial-gradient(2px 2px at 10% 20%, white, transparent),
+        radial-gradient(2px 2px at 30% 80%, white, transparent),
+        radial-gradient(1px 1px at 50% 40%, white, transparent),
+        radial-gradient(2px 2px at 80% 60%, white, transparent),
+        radial-gradient(1px 1px at 90% 10%, white, transparent),
+        radial-gradient(1px 1px at 60% 70%, white, transparent),
+        radial-gradient(2px 2px at 25% 55%, white, transparent);
+
+    animation: twinkle 3s infinite alternate;
+    opacity: 0.8;
+
     z-index: -2;
 }
 
 @keyframes twinkle {
-    from { opacity: 0.2; }
-    to { opacity: 0.6; }
+    0% { opacity: 0.4; }
+    100% { opacity: 1; }
 }
 
 /* SCREENS */
@@ -66,20 +81,18 @@ body::after {
     z-index: 2;
 }
 
-/* 🌌 LANDING VISUAL BAND */
+/* 🌌 LANDING VISUAL */
 .landing-visual {
     height: 33vh;
     display: flex;
     justify-content: space-around;
     align-items: center;
-    position: relative;
-    z-index: 1;
 }
 
-/* CHARACTERS */
+/* 🤖 CHARACTERS */
 .character {
-    width: 120px;
-    opacity: 0.85;
+    width: 180px;
+    opacity: 0.9;
     transition: transform 0.3s ease;
 }
 
@@ -87,19 +100,27 @@ body::after {
     transform: scale(1.05);
 }
 
-/* TEXT BLOCK */
+/* TEXT */
 .landing-text {
-    margin-top: 20px;
     text-align: center;
+    margin-top: 20px;
 }
 
 /* BUTTON */
 button {
-    padding: 10px 20px;
+    padding: 12px 24px;
     margin-top: 15px;
     background: #4da6ff;
     border: none;
     cursor: pointer;
+    font-size: 16px;
+}
+
+/* INPUTS */
+input, textarea {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
 }
 
 /* FOOTER */
@@ -118,11 +139,10 @@ button {
 <!-- LANDING -->
 <div id="landing" class="screen active">
 
-    <!-- VISUAL BAND -->
     <div class="landing-visual">
-        <img src="/static/nestor.png" class="character">
-        <img src="/static/alec.png" class="character">
-        <img src="/static/helper.png" class="character">
+        <img src="/static/robots/nestor.png" class="character">
+        <img src="/static/robots/alec.png" class="character">
+        <img src="/static/robots/helper.png" class="character">
     </div>
 
     <div class="app-container">
@@ -131,11 +151,12 @@ button {
             <h1>HiddenEdge</h1>
 
             <p>
-                Decide if a job is worth applying to.<br><br>
-                Stop wasting time on low-probability applications.
+                Nestor evaluates your fit<br>
+                Alec improves your CV<br>
+                Helper guides you
             </p>
 
-            <button onclick="showEULA()">Start</button>
+            <button onclick="showEULA()">Click here to start</button>
         </div>
 
         <div class="footer">
@@ -217,6 +238,22 @@ function enterApp(){
 function switchScreen(id){
     document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
     document.getElementById(id).classList.add("active");
+}
+
+async function analyze(){
+    const file = document.getElementById("cv_file").files[0];
+    const job = document.getElementById("job").value;
+
+    const formData = new FormData();
+    formData.append("cv_file", file);
+    formData.append("job_description", job);
+
+    const res = await fetch("/analyze", { method:"POST", body: formData });
+    const data = await res.json();
+
+    document.getElementById("result").innerHTML =
+        `<h2>Score: ${data.score}</h2>
+         <h3>${data.apply_recommendation?.decision}</h3>`;
 }
 
 </script>
