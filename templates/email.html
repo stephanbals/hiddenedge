@@ -1,98 +1,76 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>HiddenEdge - Continue</title>
+<meta charset="UTF-8">
+<title>Email - HiddenEdge</title>
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial;
-            background: black;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-        }
+<link rel="icon" href="/static/favicon.ico">
 
-        .box {
-            text-align: center;
-            max-width: 500px;
-        }
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: black;
+    color: white;
+    text-align: center;
+}
 
-        h2 {
-            margin-bottom: 20px;
-        }
+/* LOGO */
+.logo {
+    position: fixed;
+    top: 15px;
+    left: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    color: #9fd3ff;
+}
 
-        input {
-            width: 100%;
-            padding: 12px;
-            margin-top: 15px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.2);
-            color: white;
-        }
+/* CONTENT */
+.container {
+    margin-top: 150px;
+}
 
-        button {
-            margin-top: 20px;
-            padding: 12px 20px;
-            background: #1f6feb;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
+input {
+    padding: 10px;
+    width: 250px;
+}
 
-        p {
-            color: #aaa;
-            font-size: 14px;
-        }
-
-        .contact {
-            margin-top: 25px;
-            font-size: 13px;
-            color: #777;
-        }
-    </style>
+button {
+    margin-top: 20px;
+    padding: 12px 25px;
+    background: #4da6ff;
+    border: none;
+    cursor: pointer;
+}
+</style>
 </head>
 
 <body>
 
-<div class="box">
+<div class="logo">HiddenEdge</div>
 
-    <h2>Enter your email to continue</h2>
+<div class="container">
+    <h2>Enter your email</h2>
 
-    <p>
-        HiddenEdge will use this to track your analysis session.
-    </p>
+    <input type="email" id="email" placeholder="your@email.com">
 
-    <input type="email" id="email" placeholder="you@email.com">
+    <br>
 
-    <button onclick="continueFlow()">Continue</button>
-
-    <div class="contact">
-        HiddenEdgeInfo@proton.me
-    </div>
-
+    <button onclick="enterApp()">Continue</button>
 </div>
 
 <script>
-function continueFlow() {
+function enterApp() {
+    const email = document.getElementById("email").value;
 
-    let email = document.getElementById("email").value;
-
-    if (!email || !email.includes("@")) {
-        alert("Enter a valid email");
+    if (!email) {
+        alert("Please enter your email");
         return;
     }
 
-    // store email locally
-    localStorage.setItem("hiddenedge_email", email);
+    localStorage.setItem("user_email", email);
 
-    // initialize free usage counter if not exists
-    if (!localStorage.getItem("hiddenedge_uses")) {
-        localStorage.setItem("hiddenedge_uses", "0");
-    }
-
+    // ✅ FIXED FLOW
     window.location.href = "/app";
 }
 </script>

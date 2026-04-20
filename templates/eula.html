@@ -1,83 +1,75 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>HiddenEdge - Terms</title>
+<meta charset="UTF-8">
+<title>EULA - HiddenEdge</title>
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial;
-            background: black;
-            color: white;
-            padding: 40px;
-        }
+<link rel="icon" href="/static/favicon.ico">
 
-        .box {
-            max-width: 800px;
-            margin: auto;
-        }
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: black;
+    color: white;
+    text-align: center;
+}
 
-        h2 {
-            margin-bottom: 20px;
-        }
+.logo {
+    position: fixed;
+    top: 15px;
+    left: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    color: #9fd3ff;
+}
 
-        p {
-            color: #ccc;
-            line-height: 1.6;
-        }
+.container {
+    margin-top: 120px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
 
-        button {
-            margin-top: 20px;
-            padding: 12px 20px;
-            background: #1f6feb;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-    </style>
+button {
+    margin-top: 20px;
+    padding: 12px 25px;
+    background: #4da6ff;
+    border: none;
+    cursor: pointer;
+}
+</style>
 </head>
 
 <body>
 
-<div class="box">
+<div class="logo">HiddenEdge</div>
 
-    <h2>Before we begin</h2>
-
-    <p>
-        HiddenEdge uses AI to analyze your CV and job descriptions.
-        By continuing, you agree that:
-    </p>
+<div class="container">
+    <h2>Terms of Use</h2>
 
     <p>
-        - Your data is processed for analysis purposes<br>
-	- After you close your session no information is retained<br>
-        - No guarantees are provided for job outcomes<br>
-        - This tool provides advisory insights only<br>
-        - Data may be processed by AI systems in accordance with GDPR and AI Act guidelines
+        This tool provides AI-based recommendations.<br><br>
+        Results are indicative only.<br><br>
+        Payments are non-refundable.<br><br>
+        Subscription cancellation via HiddenEdgeInfo@proton.me.
     </p>
 
-    <br>
-
-    <label>
-        <input type="checkbox" id="agree">
-        I agree to Terms, GDPR and AI processing
-    </label>
+    <input type="checkbox" id="agree"> I agree
 
     <br>
 
     <button onclick="continueFlow()">Continue</button>
-
 </div>
 
 <script>
 function continueFlow() {
-    let checked = document.getElementById("agree").checked;
-
-    if (!checked) {
-        alert("You must accept before continuing");
+    if (!document.getElementById("agree").checked) {
+        alert("You must agree to continue");
         return;
     }
 
+    // ✅ FIXED FLOW
     window.location.href = "/email";
 }
 </script>

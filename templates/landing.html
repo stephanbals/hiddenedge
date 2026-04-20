@@ -1,18 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
 <title>HiddenEdge</title>
 
+<link rel="icon" href="/static/favicon.ico">
+
 <style>
+
 body {
-    margin:0;
-    background:black;
-    color:white;
-    text-align:center;
-    font-family:Arial;
+    margin: 0;
+    font-family: Arial;
+    background: black;
+    color: white;
+    text-align: center;
 }
 
-/* 🌌 VISIBLE GALAXY */
+/* LOGO */
+.logo {
+    position: fixed;
+    top: 15px;
+    left: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    color: #9fd3ff;
+}
+
+/* ROBOTS */
+.robots {
+    margin-top: 60px;
+}
+
+.robots img {
+    width: 200px;
+    margin: 20px;
+}
+
+/* TEXT */
+.banner {
+    font-size: 22px;
+    margin-top: 20px;
+    color: #9fd3ff;
+}
+
+button {
+    margin-top: 30px;
+    padding: 15px 30px;
+    font-size: 18px;
+    background: #4da6ff;
+    border: none;
+    cursor: pointer;
+}
+
+/* MILKY WAY */
 body::before {
     content:"";
     position:fixed;
@@ -28,7 +68,7 @@ body::before {
     z-index:-2;
 }
 
-/* ✨ STARS */
+/* STARS */
 body::after {
     content:"";
     position:fixed;
@@ -47,36 +87,12 @@ body::after {
     to {opacity:1;}
 }
 
-/* 🤖 ROBOTS */
-.robots {
-    margin-top:50px;
-}
-
-.robots img {
-    width:200px;
-    margin:20px;
-}
-
-/* TEXT */
-.banner {
-    font-size:22px;
-    margin-top:20px;
-    color:#9fd3ff;
-}
-
-button {
-    padding:15px 30px;
-    font-size:18px;
-    background:#4da6ff;
-    border:none;
-    cursor:pointer;
-    margin-top:20px;
-}
 </style>
-
 </head>
 
 <body>
+
+<div class="logo">HiddenEdge</div>
 
 <div class="robots">
     <img src="/static/robots/nestor.png">
