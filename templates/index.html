@@ -34,30 +34,22 @@
             margin-bottom: 20px;
             padding: 10px;
             background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
         }
 
         .uses {
             color: #aaa;
-            font-size: 14px;
         }
 
         #analysisResults {
             margin-top: 30px;
             padding: 20px;
             background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .locked {
-            opacity: 0.4;
         }
 
         .upgrade {
             margin-top: 20px;
             padding: 15px;
             background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.2);
         }
 
         .footer {
@@ -77,7 +69,6 @@
 </div>
 
 <h2>Upload CV(s)</h2>
-
 <input type="file" id="file" multiple>
 <button onclick="upload()">Upload</button>
 
@@ -105,7 +96,7 @@ function init() {
     updateUsesDisplay();
 }
 
-/* ===== EMAIL-BASED STORAGE ===== */
+/* ===== USAGE ===== */
 
 function getKey() {
     return "hiddenedge_uses_" + userEmail;
@@ -163,6 +154,11 @@ function analyze() {
         return;
     }
 
+    // 🔥 CLEAR OLD RESULT + SHOW LOADING
+    document.getElementById("analysisResults").innerHTML = `
+        <p>Analyzing...</p>
+    `;
+
     fetch("/analyze", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -174,6 +170,7 @@ function analyze() {
     .then(r => r.json())
     .then(data => {
 
+        // ONLY increment AFTER success
         if (remainingUses() > 0) {
             incrementUses();
         }
@@ -182,24 +179,13 @@ function analyze() {
 
         document.getElementById("analysisResults").innerHTML = `
             <h2>Match Score: ${data.match_score}%</h2>
-
-            <div class="locked">
-                <h3>👔 Recruiter Analysis</h3>
-                <p>🔒 Upgrade required</p>
-
-                <h3>🧠 Hiring Manager Analysis</h3>
-                <p>🔒 Upgrade required</p>
-
-                <h3>🎯 Advice</h3>
-                <p>🔒 Upgrade required</p>
-            </div>
+            <p>${data.context_line || ""}</p>
 
             <div class="upgrade">
                 <p>
                     Unlock full recruiter & hiring manager insights<br><br>
                     €9/month • Unlimited analyses • Cancel anytime
                 </p>
-
                 <button onclick="goToUpgrade()">Upgrade</button>
             </div>
         `;
@@ -211,8 +197,6 @@ function analyze() {
 function goToUpgrade() {
     window.location.href = "/create-checkout-session";
 }
-
-/* ===== INIT ===== */
 
 init();
 
