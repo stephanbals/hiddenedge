@@ -7,8 +7,14 @@ import os
 from docx import Document
 import PyPDF2
 from openai import OpenAI
+import stripe
 
+# ===== CONFIG =====
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+
+# IMPORTANT: replace with your Stripe LIVE or TEST price ID
+STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")  # e.g. price_12345
 
 app = Flask(__name__)
 cv_service = CVService()
@@ -35,6 +41,28 @@ def email():
 @app.route("/app")
 def app_page():
     return open("templates/index.html").read()
+
+
+# =========================================
+# STRIPE CHECKOUT
+# =========================================
+
+@app.route("/create-checkout-session")
+def create_checkout_session():
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="subscription",
+            line_items=[{
+                "price": STRIPE_PRICE_ID,
+                "quantity": 1,
+            }],
+            success_url="https://hiddenedge-live.onrender.com/app?paid=true",
+            cancel_url="https://hiddenedge-live.onrender.com/app",
+        )
+        return redirect(session.url, code=303)
+    except Exception as e:
+        return str(e), 400
 
 
 # =========================================
@@ -126,15 +154,11 @@ def upload_cv():
 
 
 # =========================================
-# ANALYZE (LIMITED MODE)
+# ANALYZE (LIMITED)
 # =========================================
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-
-    data = request.json
-    texts = data.get("texts", [])
-    job_text = data.get("job_text", "")
 
     return jsonify({
         "match_score": 65,
