@@ -1,5 +1,3 @@
-<!-- ONLY showing changed JS section — BUT per your rule: FULL FILE -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,47 +14,101 @@ body {
     text-align: center;
 }
 
-.screen { display:none; padding:40px; min-height:100vh; position:relative; }
-.active { display:block; }
+/* SCREENS */
+.screen {
+    display: none;
+    padding: 60px 20px;
+    min-height: 100vh;
+}
+.active { display: block; }
 
+/* CONTENT BOX */
+.box {
+    max-width: 700px;
+    margin: auto;
+}
+
+/* INPUTS */
 input, textarea {
-    width:500px; max-width:90%; margin:10px; padding:10px;
+    width: 100%;
+    margin: 10px 0;
+    padding: 10px;
 }
 
+/* BUTTONS */
 button {
-    padding:10px 20px; margin:10px;
-    background:#4da6ff; border:none; cursor:pointer;
+    padding: 10px 20px;
+    margin-top: 15px;
+    background: #4da6ff;
+    border: none;
+    cursor: pointer;
 }
 
+/* RESULT */
 #result {
-    margin-top:30px; max-width:900px;
-    margin-left:auto; margin-right:auto;
-    text-align:left;
+    margin-top: 30px;
+    text-align: left;
 }
 
+/* CHECKBOX */
+.checkbox {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+/* FOOTER */
 .footer {
-    position:absolute; bottom:10px; width:100%;
-    font-size:12px; color:#aaa;
+    position: absolute;
+    bottom: 10px;
+    width: 100%;
+    font-size: 12px;
+    color: #aaa;
 }
 
-.help-btn { position:absolute; top:20px; right:20px; }
+/* HELP BUTTON */
+.help-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
 
+/* MODAL */
 .modal {
-    display:none; position:fixed; z-index:2000;
-    width:100%; height:100%; background:rgba(0,0,0,0.7);
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
 }
 
 .modal-content {
-    background:#1a1f3d; margin:8% auto; padding:20px;
-    width:600px; border-radius:10px; position:relative;
+    background: #1a1f3d;
+    margin: 8% auto;
+    padding: 20px;
+    width: 600px;
+    border-radius: 10px;
+    text-align: left;
+    position: relative;
 }
 
 .close-btn {
-    position:absolute; top:10px; right:15px; cursor:pointer;
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    cursor: pointer;
 }
 
-table { width:100%; border-collapse:collapse; }
-td, th { border:1px solid #444; padding:8px; }
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+td, th {
+    border: 1px solid #444;
+    padding: 8px;
+}
 </style>
 </head>
 
@@ -64,68 +116,127 @@ td, th { border:1px solid #444; padding:8px; }
 
 <button class="help-btn" onclick="openHelp()">Help</button>
 
+<!-- LANDING -->
 <div id="landing" class="screen active">
-    <h1>HiddenEdge</h1>
-    <p>Decide if a job is worth applying to.</p>
-    <button onclick="showEULA()">Start</button>
-    <div class="footer">HiddenEdgeInfo@proton.me<br>© 2026 HiddenEdge</div>
+    <div class="box">
+        <h1>HiddenEdge</h1>
+
+        <p>
+            Decide if a job is worth applying to — before you waste time.<br><br>
+            HiddenEdge analyzes your CV against job descriptions,<br>
+            shows your real match, and helps you improve your chances.
+        </p>
+
+        <button onclick="showEULA()">Start</button>
+    </div>
+
+    <div class="footer">HiddenEdgeInfo@proton.me</div>
 </div>
 
+<!-- EULA -->
 <div id="eula" class="screen">
-    <h2>Terms</h2>
-    <input type="checkbox" id="agree"> I agree<br><br>
-    <button onclick="continueToEmail()">Continue</button>
-    <div class="footer">HiddenEdgeInfo@proton.me<br>© 2026 HiddenEdge</div>
+    <div class="box">
+
+        <h2>Before you continue</h2>
+
+        <p>
+            HiddenEdge uses AI to analyze your CV and provide guidance.<br><br>
+            Results are indicative and not guaranteed.<br>
+            You remain responsible for your decisions.
+        </p>
+
+        <div class="checkbox">
+            <input type="checkbox" id="agree">
+            <label for="agree">I understand and agree</label>
+        </div>
+
+        <button onclick="continueToEmail()">Continue</button>
+    </div>
+
+    <div class="footer">HiddenEdgeInfo@proton.me</div>
 </div>
 
+<!-- EMAIL -->
 <div id="email" class="screen">
-    <input type="email" id="userEmail"><br>
-    <button onclick="enterApp()">Enter</button>
-    <div class="footer">HiddenEdgeInfo@proton.me<br>© 2026 HiddenEdge</div>
+    <div class="box">
+
+        <h2>Enter your email</h2>
+
+        <p>
+            We use your email to store your session and improve your experience.<br>
+            No spam. No sharing.
+        </p>
+
+        <input type="email" id="userEmail" placeholder="your@email.com">
+
+        <button onclick="enterApp()">Enter Platform</button>
+    </div>
+
+    <div class="footer">HiddenEdgeInfo@proton.me</div>
 </div>
 
+<!-- APP -->
 <div id="app" class="screen">
 
-    <button onclick="openTracker()">📋 My Applications</button><br>
+    <div class="box">
 
-    <input type="file" id="cv_file"><br>
-    <textarea id="job"></textarea><br>
+        <h2>Analyze Your CV</h2>
 
-    <button onclick="analyze()">Analyze</button>
+        <button onclick="openTracker()">📋 My Applications</button><br>
 
-    <div id="result"></div>
+        <input type="file" id="cv_file"><br>
+        <textarea id="job" rows="6" placeholder="Paste job description"></textarea><br>
 
-    <div class="footer">HiddenEdgeInfo@proton.me<br>© 2026 HiddenEdge</div>
+        <button onclick="analyze()">Analyze</button>
 
+        <div id="result"></div>
+
+    </div>
+
+    <div class="footer">HiddenEdgeInfo@proton.me</div>
 </div>
 
+<!-- HELP MODAL -->
+<div id="helpModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeHelp()">✖</span>
+        <h3>How to use HiddenEdge</h3>
+        <p>
+        1. Upload your CV<br>
+        2. Paste job description<br>
+        3. Click Analyze<br>
+        4. Review match + recommendation<br>
+        5. Track applications
+        </p>
+    </div>
+</div>
+
+<!-- TRACKER -->
 <div id="trackerModal" class="modal">
-<div class="modal-content">
-<span class="close-btn" onclick="closeTracker()">✖</span>
-<h3>Applications</h3>
-<table id="trackerTable"></table>
-</div>
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeTracker()">✖</span>
+        <h3>📋 My Applications</h3>
+
+        <p style="font-size:12px;color:#aaa;">
+        Stored on this device
+        </p>
+
+        <table id="trackerTable"></table>
+    </div>
 </div>
 
 <script>
 
-/* ---------- SAFE HELPERS ---------- */
+/* SAFE HELPERS */
+function safe(val, fallback=""){ return val ?? fallback; }
+function safeArray(arr){ return Array.isArray(arr) ? arr : []; }
 
-function safe(val, fallback=""){
-    return (val === undefined || val === null) ? fallback : val;
-}
-
-function safeArray(arr){
-    return Array.isArray(arr) ? arr : [];
-}
-
-/* ---------- FLOW ---------- */
-
+/* FLOW */
 function showEULA(){ switchScreen("eula"); }
 
 function continueToEmail(){
     if(!document.getElementById("agree").checked){
-        alert("Please agree"); return;
+        alert("Please agree first"); return;
     }
     switchScreen("email");
 }
@@ -137,17 +248,19 @@ function enterApp(){
 }
 
 function switchScreen(id){
-    document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
     document.getElementById(id).classList.add("active");
 }
 
-/* ---------- TRACKER ---------- */
+/* HELP */
+function openHelp(){ document.getElementById("helpModal").style.display="block"; }
+function closeHelp(){ document.getElementById("helpModal").style.display="none"; }
 
+/* TRACKER */
 function openTracker(){
     document.getElementById("trackerModal").style.display="block";
     loadTracker();
 }
-
 function closeTracker(){
     document.getElementById("trackerModal").style.display="none";
 }
@@ -156,14 +269,26 @@ function loadTracker(){
     let apps = JSON.parse(localStorage.getItem("apps") || "[]");
     let table = document.getElementById("trackerTable");
 
-    table.innerHTML = "<tr><th>Date</th><th>Job</th></tr>";
+    table.innerHTML = "<tr><th>Date</th><th>Job</th><th>Action</th></tr>";
 
-    apps.forEach(a=>{
-        table.innerHTML += `<tr><td>${safe(a.date)}</td><td>${safe(a.job)}</td></tr>`;
+    apps.forEach((a,i)=>{
+        table.innerHTML += `
+        <tr>
+            <td>${safe(a.date)}</td>
+            <td>${safe(a.job)}</td>
+            <td><button onclick="deleteApp(${i})">Delete</button></td>
+        </tr>`;
     });
 }
 
-/* ---------- ANALYZE ---------- */
+function deleteApp(i){
+    let apps = JSON.parse(localStorage.getItem("apps") || "[]");
+    apps.splice(i,1);
+    localStorage.setItem("apps", JSON.stringify(apps));
+    loadTracker();
+}
+
+/* ANALYZE */
 
 let lastJob = "";
 
@@ -189,21 +314,35 @@ async function analyze(){
         <h2>Score: ${safe(data.score,"-")}</h2>
         <h3>${safe(data.decision)}</h3>
 
-        <h3>Recommendation</h3>
+        <h3>🎯 Recommendation</h3>
         <p>${safe(data.apply_recommendation?.decision)}</p>
 
-        <h3>Recruiter</h3>
+        <button onclick="saveApplication()">Apply</button>
+
+        <h3>🧾 Recruiter</h3>
         <p>${safe(data.recruiter_view?.verdict)}</p>
 
-        <h3>Manager</h3>
+        <h3>🧠 Hiring Manager</h3>
         <p>${safe(data.hiring_manager_view?.verdict)}</p>
 
-        <h3>Gaps</h3>
+        <h3>⚠️ Gaps</h3>
         <ul>${safeArray(data.gaps).map(g=>`<li>${g}</li>`).join("")}</ul>
 
-        <h3>Improvements</h3>
+        <h3>🚀 Improvements</h3>
         <ul>${safeArray(data.improvements).map(i=>`<li>${i}</li>`).join("")}</ul>
     `;
+}
+
+function saveApplication(){
+    let apps = JSON.parse(localStorage.getItem("apps") || "[]");
+
+    apps.push({
+        date: new Date().toLocaleDateString(),
+        job: lastJob
+    });
+
+    localStorage.setItem("apps", JSON.stringify(apps));
+    alert("Saved to tracker");
 }
 
 </script>
