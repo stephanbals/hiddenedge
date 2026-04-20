@@ -7,7 +7,7 @@ import os
 from docx import Document
 import PyPDF2
 
-# 🔥 AI
+# ===== OPENAI =====
 from openai import OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -112,27 +112,51 @@ def upload_cv():
 
 
 # =========================================
-# BASE SCORING (SAFE)
+# ELITE SCORING (FIXED)
 # =========================================
 
 def compute_match_score(cv_text, job_text):
+
     try:
-        cv_words = set(cv_text.lower().split())
-        job_words = set(job_text.lower().split())
+        prompt = f"""
+You are a senior hiring expert.
 
-        if not job_words:
-            return 0
+Evaluate how well this candidate matches the job.
 
-        overlap = cv_words.intersection(job_words)
-        score = int((len(overlap) / len(job_words)) * 100)
+Return ONLY a number between 0 and 100.
 
-        return min(score, 95)
-    except:
+Consider:
+- transferable experience
+- seniority
+- delivery capability
+- domain relevance
+
+CV:
+{cv_text[:3000]}
+
+JOB:
+{job_text[:1500]}
+"""
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0
+        )
+
+        score_text = response.choices[0].message.content.strip()
+
+        score = int(''.join(filter(str.isdigit, score_text)))
+
+        return max(0, min(score, 100))
+
+    except Exception as e:
+        print("Score fallback:", e)
         return 50
 
 
 # =========================================
-# ELITE AI ANALYSIS (NEW LAYER)
+# ELITE ANALYSIS
 # =========================================
 
 def elite_analysis(cv_text, job_text):
@@ -140,28 +164,27 @@ def elite_analysis(cv_text, job_text):
     try:
         prompt = f"""
 You are BOTH:
-1. A senior recruiter (ATS + screening mindset)
-2. A hiring manager responsible for delivery
 
-Analyze the candidate against the job.
+1. Senior recruiter (ATS + screening logic)
+2. Hiring manager (delivery accountability)
 
 Be realistic, critical, and specific.
 
-RETURN EXACT FORMAT:
+RETURN FORMAT EXACTLY:
 
 RECRUITER VIEW:
-- Strong signals (bullet points)
-- Concerns (bullet points)
+- Strong signals
+- Concerns
 - Screening Decision: PASS or REJECT
 - Reason
 
 HIRING MANAGER VIEW:
-- Strengths (bullet points)
-- Risks (bullet points)
+- Strengths
+- Risks
 - Decision: HIRE or DO NOT HIRE
 - Reason
 
-NO GENERIC TEXT. NO FLUFF.
+NO GENERIC TEXT.
 
 CV:
 {cv_text[:4000]}
@@ -179,27 +202,22 @@ JOB:
         return response.choices[0].message.content
 
     except Exception as e:
-        print("AI ERROR:", e)
+        print("AI analysis fallback:", e)
         return None
 
 
 # =========================================
-# STRUCTURED OUTPUT (SAFE FALLBACK)
+# DECISION LOGIC
 # =========================================
 
-def build_safe_output(score):
+def decision_logic(score):
 
     if score >= 75:
-        decision = "APPLY"
-        confidence = "High"
+        return "APPLY", "High"
     elif score >= 50:
-        decision = "TRY"
-        confidence = "Medium"
+        return "TRY", "Medium"
     else:
-        decision = "DO NOT APPLY"
-        confidence = "Low"
-
-    return decision, confidence
+        return "DO NOT APPLY", "Low"
 
 
 # =========================================
@@ -218,19 +236,18 @@ def analyze():
 
     combined_cv = "\n".join(texts)
 
-    # ===== BASE SCORE =====
+    # ===== SCORE =====
     score = compute_match_score(combined_cv, job_text)
-    decision, confidence = build_safe_output(score)
 
-    # ===== ELITE LAYER =====
+    decision, confidence = decision_logic(score)
+
+    # ===== ELITE ANALYSIS =====
     ai_analysis = elite_analysis(combined_cv, job_text)
 
-    # ===== FALLBACK =====
     if not ai_analysis:
-        recruiter_view = "Fallback recruiter analysis (AI unavailable)"
-        hiring_view = "Fallback hiring manager analysis (AI unavailable)"
+        recruiter_view = "Recruiter analysis unavailable"
+        hiring_view = "Hiring manager analysis unavailable"
     else:
-        # crude split but reliable
         parts = ai_analysis.split("HIRING MANAGER VIEW:")
 
         recruiter_view = parts[0].strip()
