@@ -1,77 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Email - HiddenEdge</title>
-
+<title>Email</title>
 <link rel="icon" href="/static/favicon.ico">
-
-<style>
-body {
-    margin: 0;
-    font-family: Arial;
-    background: black;
-    color: white;
-    text-align: center;
-}
-
-/* LOGO */
-.logo {
-    position: fixed;
-    top: 15px;
-    left: 20px;
-    font-size: 20px;
-    font-weight: bold;
-    color: #9fd3ff;
-}
-
-/* CONTENT */
-.container {
-    margin-top: 150px;
-}
-
-input {
-    padding: 10px;
-    width: 250px;
-}
-
-button {
-    margin-top: 20px;
-    padding: 12px 25px;
-    background: #4da6ff;
-    border: none;
-    cursor: pointer;
-}
-</style>
 </head>
 
-<body>
+<body style="background:black; color:white; text-align:center;">
 
-<div class="logo">HiddenEdge</div>
+<h2>Email</h2>
 
-<div class="container">
-    <h2>Enter your email</h2>
+<input type="email" id="email">
 
-    <input type="email" id="email" placeholder="your@email.com">
+<br><br>
 
-    <br>
-
-    <button onclick="enterApp()">Continue</button>
-</div>
+<button onclick="go()">Continue</button>
 
 <script>
-function enterApp() {
+function go() {
     const email = document.getElementById("email").value;
 
     if (!email) {
-        alert("Please enter your email");
+        alert("Enter email");
         return;
     }
 
-    localStorage.setItem("user_email", email);
+    localStorage.setItem("email", email);
 
-    // ✅ FIXED FLOW
-    window.location.href = "/app";
+    // 🔥 HARD redirect (no JS weirdness)
+    window.location.replace("/app");
 }
 </script>
 

@@ -1,114 +1,76 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
 <title>HiddenEdge</title>
-
 <link rel="icon" href="/static/favicon.ico">
 
 <style>
-
 body {
-    margin: 0;
-    font-family: Arial;
-    background: black;
-    color: white;
-    text-align: center;
+    margin:0;
+    background:black;
+    color:white;
+    text-align:center;
 }
 
-/* LOGO */
-.logo {
-    position: fixed;
-    top: 15px;
-    left: 20px;
-    font-size: 20px;
-    font-weight: bold;
-    color: #9fd3ff;
-}
-
-/* ROBOTS */
-.robots {
-    margin-top: 60px;
-}
-
-.robots img {
-    width: 200px;
-    margin: 20px;
-}
-
-/* TEXT */
-.banner {
-    font-size: 22px;
-    margin-top: 20px;
-    color: #9fd3ff;
-}
-
-button {
-    margin-top: 30px;
-    padding: 15px 30px;
-    font-size: 18px;
-    background: #4da6ff;
-    border: none;
-    cursor: pointer;
-}
-
-/* MILKY WAY */
+/* 🌌 VERY VISIBLE */
 body::before {
     content:"";
     position:fixed;
     width:200%;
     height:200%;
     background:
-        radial-gradient(circle, rgba(255,255,255,0.3), transparent 40%),
-        radial-gradient(circle at 30% 60%, rgba(0,150,255,0.4), transparent 60%),
-        radial-gradient(circle at 70% 40%, rgba(200,100,255,0.4), transparent 60%),
-        black;
+        radial-gradient(circle, rgba(255,255,255,0.6), transparent 40%),
+        radial-gradient(circle at 30% 60%, rgba(0,150,255,0.7), transparent 60%),
+        radial-gradient(circle at 70% 40%, rgba(200,100,255,0.7), transparent 60%);
     transform:rotate(-20deg);
-    filter:blur(60px);
+    filter:blur(80px);
     z-index:-2;
 }
 
-/* STARS */
+/* ✨ OBVIOUS STARS */
 body::after {
     content:"";
     position:fixed;
     width:100%;
     height:100%;
     background-image:
-        radial-gradient(3px 3px at 20% 30%, white, transparent),
-        radial-gradient(2px 2px at 70% 60%, white, transparent),
-        radial-gradient(3px 3px at 40% 80%, white, transparent);
-    animation:twinkle 1.5s infinite alternate;
+        radial-gradient(4px 4px at 20% 30%, white, transparent),
+        radial-gradient(3px 3px at 70% 60%, white, transparent),
+        radial-gradient(4px 4px at 40% 80%, white, transparent);
+    animation:blink 1s infinite alternate;
     z-index:-1;
 }
 
-@keyframes twinkle {
+@keyframes blink {
     from {opacity:0.3;}
     to {opacity:1;}
 }
 
+img {
+    width:200px;
+    margin:20px;
+}
+
+button {
+    padding:15px 30px;
+    font-size:18px;
+    background:#4da6ff;
+    border:none;
+}
 </style>
 </head>
 
 <body>
 
-<div class="logo">HiddenEdge</div>
+<img src="/static/robots/nestor.png">
+<img src="/static/robots/alec.png">
+<img src="/static/robots/helper.png">
 
-<div class="robots">
-    <img src="/static/robots/nestor.png">
-    <img src="/static/robots/alec.png">
-    <img src="/static/robots/helper.png">
-</div>
-
-<div class="banner">
-Welcome to HiddenEdge — where your chances for successful job applications really come to life
-</div>
+<h2>Welcome to HiddenEdge — where your chances for successful job applications really come to life</h2>
 
 <h1>HiddenEdge</h1>
 
-<button onclick="window.location.href='/eula'">
-Start
-</button>
+<button onclick="window.location.replace('/eula')">Start</button>
 
 </body>
 </html>

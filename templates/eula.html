@@ -1,76 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>EULA - HiddenEdge</title>
-
+<title>EULA</title>
 <link rel="icon" href="/static/favicon.ico">
-
-<style>
-body {
-    margin: 0;
-    font-family: Arial;
-    background: black;
-    color: white;
-    text-align: center;
-}
-
-.logo {
-    position: fixed;
-    top: 15px;
-    left: 20px;
-    font-size: 20px;
-    font-weight: bold;
-    color: #9fd3ff;
-}
-
-.container {
-    margin-top: 120px;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-button {
-    margin-top: 20px;
-    padding: 12px 25px;
-    background: #4da6ff;
-    border: none;
-    cursor: pointer;
-}
-</style>
 </head>
 
-<body>
+<body style="background:black; color:white; text-align:center;">
 
-<div class="logo">HiddenEdge</div>
+<h2>Terms</h2>
 
-<div class="container">
-    <h2>Terms of Use</h2>
+<input type="checkbox" id="agree"> I agree
 
-    <p>
-        This tool provides AI-based recommendations.<br><br>
-        Results are indicative only.<br><br>
-        Payments are non-refundable.<br><br>
-        Subscription cancellation via HiddenEdgeInfo@proton.me.
-    </p>
+<br><br>
 
-    <input type="checkbox" id="agree"> I agree
-
-    <br>
-
-    <button onclick="continueFlow()">Continue</button>
-</div>
+<button onclick="go()">Continue</button>
 
 <script>
-function continueFlow() {
+function go() {
     if (!document.getElementById("agree").checked) {
-        alert("You must agree to continue");
+        alert("You must agree");
         return;
     }
 
-    // ✅ FIXED FLOW
-    window.location.href = "/email";
+    window.location.replace("/email");
 }
 </script>
 
