@@ -9,12 +9,11 @@
             font-family: Arial;
             background: black;
             color: white;
-            overflow-x: hidden;
         }
 
         textarea {
             width: 100%;
-            height: 220px;
+            height: 200px;
             margin-top: 10px;
             background: rgba(255,255,255,0.05);
             color: white;
@@ -31,15 +30,6 @@
             border: none;
         }
 
-        .container {
-            display: flex;
-            gap: 20px;
-        }
-
-        .box {
-            width: 50%;
-        }
-
         .bar-container {
             background: rgba(255,255,255,0.1);
             border-radius: 8px;
@@ -53,64 +43,32 @@
             background: linear-gradient(90deg, #4facfe, #00f2fe);
         }
 
-        /* ===== STARFIELD ===== */
-
-        #space-bg {
-            position: fixed;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            z-index: -1;
-            background: black;
-        }
-
-        .star {
-            position: absolute;
-            width: 2px;
-            height: 2px;
-            background: white;
-        }
-
-        #milkyway {
-            position: absolute;
-            width: 200%;
-            height: 200%;
-            top: -50%;
-            left: -50%;
-            background: radial-gradient(circle,
-                rgba(255,255,255,0.15) 0%,
-                rgba(255,255,255,0.05) 30%,
-                transparent 60%);
-            transform: rotate(25deg);
-            filter: blur(30px);
-        }
-
-        .results-active #space-bg {
-            opacity: 0.2;
-        }
-
-        /* ===== ANALYSIS BLOCK ===== */
-
         #analysisResults {
-            margin-top: 40px;
+            margin-top: 30px;
             padding: 20px;
             background: rgba(255,255,255,0.05);
             border: 1px solid rgba(255,255,255,0.1);
         }
 
-        pre {
-            white-space: pre-wrap;
+        .locked {
+            opacity: 0.4;
+        }
+
+        .upgrade {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .uses {
+            margin-top: 10px;
+            color: #aaa;
         }
     </style>
 </head>
 
 <body>
-
-<!-- BACKGROUND -->
-<div id="space-bg">
-    <div id="milkyway"></div>
-</div>
 
 <h2>Upload CV(s)</h2>
 
@@ -123,58 +81,32 @@
 
 <h2>Job Description</h2>
 <textarea id="job"></textarea>
-<button onclick="runFullAnalysis()">Analyze</button>
+<button onclick="analyze()">Analyze</button>
 
 <div class="bar-container">
-    <div id="tailorBar" class="bar"></div>
+    <div id="analyzeBar" class="bar"></div>
 </div>
 
-<!-- 🔥 NEW ANALYSIS BLOCK -->
 <div id="analysisResults"></div>
-
-<h2>Compare (Delta)</h2>
-
-<div class="container">
-    <div class="box">
-        <h3>Master CV</h3>
-        <textarea id="master"></textarea>
-    </div>
-
-    <div class="box">
-        <h3>Tailored CV (Editable)</h3>
-        <textarea id="tailored"></textarea>
-    </div>
-</div>
-
-<br>
-<button onclick="download()">Download Tailored CV</button>
 
 <script>
 
 let texts = [];
 
-/* ===== STARFIELD ===== */
+/* ===== USAGE CONTROL ===== */
 
-function generateStars(count = 300) {
-    const container = document.getElementById("space-bg");
-
-    for (let i = 0; i < count; i++) {
-        let star = document.createElement("div");
-        star.className = "star";
-
-        star.style.top = Math.random() * 100 + "%";
-        star.style.left = Math.random() * 100 + "%";
-
-        container.appendChild(star);
-    }
+function getUses() {
+    return parseInt(localStorage.getItem("hiddenedge_uses") || "0");
 }
 
-window.onload = generateStars;
+function incrementUses() {
+    let uses = getUses() + 1;
+    localStorage.setItem("hiddenedge_uses", uses.toString());
+    return uses;
+}
 
-/* ===== HELPERS ===== */
-
-function setBar(id, val) {
-    document.getElementById(id).style.width = val + "%";
+function remainingUses() {
+    return 3 - getUses();
 }
 
 /* ===== UPLOAD ===== */
@@ -184,7 +116,7 @@ function upload() {
     let files = document.getElementById("file").files;
 
     if (!files.length) {
-        alert("Select at least one file");
+        alert("Select a file");
         return;
     }
 
@@ -194,48 +126,32 @@ function upload() {
         form.append("files", files[i]);
     }
 
-    setBar("uploadBar", 30);
-
     fetch("/upload_cv", {
         method: "POST",
         body: form
     })
     .then(r => r.json())
     .then(data => {
-
-        if (data.error) {
-            alert(data.error);
-            return;
-        }
-
         texts = data.texts || [];
-        document.getElementById("master").value = data.master_cv || "";
-
-        setBar("uploadBar", 100);
     });
 }
 
-/* ===== FULL ANALYSIS (NEW + SAFE) ===== */
+/* ===== ANALYZE ===== */
 
-function runFullAnalysis() {
+function analyze() {
+
+    if (remainingUses() <= 0) {
+        showLockedOnly();
+        return;
+    }
 
     let job = document.getElementById("job").value;
 
-    if (!texts.length) {
-        alert("Upload CV first");
+    if (!texts.length || !job) {
+        alert("Upload CV and enter job description");
         return;
     }
 
-    if (!job) {
-        alert("Paste job description");
-        return;
-    }
-
-    document.body.classList.add("results-active");
-
-    setBar("tailorBar", 20);
-
-    // 🔥 STEP 1: ANALYZE (NEW)
     fetch("/analyze", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -247,73 +163,62 @@ function runFullAnalysis() {
     .then(r => r.json())
     .then(data => {
 
-        if (data.error) {
-            alert(data.error);
-            return;
-        }
+        incrementUses();
+
+        let remaining = remainingUses();
 
         document.getElementById("analysisResults").innerHTML = `
             <h2>Match Score: ${data.match_score}%</h2>
-            <h3>Decision: ${data.final_decision} (${data.confidence})</h3>
 
-            <h3>👔 Recruiter View</h3>
-            <pre>${data.recruiter_view}</pre>
+            <div class="uses">
+                ${remaining >= 0 ? remaining : 0} free analyses remaining
+            </div>
 
-            <h3>🧠 Hiring Manager View</h3>
-            <pre>${data.hiring_manager_view}</pre>
+            <div class="locked">
+                <h3>👔 Recruiter Analysis</h3>
+                <p>🔒 Upgrade required</p>
 
-            <h3>🎯 Advice</h3>
-            <pre>${data.advice}</pre>
+                <h3>🧠 Hiring Manager Analysis</h3>
+                <p>🔒 Upgrade required</p>
+
+                <h3>🎯 Advice</h3>
+                <p>🔒 Upgrade required</p>
+            </div>
+
+            <div class="upgrade">
+                <p>
+                    Unlock full recruiter & hiring manager insights<br><br>
+                    €9/month • Unlimited analyses • Cancel anytime
+                </p>
+
+                <button onclick="goToUpgrade()">Upgrade</button>
+            </div>
         `;
-
-        setBar("tailorBar", 60);
-
-        // 🔥 STEP 2: TAILOR (UNCHANGED)
-        return fetch("/tailor_cv", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-                texts: texts,
-                job_text: job
-            })
-        });
-    })
-    .then(r => r.json())
-    .then(data => {
-
-        if (!data.error) {
-            document.getElementById("master").value = data.master_cv || "";
-            document.getElementById("tailored").value = data.tailored_cv || "";
-        }
-
-        setBar("tailorBar", 100);
     });
 }
 
-/* ===== DOWNLOAD ===== */
+/* ===== LOCKED STATE ===== */
 
-function download() {
+function showLockedOnly() {
 
-    let cv = document.getElementById("tailored").value;
+    document.getElementById("analysisResults").innerHTML = `
+        <h2>Free limit reached</h2>
 
-    if (!cv) {
-        alert("No CV to download");
-        return;
-    }
+        <div class="upgrade">
+            <p>
+                Unlock full recruiter & hiring manager insights<br><br>
+                €9/month • Unlimited analyses • Cancel anytime
+            </p>
 
-    fetch("/download_cv", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ cv: cv })
-    })
-    .then(res => res.blob())
-    .then(blob => {
-        let url = window.URL.createObjectURL(blob);
-        let a = document.createElement("a");
-        a.href = url;
-        a.download = "Tailored_CV.docx";
-        a.click();
-    });
+            <button onclick="goToUpgrade()">Upgrade</button>
+        </div>
+    `;
+}
+
+/* ===== STRIPE ===== */
+
+function goToUpgrade() {
+    window.location.href = "/create-checkout-session";
 }
 
 </script>
