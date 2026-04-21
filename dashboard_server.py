@@ -113,7 +113,6 @@ def analyze():
 
         user = get_user(email)
 
-        # HARD PAYWALL
         if not user["paid"] and user["attempts"] >= 3:
             return jsonify({"error": "PAYWALL"}), 403
 
@@ -125,28 +124,15 @@ def analyze():
         prompt = f"""
 You are Nestor, a strict hiring evaluator.
 
-You MUST:
-- Speak directly to the candidate ("you")
-- NEVER give advice to employers
-- Be direct, realistic, and actionable
-
-SCORING RULES:
-- Missing mandatory qualifications → score MUST be below 20
-- Domain mismatch → strong penalty
-- Overqualification must NOT reduce score
-
-ALTERNATIVE ROLE RULE:
-- If score < 50 → ALWAYS provide 3 realistic alternative roles
-
-Return ONLY JSON:
+Return ONLY JSON.
 
 {{
   "fit_score": number,
   "recruiter_view": "...",
   "hiring_manager_view": "...",
-  "gaps": ["...", "...", "..."],
-  "actions": ["...", "...", "..."],
-  "alternative_roles": ["...", "...", "..."]
+  "gaps": ["...", "..."],
+  "actions": ["...", "..."],
+  "alternative_roles": ["...", "..."]
 }}
 
 CV:
@@ -163,8 +149,14 @@ JOB:
         )
 
         raw = response.choices[0].message.content.strip()
-        match = re.search(r"\{.*\}", raw, re.DOTALL)
-        data = json.loads(match.group(0)) if match else {}
+
+        try:
+            match = re.search(r"\{.*\}", raw, re.DOTALL)
+            data = json.loads(match.group(0)) if match else {}
+        except Exception as e:
+            print("JSON PARSE ERROR:", str(e))
+            print("RAW RESPONSE:", raw)
+            data = {}
 
         score = int(data.get("fit_score", 0))
         decision = map_decision(score)
@@ -186,16 +178,24 @@ JOB:
         })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("ANALYZE ERROR:", str(e))
+        return jsonify({
+            "nestor": {
+                "decision": "Error",
+                "fit_score": 0,
+                "recruiter_view": "System error",
+                "hiring_manager_view": str(e)
+            },
+            "gaps": [],
+            "actions": [],
+            "alternative_roles": []
+        }), 200
 
 # ================= ALEC =================
 
 @app.route("/alec", methods=["POST"])
 def alec():
     email = request.form.get("email", "").strip().lower()
-    if not email:
-        return jsonify({"error": "Missing email"}), 400
-
     user = get_user(email)
 
     if not user["paid"] and user["attempts"] >= 3:
@@ -203,32 +203,14 @@ def alec():
 
     file = request.files.get("file")
     job_text = request.form.get("job_text", "")
-
     cv_text = extract_cv(file)
-
-    prompt = f"""
-You are Alec, a senior CV optimization expert.
-
-Rewrite the CV to better match the job.
-
-Rules:
-- Do NOT invent experience
-- Improve clarity and structure
-- Align with job keywords
-- Keep it professional
-
-Return ONLY the CV text.
-
-CV:
-{cv_text[:3000]}
-
-JOB:
-{job_text[:2000]}
-"""
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
+        messages=[{
+            "role": "user",
+            "content": f"Rewrite CV:\n{cv_text}\n\nJob:\n{job_text}"
+        }],
         temperature=0.3
     )
 
@@ -236,52 +218,26 @@ JOB:
         "cv": response.choices[0].message.content.strip()
     })
 
-# ================= DOWNLOAD =================
-
-@app.route("/download_cv", methods=["POST"])
-def download_cv():
-    data = request.json or {}
-    cv_text = data.get("cv", "")
-
-    from docx import Document
-    doc = Document()
-
-    for line in cv_text.split("\n"):
-        doc.add_paragraph(line)
-
-    buffer = BytesIO()
-    doc.save(buffer)
-    buffer.seek(0)
-
-    return buffer.getvalue(), 200, {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": "attachment; filename=HiddenEdge_CV.docx"
-    }
-
 # ================= STRIPE =================
 
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
-    try:
-        data = request.get_json()
-        email = data.get("email")
+    data = request.get_json()
+    email = data.get("email")
 
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            mode="payment",
-            customer_email=email,
-            line_items=[{
-                "price": STRIPE_PRICE_ID,
-                "quantity": 1,
-            }],
-            success_url=f"{BASE_URL}/success",
-            cancel_url=f"{BASE_URL}/app",
-        )
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        mode="payment",
+        customer_email=email,
+        line_items=[{
+            "price": STRIPE_PRICE_ID,
+            "quantity": 1,
+        }],
+        success_url=f"{BASE_URL}/success",
+        cancel_url=f"{BASE_URL}/app",
+    )
 
-        return jsonify({"url": session.url})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"url": session.url})
 
 # ================= UNLOCK =================
 
@@ -295,13 +251,6 @@ def unlock():
     update_user(email, user)
 
     return jsonify({"status": "ok"})
-
-# ================= NO CACHE =================
-
-@app.after_request
-def add_header(response):
-    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    return response
 
 # ================= RUN =================
 
