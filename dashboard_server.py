@@ -32,6 +32,20 @@ def email():
 def app_page():
     return render_template("app.html")
 
+# ================= DECISION MAPPING =================
+
+def map_decision(score):
+    if score < 20:
+        return "Reject"
+    elif score < 50:
+        return "Weak Match"
+    elif score < 70:
+        return "Moderate Match"
+    elif score < 85:
+        return "Strong Match"
+    else:
+        return "Excellent Fit"
+
 # ================= ANALYZE =================
 
 @app.route("/analyze", methods=["POST"])
@@ -45,13 +59,11 @@ def analyze():
         if file:
             filename = file.filename.lower()
 
-            # ===== DOCX SAFE READ =====
             if filename.endswith(".docx"):
                 from docx import Document
                 doc = Document(BytesIO(file.read()))
                 cv_text = "\n".join([p.text for p in doc.paragraphs])
 
-            # ===== PDF SAFE READ =====
             elif filename.endswith(".pdf"):
                 import PyPDF2
                 reader = PyPDF2.PdfReader(BytesIO(file.read()))
@@ -63,7 +75,6 @@ def analyze():
                         pass
                 cv_text = "\n".join(pages)
 
-            # ===== TEXT FALLBACK =====
             else:
                 cv_text = file.read().decode("utf-8", errors="ignore")
 
@@ -72,28 +83,20 @@ def analyze():
 
         # ===== NESTOR PROMPT =====
         prompt = f"""
-You are Nestor, a ruthless senior hiring evaluator.
+You are Nestor, a strict hiring evaluator.
 
-You evaluate CV vs job from TWO perspectives:
-
-1. Recruiter → screening, keywords, fit
-2. Hiring Manager → real capability, execution ability
-
-STRICT RULES:
-- If domain mismatch → score MUST be below 20
-- No politeness
-- No generic filler
-- No inflated scoring
-- Be direct and critical
-
-Return ONLY valid JSON:
+Return ONLY JSON:
 
 {{
-  "decision": "...",
   "fit_score": number,
   "recruiter_view": "...",
   "hiring_manager_view": "..."
 }}
+
+RULES:
+- If domain mismatch → score MUST be below 20
+- No inflated scoring
+- Be realistic and critical
 
 CV:
 {cv_text[:3000]}
@@ -110,16 +113,34 @@ JOB:
 
         raw = response.choices[0].message.content.strip()
 
-        # ===== HARD JSON EXTRACTION =====
         match = re.search(r"\{.*\}", raw, re.DOTALL)
 
         if match:
             json_str = match.group(0)
             data = json.loads(json_str)
         else:
-            raise Exception("No JSON returned from model")
+            raise Exception("No JSON returned")
 
-        return jsonify({"nestor": data})
+        score = int(data.get("fit_score", 0))
+
+        # ===== DECISION MAPPING =====
+        decision = map_decision(score)
+
+        # ===== SOFTEN OVER-HARSH TEXT =====
+        recruiter_view = data.get("recruiter_view", "")
+        hiring_manager_view = data.get("hiring_manager_view", "")
+
+        if score >= 70:
+            hiring_manager_view += " Overall, the candidate appears capable with limited adaptation required."
+
+        return jsonify({
+            "nestor": {
+                "decision": decision,
+                "fit_score": score,
+                "recruiter_view": recruiter_view,
+                "hiring_manager_view": hiring_manager_view
+            }
+        })
 
     except Exception as e:
         print("ANALYZE ERROR:", str(e))
@@ -128,7 +149,7 @@ JOB:
             "nestor": {
                 "decision": "Error",
                 "fit_score": 0,
-                "recruiter_view": "System error during evaluation",
+                "recruiter_view": "System error",
                 "hiring_manager_view": str(e)
             }
         }), 500
