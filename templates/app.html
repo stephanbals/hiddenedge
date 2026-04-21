@@ -4,48 +4,166 @@
 <title>HiddenEdge</title>
 
 <style>
-body { background:#111; color:white; font-family:Arial; text-align:center; }
-textarea { width:80%; height:120px; }
-#resultBox { display:none; margin-top:30px; width:80%; margin:auto; text-align:left; }
-pre { white-space:pre-wrap; background:#1c1c1c; padding:15px; }
-button { padding:10px 20px; margin-top:15px; }
+body {
+    margin: 0;
+    background: black;
+    color: white;
+    font-family: Arial;
+}
+
+/* CONTAINER */
+.container {
+    width: 65%;
+    margin: auto;
+    margin-top: 80px;
+    text-align: center;
+}
+
+/* HEADINGS */
+h1 {
+    color: #9fd3ff;
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    color: #ccc;
+    margin-bottom: 40px;
+}
+
+/* SECTIONS */
+.section {
+    margin-top: 30px;
+}
+
+/* INPUTS */
+input[type="text"] {
+    padding: 12px;
+    width: 60%;
+}
+
+input[type="file"] {
+    margin-top: 10px;
+}
+
+textarea {
+    width: 100%;
+    height: 160px;
+    padding: 12px;
+}
+
+/* BUTTON */
+button {
+    padding: 12px 28px;
+    font-size: 16px;
+    background: #4da6ff;
+    border: none;
+    cursor: pointer;
+    margin-top: 20px;
+    border-radius: 6px;
+}
+
+/* RESULT AREA */
+#resultBox {
+    display: none;
+    margin-top: 40px;
+    text-align: left;
+}
+
+/* CARDS */
+.card {
+    background: #1c1c1c;
+    padding: 25px;
+    border-radius: 12px;
+    margin-top: 20px;
+}
+
+/* TEXT */
+.warning {
+    margin-top: 20px;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+pre {
+    white-space: pre-wrap;
+    background: #111;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+/* LISTS */
+ul {
+    margin-top: 10px;
+    padding-left: 20px;
+}
 </style>
 </head>
 
 <body>
 
-<h2>HiddenEdge</h2>
+<div class="container">
 
-<input id="email"><br><br>
-<input type="file" id="files"><br><br>
-<textarea id="job"></textarea><br>
+<h1>HiddenEdge</h1>
+<p class="subtitle">
+Analyze your CV against a job and generate a tailored version optimized for that role.
+</p>
 
-<button onclick="analyze()">Analyze</button>
+<!-- EMAIL -->
+<div class="section">
+    <h3>Your Email</h3>
+    <input id="email" type="text" placeholder="Used only for this session — no data is stored">
+</div>
 
+<!-- CV UPLOAD -->
+<div class="section">
+    <h3>Upload your CV</h3>
+    <input type="file" id="files">
+</div>
+
+<!-- JOB DESCRIPTION -->
+<div class="section">
+    <h3>Paste Job Description</h3>
+    <textarea id="job" placeholder="Paste the full job description here..."></textarea>
+</div>
+
+<button onclick="analyze()">Analyze Match</button>
+
+<!-- RESULTS -->
 <div id="resultBox">
 
-<h3 id="decision"></h3>
-<h4 id="score"></h4>
+<div class="card">
+    <h2 id="decision"></h2>
+    <h3 id="score"></h3>
 
-<p id="recruiter"></p>
-<p id="manager"></p>
+    <h4>Recruiter View</h4>
+    <p id="recruiter"></p>
 
-<div id="warning"></div>
+    <h4>Hiring Manager View</h4>
+    <p id="manager"></p>
+</div>
 
-<div id="gapSection" style="display:none;">
-<h3>Key Gaps</h3>
-<ul id="gaps"></ul>
+<div class="warning" id="warning"></div>
 
-<h3>Recommended Actions</h3>
-<ul id="actions"></ul>
+<div id="gapSection" class="card" style="display:none;">
+    <h3>Key Gaps</h3>
+    <ul id="gaps"></ul>
+
+    <h3>Recommended Actions</h3>
+    <ul id="actions"></ul>
 </div>
 
 <button id="generateBtn" onclick="generateCV()">Generate CV</button>
 
-<h3>Optimized CV</h3>
-<pre id="alec"></pre>
+<div class="card">
+    <h3>Optimized CV (Editable)</h3>
+    <p style="color:#aaa;">Generated in English for international job applications</p>
 
-<button onclick="downloadCV()">Download CV (.docx)</button>
+    <pre id="alec"></pre>
+
+    <button onclick="downloadCV()">Download CV (.docx)</button>
+</div>
+
+</div>
 
 </div>
 
@@ -58,6 +176,11 @@ async function analyze(){
 
     const file = document.getElementById("files").files[0];
     const job = document.getElementById("job").value;
+
+    if(!file || !job){
+        alert("Please upload a CV and paste a job description.");
+        return;
+    }
 
     const fd = new FormData();
     fd.append("file", file);
@@ -78,17 +201,20 @@ async function analyze(){
     document.getElementById("recruiter").innerText = data.nestor.recruiter_view;
     document.getElementById("manager").innerText = data.nestor.hiring_manager_view;
 
+    // WARNING LOGIC
     let warning = "";
 
     if(score < 50){
-        warning = "⚠️ Low match — generating CV may reduce success chances.";
+        warning = "⚠️ Low match — generating a CV for this role may reduce your chances.";
         document.getElementById("generateBtn").innerText = "Generate CV anyway";
     }
     else if(score < 70){
-        warning = "⚠️ Partial match — gaps identified below.";
+        warning = "⚠️ Partial match — see gaps and improvement actions below.";
+        document.getElementById("generateBtn").innerText = "Generate CV";
     }
     else{
-        warning = "✅ Strong match.";
+        warning = "✅ Strong match — your profile aligns well with this role.";
+        document.getElementById("generateBtn").innerText = "Generate Optimized CV";
     }
 
     document.getElementById("warning").innerText = warning;
@@ -117,6 +243,8 @@ async function analyze(){
         });
 
         document.getElementById("gapSection").style.display = "block";
+    } else {
+        document.getElementById("gapSection").style.display = "none";
     }
 
     document.getElementById("resultBox").style.display = "block";
