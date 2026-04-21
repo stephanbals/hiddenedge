@@ -5,21 +5,10 @@
 
 <style>
 body { margin:0; background:black; color:white; font-family:Arial; }
-
-.container {
-    width:65%;
-    margin:auto;
-    margin-top:80px;
-    text-align:center;
-}
-
+.container { width:65%; margin:auto; margin-top:80px; text-align:center; }
 h1 { color:#9fd3ff; }
 
-textarea {
-    width:100%;
-    height:160px;
-    padding:12px;
-}
+textarea { width:100%; height:160px; padding:12px; }
 
 button {
     padding:12px 28px;
@@ -38,16 +27,26 @@ button {
     text-align:left;
 }
 
-.warning {
-    margin-top:15px;
-    font-weight:bold;
-}
+.warning { margin-top:15px; font-weight:bold; }
 
 pre {
     white-space:pre-wrap;
     background:#111;
     padding:15px;
     border-radius:8px;
+}
+
+.locked {
+    filter: blur(6px);
+    pointer-events: none;
+}
+
+#paywall {
+    display:none;
+    margin-top:20px;
+    background:#222;
+    padding:20px;
+    border-radius:10px;
 }
 
 #analyzeHint {
@@ -90,47 +89,45 @@ pre {
 <div class="warning" id="applyAdvice"></div>
 </div>
 
-<!-- ANALYSIS -->
-<div class="card">
+<!-- LOCKED CONTENT -->
+<div id="lockedSection" class="card">
 <h3>Recruiter View</h3>
 <p id="recruiter"></p>
 
 <h3>Hiring Manager View</h3>
 <p id="manager"></p>
-</div>
 
-<!-- GAPS -->
-<div id="gapSection" class="card" style="display:none;">
 <h3>Key Gaps</h3>
 <ul id="gaps"></ul>
 
 <h3>Recommended Actions</h3>
 <ul id="actions"></ul>
-</div>
 
-<!-- ALT ROLES -->
-<div id="altRolesSection" class="card" style="display:none;">
 <h3>Better Matching Roles</h3>
 <ul id="altRoles"></ul>
 </div>
 
-<!-- CV GENERATION -->
+<!-- PAYWALL -->
+<div id="paywall">
+<h3>Unlock full analysis</h3>
+<p>Full recruiter insights + tailored CV</p>
+<button onclick="pay()">Unlock (€9)</button>
+</div>
+
+<!-- CV -->
 <button id="generateBtn" onclick="generateCV()">Generate Tailored CV</button>
 
-<!-- CV OUTPUT -->
 <div id="cvSection" style="display:none;">
-
 <div class="card">
 <h3>Your Original CV</h3>
 <pre id="masterCV"></pre>
 </div>
 
 <div class="card">
-<h3>Tailored CV (Editable)</h3>
+<h3>Tailored CV</h3>
 <pre id="alec"></pre>
-<button onclick="downloadCV()">Download CV (.docx)</button>
+<button onclick="downloadCV()">Download CV</button>
 </div>
-
 </div>
 
 </div>
@@ -139,12 +136,14 @@ pre {
 
 <script>
 
+let attempts = parseInt(localStorage.getItem("attempts") || "0");
+let paid = localStorage.getItem("paid") === "true";
+
 let globalCV = "";
 let globalJob = "";
 
 async function analyze(){
 
-    // reset UI
     document.getElementById("resultBox").style.display = "none";
     document.getElementById("gaps").innerHTML = "";
     document.getElementById("actions").innerHTML = "";
@@ -175,9 +174,6 @@ async function analyze(){
     document.getElementById("decision").innerText = data.nestor.decision;
     document.getElementById("score").innerText = "Score: " + score;
 
-    document.getElementById("recruiter").innerText = data.nestor.recruiter_view;
-    document.getElementById("manager").innerText = data.nestor.hiring_manager_view;
-
     // APPLY ADVICE
     let advice = "";
     if(score < 20){
@@ -191,8 +187,22 @@ async function analyze(){
     }
     document.getElementById("applyAdvice").innerText = advice;
 
-    // GAPS
-    if(data.gaps && data.gaps.length){
+    // attempts logic
+    attempts++;
+    localStorage.setItem("attempts", attempts);
+
+    const locked = (!paid && attempts > 3);
+
+    if(locked){
+        document.getElementById("lockedSection").classList.add("locked");
+        document.getElementById("paywall").style.display = "block";
+    } else {
+        document.getElementById("lockedSection").classList.remove("locked");
+        document.getElementById("paywall").style.display = "none";
+
+        document.getElementById("recruiter").innerText = data.nestor.recruiter_view;
+        document.getElementById("manager").innerText = data.nestor.hiring_manager_view;
+
         data.gaps.forEach(x=>{
             document.getElementById("gaps").innerHTML += "<li>"+x+"</li>";
         });
@@ -201,16 +211,9 @@ async function analyze(){
             document.getElementById("actions").innerHTML += "<li>"+x+"</li>";
         });
 
-        document.getElementById("gapSection").style.display = "block";
-    }
-
-    // ALT ROLES
-    if(data.alternative_roles && data.alternative_roles.length){
         data.alternative_roles.forEach(x=>{
             document.getElementById("altRoles").innerHTML += "<li>"+x+"</li>";
         });
-
-        document.getElementById("altRolesSection").style.display = "block";
     }
 
     document.getElementById("resultBox").style.display = "block";
@@ -220,6 +223,11 @@ async function analyze(){
 }
 
 async function generateCV(){
+
+    if(!paid){
+        alert("Unlock to generate CV");
+        return;
+    }
 
     const res = await fetch("/alec", {
         method:"POST",
@@ -239,6 +247,11 @@ async function generateCV(){
 }
 
 async function downloadCV(){
+
+    if(!paid){
+        alert("Unlock to download");
+        return;
+    }
 
     const cv = document.getElementById("alec").innerText;
 
@@ -260,6 +273,16 @@ async function downloadCV(){
 function resetAnalysis(){
     document.getElementById("job").value = "";
     document.getElementById("resultBox").style.display = "none";
+}
+
+function pay(){
+    window.location.href = "/create-checkout-session";
+}
+
+// Stripe return
+const params = new URLSearchParams(window.location.search);
+if(params.get("paid") === "true"){
+    localStorage.setItem("paid", "true");
 }
 
 </script>

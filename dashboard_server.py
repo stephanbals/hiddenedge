@@ -8,10 +8,12 @@ from io import BytesIO
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
+# ===== INIT =====
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
+BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
 
 # ================= ROUTES =================
 
@@ -46,6 +48,9 @@ def map_decision(score):
         return "Excellent Fit"
 
 def extract_cv(file):
+    if not file:
+        return ""
+
     filename = file.filename.lower()
 
     if filename.endswith(".docx"):
@@ -56,7 +61,13 @@ def extract_cv(file):
     elif filename.endswith(".pdf"):
         import PyPDF2
         reader = PyPDF2.PdfReader(BytesIO(file.read()))
-        return "\n".join([p.extract_text() or "" for p in reader.pages])
+        pages = []
+        for page in reader.pages:
+            try:
+                pages.append(page.extract_text() or "")
+            except:
+                pages.append("")
+        return "\n".join(pages)
 
     else:
         return file.read().decode("utf-8", errors="ignore")
@@ -69,7 +80,7 @@ def analyze():
         job_text = request.form.get("job", "")
         file = request.files.get("file")
 
-        cv_text = extract_cv(file) if file else ""
+        cv_text = extract_cv(file)
 
         prompt = f"""
 You are Nestor, a strict hiring evaluator.
@@ -80,12 +91,12 @@ You MUST:
 - Be direct, realistic, and actionable
 
 SCORING RULES:
-- Missing mandatory qualifications (doctor, lawyer, pilot, etc.) → score MUST be below 20
+- Missing mandatory qualifications → score MUST be below 20
 - Domain mismatch → strong penalty
 - Overqualification must NOT reduce score
 
 ALTERNATIVE ROLE RULE:
-- If score < 50 → ALWAYS provide 3 alternative roles
+- If score < 50 → ALWAYS provide 3 realistic alternative roles
 
 Return ONLY JSON:
 
@@ -112,7 +123,8 @@ JOB:
         )
 
         raw = response.choices[0].message.content.strip()
-        data = json.loads(re.search(r"\{.*\}", raw, re.DOTALL).group(0))
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        data = json.loads(match.group(0)) if match else {}
 
         score = int(data.get("fit_score", 0))
         decision = map_decision(score)
@@ -133,6 +145,8 @@ JOB:
 
     except Exception as e:
         return jsonify({
+            "cv_text": "",
+            "job_text": "",
             "nestor": {
                 "decision": "Error",
                 "fit_score": 0,
@@ -148,19 +162,20 @@ JOB:
 
 @app.route("/alec", methods=["POST"])
 def alec():
-    data = request.json
+    data = request.json or {}
     cv_text = data.get("cv_text", "")
     job_text = data.get("job_text", "")
 
     prompt = f"""
 You are Alec, a senior CV optimization expert.
 
-Rewrite the CV to match the job.
+Rewrite the CV to better match the job.
 
 Rules:
 - Do NOT invent experience
 - Improve clarity and structure
 - Align with job keywords
+- Keep it professional
 
 Return ONLY the CV text.
 
@@ -185,7 +200,7 @@ JOB:
 
 @app.route("/download_cv", methods=["POST"])
 def download_cv():
-    data = request.json
+    data = request.json or {}
     cv_text = data.get("cv", "")
 
     from docx import Document
@@ -207,14 +222,28 @@ def download_cv():
 
 @app.route("/create-checkout-session")
 def create_checkout_session():
-    session = stripe.checkout.Session.create(
-        payment_method_types=["card"],
-        mode="payment",
-        line_items=[{"price": STRIPE_PRICE_ID, "quantity": 1}],
-        success_url="https://hiddenedge-live.onrender.com/app?paid=true",
-        cancel_url="https://hiddenedge-live.onrender.com/app",
-    )
-    return redirect(session.url, code=303)
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="payment",
+            line_items=[{
+                "price": STRIPE_PRICE_ID,
+                "quantity": 1,
+            }],
+            success_url=f"{BASE_URL}/app?paid=true",
+            cancel_url=f"{BASE_URL}/app",
+        )
+        return redirect(session.url, code=303)
+
+    except Exception as e:
+        return f"Stripe error: {str(e)}", 500
+
+# ================= NO CACHE =================
+
+@app.after_request
+def add_header(response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
 
 # ================= RUN =================
 
