@@ -1,11 +1,147 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>HiddenEdge</title>
+<title>HiddenEdge</title>
+
+<style>
+body {
+    margin:0;
+    font-family:Arial;
+    color:white;
+    background:black;
+}
+
+/* 🌌 Softer background */
+body::before {
+    content:"";
+    position:fixed;
+    width:200%;
+    height:200%;
+    background:
+        radial-gradient(circle, rgba(255,255,255,0.15), transparent 40%),
+        radial-gradient(circle at 30% 60%, rgba(0,150,255,0.25), transparent 60%),
+        radial-gradient(circle at 70% 40%, rgba(200,100,255,0.25), transparent 60%);
+    transform:rotate(-20deg);
+    filter:blur(120px);
+    z-index:-2;
+}
+
+body::after {
+    content:"";
+    position:fixed;
+    width:100%;
+    height:100%;
+    background-image:
+        radial-gradient(2px 2px at 20% 30%, white, transparent),
+        radial-gradient(2px 2px at 70% 60%, white, transparent),
+        radial-gradient(2px 2px at 40% 80%, white, transparent);
+    animation:twinkle 2s infinite alternate;
+    z-index:-1;
+}
+
+@keyframes twinkle {
+    from {opacity:0.3;}
+    to {opacity:1;}
+}
+
+.container {
+    max-width:1100px;
+    margin:auto;
+    padding:40px;
+}
+
+/* Agents */
+.agents {
+    display:flex;
+    gap:40px;
+    margin-bottom:20px;
+}
+
+.agent {
+    text-align:center;
+}
+
+.agent img {
+    width:60px;
+    border-radius:50%;
+}
+
+/* Inputs */
+textarea {
+    width:100%;
+    height:140px;
+    margin-top:10px;
+    background:#111;
+    color:white;
+    border:1px solid #444;
+}
+
+button {
+    margin-top:10px;
+    padding:10px 20px;
+    background:#4da6ff;
+    border:none;
+    color:white;
+    cursor:pointer;
+}
+
+/* Progress */
+.progress {
+    width:100%;
+    height:6px;
+    background:#222;
+    margin-top:10px;
+    overflow:hidden;
+}
+
+.bar {
+    height:100%;
+    width:0%;
+    background:#4da6ff;
+}
+
+/* Cards */
+.card {
+    background:#111;
+    padding:20px;
+    margin-top:20px;
+    border-radius:10px;
+}
+
+/* Decision */
+.decision {
+    font-size:26px;
+    font-weight:bold;
+}
+
+.red { color:#ff6b6b; }
+.yellow { color:#ffd166; }
+.green { color:#06d6a0; }
+
+.section-title {
+    margin-top:20px;
+    font-weight:bold;
+}
+</style>
 </head>
+
 <body>
 
+<div class="container">
+
 <h2>HiddenEdge</h2>
+
+<div class="agents">
+    <div class="agent">
+        <img src="/static/nestor.png"><div>Nestor</div>
+    </div>
+    <div class="agent">
+        <img src="/static/alec.png"><div>Alec</div>
+    </div>
+    <div class="agent">
+        <img src="/static/helper.png"><div>Helper</div>
+    </div>
+</div>
 
 <input type="file" id="file">
 <textarea id="job" placeholder="Paste job description"></textarea>
@@ -14,29 +150,75 @@
 <button onclick="generateCV()">Generate CV</button>
 <button onclick="pay()">Unlock</button>
 
-<h3>Result</h3>
-<textarea id="output"></textarea>
+<div class="progress"><div id="progressBar" class="bar"></div></div>
+
+<div id="dashboard" class="card" style="display:none;">
+
+<div id="decision" class="decision"></div>
+
+<div class="section-title">Recruiter View</div>
+<div id="recruiter"></div>
+
+<div class="section-title">Hiring Manager View</div>
+<div id="manager"></div>
+
+<div id="lowScoreSection" style="display:none;">
+    <div class="section-title">Better Role Matches</div>
+    <div id="roles"></div>
+</div>
+
+<div class="section-title">Gaps</div>
+<div id="gaps"></div>
+
+<div class="section-title">Actions</div>
+<div id="actions"></div>
+
+</div>
+
+</div>
 
 <script>
 
 let email = localStorage.getItem("email");
 if (!email) window.location.href = "/email";
 
+function setProgress(val) {
+    document.getElementById("progressBar").style.width = val + "%";
+}
+
 function analyze() {
 
     let file = document.getElementById("file").files[0];
     let job = document.getElementById("job").value;
+
+    if (!file || !job) {
+        alert("Upload CV and paste job description");
+        return;
+    }
 
     let form = new FormData();
     form.append("file", file);
     form.append("job_text", job);
     form.append("email", email);
 
+    setProgress(10);
+
+    let progress = 10;
+    let interval = setInterval(() => {
+        if (progress < 90) {
+            progress += 5;
+            setProgress(progress);
+        }
+    }, 200);
+
     fetch("/analyze", {
-        method: "POST",
-        body: form
+        method:"POST",
+        body:form
     })
     .then(async r => {
+
+        clearInterval(interval);
+        setProgress(100);
 
         if (r.status === 403) {
             alert("Free limit reached. Please unlock.");
@@ -44,7 +226,46 @@ function analyze() {
         }
 
         let data = await r.json();
-        document.getElementById("output").value = JSON.stringify(data, null, 2);
+
+        document.getElementById("dashboard").style.display = "block";
+
+        let score = data.nestor.fit_score;
+        let decisionText = "";
+        let cls = "";
+
+        if (score < 50) {
+            decisionText = "❌ Do Not Apply";
+            cls = "red";
+            document.getElementById("lowScoreSection").style.display = "block";
+        }
+        else if (score < 70) {
+            decisionText = "⚠️ Apply with Improvements";
+            cls = "yellow";
+        }
+        else {
+            decisionText = "✅ Apply";
+            cls = "green";
+        }
+
+        let decisionEl = document.getElementById("decision");
+        decisionEl.className = "decision " + cls;
+        decisionEl.innerText = decisionText + " (" + score + "%)";
+
+        document.getElementById("recruiter").innerText =
+            data.nestor.recruiter_view;
+
+        document.getElementById("manager").innerText =
+            data.nestor.hiring_manager_view;
+
+        document.getElementById("gaps").innerText =
+            data.gaps.join("\n");
+
+        document.getElementById("actions").innerText =
+            data.actions.join("\n");
+
+        document.getElementById("roles").innerText =
+            data.alternative_roles.join("\n");
+
     });
 }
 
@@ -59,30 +280,27 @@ function generateCV() {
     form.append("email", email);
 
     fetch("/alec", {
-        method: "POST",
-        body: form
+        method:"POST",
+        body:form
     })
     .then(async r => {
-
         if (r.status === 403) {
             alert("Free limit reached. Please unlock.");
             return;
         }
-
-        let data = await r.json();
-        document.getElementById("output").value = data.cv;
+        alert("CV generated (download flow next step)");
     });
 }
 
 function pay() {
     fetch("/create-checkout-session", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ email: email })
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({email:email})
     })
-    .then(r => r.json())
-    .then(data => {
-        window.location.href = data.url;
+    .then(r=>r.json())
+    .then(data=>{
+        window.location.href=data.url;
     });
 }
 
