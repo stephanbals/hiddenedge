@@ -3,7 +3,6 @@ import os
 import stripe
 from openai import OpenAI
 import json
-import re
 from io import BytesIO
 
 print("=== NEW BACKEND VERSION LOADED ===")
@@ -87,7 +86,7 @@ def analyze():
         prompt = f"""
 You are Nestor, a strict hiring evaluator.
 
-Return ONLY valid JSON.
+Return ONLY valid JSON. No explanation.
 
 {{
   "fit_score": number,
@@ -107,23 +106,17 @@ JOB:
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
+            response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompt}],
             temperature=0
         )
 
-        raw = response.choices[0].message.content.strip()
+        raw = response.choices[0].message.content
 
         print("=== RAW GPT OUTPUT ===")
         print(raw)
 
-        try:
-            data = json.loads(raw)
-        except:
-            match = re.search(r"\{.*\}", raw, re.DOTALL)
-            if match:
-                data = json.loads(match.group(0))
-            else:
-                raise Exception("No valid JSON returned")
+        data = json.loads(raw)
 
         if not isinstance(data, dict):
             raise Exception("Parsed JSON is not a dict")
