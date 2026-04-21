@@ -4,67 +4,11 @@
 <title>HiddenEdge</title>
 
 <style>
-body {
-    font-family: Arial;
-    background: #111;
-    color: white;
-    text-align: center;
-}
-
-/* INPUTS */
-textarea { width: 80%; height: 120px; }
-input { padding: 8px; }
-
-button {
-    padding: 12px 24px;
-    margin-top: 20px;
-    cursor: pointer;
-    border: none;
-    border-radius: 6px;
-    font-size: 16px;
-}
-
-#analyzeBtn { background: #4ea3ff; color: white; }
-
-/* PROGRESS BAR */
-.progress-container {
-    width: 80%;
-    margin: 10px auto;
-    background: #333;
-    border-radius: 5px;
-    overflow: hidden;
-    display: none;
-}
-
-.progress-bar {
-    height: 10px;
-    width: 0%;
-    background: #4da6ff;
-    transition: width 0.3s;
-}
-
-/* RESULT */
-#resultBox {
-    margin-top: 30px;
-    padding: 20px;
-    border-radius: 10px;
-    background: #1c1c1c;
-    display: none;
-    text-align: left;
-    width: 80%;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.section {
-    margin-top: 15px;
-}
-
-#fileStatus {
-    font-size: 14px;
-    color: #bbb;
-    margin-top: 5px;
-}
+body { background:#111; color:white; font-family:Arial; text-align:center; }
+textarea { width:80%; height:120px; }
+#resultBox { display:none; margin-top:30px; width:80%; margin:auto; text-align:left; }
+pre { white-space:pre-wrap; background:#1c1c1c; padding:15px; }
+button { padding:10px 20px; margin-top:15px; }
 </style>
 </head>
 
@@ -72,172 +16,144 @@ button {
 
 <h2>HiddenEdge</h2>
 
-<h3>Email</h3>
 <input id="email"><br><br>
-
-<h3>Upload CV</h3>
-<input type="file" id="files" onchange="fileSelected()">
-<div id="fileStatus"></div>
-
-<div class="progress-container" id="uploadProgress">
-    <div class="progress-bar" id="uploadBar"></div>
-</div>
-
-<br>
-
-<h3>Job Description</h3>
+<input type="file" id="files"><br><br>
 <textarea id="job"></textarea><br>
 
-<button id="analyzeBtn" onclick="analyze()">Analyze</button>
-
-<div class="progress-container" id="analyzeProgress">
-    <div class="progress-bar" id="analyzeBar"></div>
-</div>
+<button onclick="analyze()">Analyze</button>
 
 <div id="resultBox">
-    <h2 id="decision"></h2>
-    <h3 id="score"></h3>
 
-    <div class="section">
-        <strong>Recruiter View</strong>
-        <p id="recruiter"></p>
-    </div>
+<h3 id="decision"></h3>
+<h4 id="score"></h4>
 
-    <div class="section">
-        <strong>Hiring Manager View</strong>
-        <p id="manager"></p>
-    </div>
+<p id="recruiter"></p>
+<p id="manager"></p>
 
-    <button id="payBtn" onclick="pay()">Unlock Full Report (€9)</button>
+<div id="warning"></div>
+
+<div id="gapSection" style="display:none;">
+<h3>Key Gaps</h3>
+<ul id="gaps"></ul>
+
+<h3>Recommended Actions</h3>
+<ul id="actions"></ul>
+</div>
+
+<button id="generateBtn" onclick="generateCV()">Generate CV</button>
+
+<h3>Optimized CV</h3>
+<pre id="alec"></pre>
+
+<button onclick="downloadCV()">Download CV (.docx)</button>
+
 </div>
 
 <script>
 
-// preload email
-document.getElementById("email").value =
-    localStorage.getItem("email") || "";
+let globalCV = "";
+let globalJob = "";
 
-// payment flag
-const params = new URLSearchParams(window.location.search);
-if (params.get("paid") === "true") {
-    localStorage.setItem("paid", "true");
-}
-
-// ===== FILE SELECT =====
-function fileSelected() {
-    const files = document.getElementById("files").files;
-
-    if (files.length > 0) {
-        document.getElementById("fileStatus").innerText =
-            "Selected: " + files[0].name;
-
-        const bar = document.getElementById("uploadBar");
-        const container = document.getElementById("uploadProgress");
-
-        container.style.display = "block";
-
-        // fake upload animation
-        let progress = 0;
-        const interval = setInterval(() => {
-            progress += 20;
-            bar.style.width = progress + "%";
-
-            if (progress >= 100) {
-                clearInterval(interval);
-            }
-        }, 100);
-    }
-}
-
-// ===== ANALYZE =====
 async function analyze(){
 
-    const btn = document.getElementById("analyzeBtn");
-
-    const email = document.getElementById("email").value;
+    const file = document.getElementById("files").files[0];
     const job = document.getElementById("job").value;
-    const files = document.getElementById("files").files;
-
-    if(!email || files.length === 0 || !job){
-        alert("Fill all fields");
-        return;
-    }
-
-    localStorage.setItem("email", email);
-
-    // loading UI
-    btn.innerText = "Analyzing...";
-    btn.disabled = true;
-
-    const bar = document.getElementById("analyzeBar");
-    const container = document.getElementById("analyzeProgress");
-
-    container.style.display = "block";
-    bar.style.width = "10%";
-
-    // simulate progress
-    let progress = 10;
-    const interval = setInterval(() => {
-        progress += 10;
-        if (progress < 90) {
-            bar.style.width = progress + "%";
-        }
-    }, 200);
 
     const fd = new FormData();
-    fd.append("file", files[0]);
+    fd.append("file", file);
     fd.append("job", job);
 
-    try {
-        const res = await fetch("/analyze", {
-            method: "POST",
-            body: fd
-        });
+    const res = await fetch("/analyze", {method:"POST", body:fd});
+    const data = await res.json();
 
-        const data = await res.json();
+    globalCV = data.cv_text;
+    globalJob = data.job_text;
 
-        clearInterval(interval);
-        bar.style.width = "100%";
+    const score = data.nestor.fit_score;
+    const decision = data.nestor.decision;
 
-        document.getElementById("decision").innerText =
-            "Decision: " + data.nestor.decision;
+    document.getElementById("decision").innerText = "Decision: " + decision;
+    document.getElementById("score").innerText = "Score: " + score;
 
-        document.getElementById("score").innerText =
-            "Score: " + data.nestor.fit_score;
+    document.getElementById("recruiter").innerText = data.nestor.recruiter_view;
+    document.getElementById("manager").innerText = data.nestor.hiring_manager_view;
 
-        document.getElementById("recruiter").innerText =
-            data.nestor.recruiter_view;
+    let warning = "";
 
-        document.getElementById("manager").innerText =
-            data.nestor.hiring_manager_view;
-
-        document.getElementById("resultBox").style.display = "block";
-
-        const paid = localStorage.getItem("paid");
-
-        if (paid === "true") {
-            document.getElementById("payBtn").style.display = "none";
-        } else {
-            document.getElementById("decision").innerText += " (Preview)";
-        }
-
-        document.getElementById("resultBox").scrollIntoView({
-            behavior: "smooth"
-        });
-
-    } catch(err){
-        clearInterval(interval);
-        console.error(err);
-        alert("Analysis failed");
+    if(score < 50){
+        warning = "⚠️ Low match — generating CV may reduce success chances.";
+        document.getElementById("generateBtn").innerText = "Generate CV anyway";
+    }
+    else if(score < 70){
+        warning = "⚠️ Partial match — gaps identified below.";
+    }
+    else{
+        warning = "✅ Strong match.";
     }
 
-    btn.innerText = "Analyze";
-    btn.disabled = false;
+    document.getElementById("warning").innerText = warning;
+
+    // GAPS
+    const gaps = data.gaps || [];
+    const actions = data.actions || [];
+
+    if(gaps.length > 0){
+        const g = document.getElementById("gaps");
+        const a = document.getElementById("actions");
+
+        g.innerHTML = "";
+        a.innerHTML = "";
+
+        gaps.forEach(x => {
+            const li = document.createElement("li");
+            li.innerText = x;
+            g.appendChild(li);
+        });
+
+        actions.forEach(x => {
+            const li = document.createElement("li");
+            li.innerText = x;
+            a.appendChild(li);
+        });
+
+        document.getElementById("gapSection").style.display = "block";
+    }
+
+    document.getElementById("resultBox").style.display = "block";
 }
 
-// ===== PAY =====
-function pay(){
-    window.location.href = "/create-checkout-session";
+async function generateCV(){
+
+    const res = await fetch("/alec", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            cv_text: globalCV,
+            job_text: globalJob
+        })
+    });
+
+    const data = await res.json();
+    document.getElementById("alec").innerText = data.alec_cv;
+}
+
+async function downloadCV(){
+
+    const cv = document.getElementById("alec").innerText;
+
+    const res = await fetch("/download_cv", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({cv})
+    });
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "HiddenEdge_CV.docx";
+    a.click();
 }
 
 </script>
