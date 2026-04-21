@@ -1,153 +1,217 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>HiddenEdge</title>
+    <title>HiddenEdge</title>
+    <style>
+        body { font-family: Arial; margin: 30px; }
 
-<style>
-body { margin:0; background:black; color:white; font-family:Arial; }
-.container { width:65%; margin:auto; margin-top:80px; text-align:center; }
-h1 { color:#9fd3ff; }
+        textarea {
+            width: 100%;
+            height: 180px;
+            margin-top: 10px;
+        }
 
-textarea { width:100%; height:160px; padding:12px; }
+        button {
+            margin-top: 10px;
+            padding: 10px;
+            cursor: pointer;
+        }
 
-button {
-    padding:12px 28px;
-    background:#4da6ff;
-    border:none;
-    cursor:pointer;
-    margin-top:20px;
-    border-radius:6px;
-}
+        .hidden { display: none; }
 
-.card {
-    background:#1c1c1c;
-    padding:25px;
-    border-radius:12px;
-    margin-top:20px;
-    text-align:left;
-}
-
-#paywall {
-    display:none;
-    margin-top:20px;
-    background:#222;
-    padding:20px;
-    border-radius:10px;
-}
-
-#analyzeHint {
-    display:none;
-    margin-top:15px;
-    color:#9fd3ff;
-    animation:pulse 1.2s infinite;
-}
-
-@keyframes pulse {
-    0% {opacity:0.4;}
-    50% {opacity:1;}
-    100% {opacity:0.4;}
-}
-</style>
+        #paywall {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 999;
+        }
+    </style>
 </head>
-
 <body>
 
-<div class="container">
+<h2>HiddenEdge</h2>
 
-<h1>HiddenEdge</h1>
-
-<input type="file" id="files"><br><br>
-
+<input type="file" id="file">
 <textarea id="job" placeholder="Paste job description"></textarea>
 
-<br>
 <button onclick="analyze()">Analyze</button>
+<button onclick="generateCV()">Generate CV</button>
+<button onclick="downloadCV()">Download CV</button>
 
-<div id="analyzeHint">⏳ Analyzing…</div>
+<h3>Result</h3>
+<textarea id="output"></textarea>
 
 <!-- PAYWALL -->
-<div id="paywall">
+<div id="paywall" class="hidden">
     <h2>Unlock Full Access</h2>
     <p>You’ve used your 3 free analyses.</p>
-    <button onclick="pay()">Unlock (€9)</button>
-</div>
-
-<!-- RESULTS -->
-<div id="resultBox" style="display:none;">
-    <div class="card">
-        <h2 id="decision"></h2>
-        <h3 id="score"></h3>
-        <p id="recruiter"></p>
-        <p id="manager"></p>
-    </div>
-</div>
-
+    <button onclick="goToCheckout()">Unlock Now</button>
 </div>
 
 <script>
+let BASE_URL = "";
 
-function getAttempts(){
-    return parseInt(localStorage.getItem("attempts") || "0");
+// ===============================
+// INIT STATE
+// ===============================
+let attempts = parseInt(localStorage.getItem("attempts") || "0");
+let paid = localStorage.getItem("paid") === "true";
+
+// Handle Stripe return
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get("paid") === "true") {
+    localStorage.setItem("paid", "true");
+    localStorage.setItem("attempts", "0");
+    paid = true;
+    attempts = 0;
+    window.history.replaceState({}, document.title, "/app");
 }
 
-function isPaid(){
-    return localStorage.getItem("paid") === "true";
+// ===============================
+// PAYWALL CONTROL
+// ===============================
+function checkPaywall() {
+    if (!paid && attempts >= 3) {
+        document.getElementById("paywall").classList.remove("hidden");
+        return true;
+    }
+    return false;
 }
 
-async function analyze(){
+// ===============================
+// ANALYZE (NESTOR)
+// ===============================
+function analyze() {
 
-    const attempts = getAttempts();
-    const paid = isPaid();
+    // HARD BLOCK BEFORE ANY CALL
+    if (checkPaywall()) return;
 
-    // 🔥 HARD PAYWALL STOP
-    if(!paid && attempts >= 3){
-        document.getElementById("paywall").style.display = "block";
-        document.getElementById("resultBox").style.display = "none";
+    let file = document.getElementById("file").files[0];
+    let job = document.getElementById("job").value;
+
+    if (!file || !job) {
+        alert("Upload CV and paste job description");
         return;
     }
 
-    document.getElementById("paywall").style.display = "none";
-    document.getElementById("analyzeHint").style.display = "block";
+    let form = new FormData();
+    form.append("file", file);
+    form.append("job_text", job);
 
-    const file = document.getElementById("files").files[0];
-    const job = document.getElementById("job").value;
+    fetch(BASE_URL + "/analyze", {
+        method: "POST",
+        body: form
+    })
+    .then(r => {
+        if (!r.ok) throw new Error("Server error");
+        return r.json();
+    })
+    .then(data => {
 
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("job", job);
+        document.getElementById("output").value = data.result || "";
 
-    const res = await fetch("/analyze?ts=" + Date.now(), {
-        method:"POST",
-        body:fd
+        // Increment ONLY if not paid
+        if (!paid) {
+            attempts++;
+            localStorage.setItem("attempts", attempts);
+        }
+
+        // Check AFTER increment
+        checkPaywall();
+    })
+    .catch(err => {
+        alert("Error: " + err.message);
     });
+}
 
-    const data = await res.json();
+// ===============================
+// CV GENERATION (ALEC)
+// ===============================
+function generateCV() {
 
-    // increment AFTER successful call
-    if(!paid){
-        localStorage.setItem("attempts", attempts + 1);
+    if (checkPaywall()) return;
+
+    let file = document.getElementById("file").files[0];
+    let job = document.getElementById("job").value;
+
+    if (!file || !job) {
+        alert("Upload CV and paste job description");
+        return;
     }
 
-    document.getElementById("decision").innerText = data.nestor.decision;
-    document.getElementById("score").innerText = "Score: " + data.nestor.fit_score;
-    document.getElementById("recruiter").innerText = data.nestor.recruiter_view;
-    document.getElementById("manager").innerText = data.nestor.hiring_manager_view;
+    let form = new FormData();
+    form.append("file", file);
+    form.append("job_text", job);
 
-    document.getElementById("resultBox").style.display = "block";
-    document.getElementById("analyzeHint").style.display = "none";
+    fetch(BASE_URL + "/alec", {
+        method: "POST",
+        body: form
+    })
+    .then(r => {
+        if (!r.ok) throw new Error("Server error");
+        return r.json();
+    })
+    .then(data => {
+        document.getElementById("output").value = data.cv || "";
+    })
+    .catch(err => {
+        alert("Error: " + err.message);
+    });
 }
 
-function pay(){
-    window.location.href = "/create-checkout-session";
+// ===============================
+// DOWNLOAD
+// ===============================
+function downloadCV() {
+
+    let cv = document.getElementById("output").value;
+
+    if (!cv) {
+        alert("No CV generated");
+        return;
+    }
+
+    fetch(BASE_URL + "/download_cv", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ cv: cv })
+    })
+    .then(res => res.blob())
+    .then(blob => {
+        let url = window.URL.createObjectURL(blob);
+        let a = document.createElement("a");
+        a.href = url;
+        a.download = "Tailored_CV.docx";
+        a.click();
+    });
 }
 
-// Stripe return
-const params = new URLSearchParams(window.location.search);
-if(params.get("paid") === "true"){
-    localStorage.setItem("paid", "true");
-    localStorage.setItem("attempts", "0");
-    document.getElementById("paywall").style.display = "none";
+// ===============================
+// STRIPE CHECKOUT
+// ===============================
+function goToCheckout() {
+
+    fetch(BASE_URL + "/create-checkout-session", {
+        method: "POST"
+    })
+    .then(res => res.json())
+    .then(data => {
+        window.location.href = data.url;
+    });
 }
+
+// ===============================
+// INITIAL CHECK
+// ===============================
+checkPaywall();
 
 </script>
 
