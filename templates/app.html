@@ -1,28 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HiddenEdge</title>
+</head>
+
+<body>
+
+<h2>HiddenEdge</h2>
+
+<input type="file" id="file"><br><br>
+
+<textarea id="job" placeholder="Paste job description" rows="10" cols="60"></textarea><br><br>
+
+<button onclick="analyze()">Analyze</button>
+<button onclick="goToCheckout()">Unlock</button>
+
+<br><br>
+
+<textarea id="output" rows="20" cols="80"></textarea>
+
 <script>
+
 let email = localStorage.getItem("email");
 
 function analyze() {
 
     if (!email) {
-        alert("Missing email. Go back and enter email.");
+        alert("No email found. Restart flow.");
         return;
     }
 
     let file = document.getElementById("file").files[0];
     let job = document.getElementById("job").value;
 
+    if (!file || !job) {
+        alert("Upload CV and paste job description");
+        return;
+    }
+
     let form = new FormData();
     form.append("file", file);
     form.append("job_text", job);
-    form.append("email", email); // 🔥 FIX
+    form.append("email", email);
 
     fetch("/analyze", {
         method: "POST",
         body: form
     })
-    .then(r => r.json())
+    .then(res => res.json())
     .then(data => {
-        console.log(data);
 
         if (data.error === "PAYWALL") {
             alert("Free limit reached. Please unlock.");
@@ -32,8 +58,12 @@ function analyze() {
         document.getElementById("output").value =
             "Score: " + data.nestor.fit_score + "\n" +
             "Decision: " + data.nestor.decision + "\n\n" +
-            "Recruiter:\n" + data.nestor.recruiter_view + "\n\n" +
-            "Hiring Manager:\n" + data.nestor.hiring_manager_view;
+            "Recruiter View:\n" + data.nestor.recruiter_view + "\n\n" +
+            "Hiring Manager View:\n" + data.nestor.hiring_manager_view;
+
+    })
+    .catch(err => {
+        alert("Error: " + err);
     });
 }
 
@@ -47,11 +77,15 @@ function goToCheckout() {
     fetch("/create-checkout-session", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ email: email }) // 🔥 FIX
+        body: JSON.stringify({ email: email })
     })
     .then(res => res.json())
     .then(data => {
         window.location.href = data.url;
     });
 }
+
 </script>
+
+</body>
+</html>
