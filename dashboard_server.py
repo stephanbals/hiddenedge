@@ -150,9 +150,22 @@ JOB:
 
         raw = response.choices[0].message.content.strip()
 
+        # 🔥 ROBUST PARSING (DICT OR LIST)
         try:
-            match = re.search(r"\{.*\}", raw, re.DOTALL)
-            data = json.loads(match.group(0)) if match else {}
+            match = re.search(r"\{.*\}|\[.*\]", raw, re.DOTALL)
+
+            if match:
+                parsed = json.loads(match.group(0))
+
+                if isinstance(parsed, list):
+                    data = parsed[0] if parsed else {}
+                elif isinstance(parsed, dict):
+                    data = parsed
+                else:
+                    data = {}
+            else:
+                data = {}
+
         except Exception as e:
             print("JSON PARSE ERROR:", str(e))
             print("RAW RESPONSE:", raw)
