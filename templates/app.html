@@ -4,84 +4,44 @@
 <title>HiddenEdge</title>
 
 <style>
-body {
-    margin: 0;
-    background: black;
-    color: white;
-    font-family: Arial;
-}
+body { margin:0; background:black; color:white; font-family:Arial; }
 
-.container {
-    width: 65%;
-    margin: auto;
-    margin-top: 80px;
-    text-align: center;
-}
+.container { width:65%; margin:auto; margin-top:80px; text-align:center; }
 
-h1 {
-    color: #9fd3ff;
-}
+h1 { color:#9fd3ff; }
 
-.subtitle {
-    color: #ccc;
-    margin-bottom: 40px;
-}
+.section { margin-top:30px; }
 
-.section {
-    margin-top: 30px;
-}
-
-input[type="text"] {
-    padding: 12px;
-    width: 60%;
-}
-
-textarea {
-    width: 100%;
-    height: 160px;
-    padding: 12px;
-}
+textarea { width:100%; height:160px; padding:12px; }
 
 button {
-    padding: 12px 28px;
-    font-size: 16px;
-    background: #4da6ff;
-    border: none;
-    cursor: pointer;
-    margin-top: 20px;
-    border-radius: 6px;
+    padding:12px 28px;
+    background:#4da6ff;
+    border:none;
+    cursor:pointer;
+    margin-top:20px;
+    border-radius:6px;
 }
 
 .card {
-    background: #1c1c1c;
-    padding: 25px;
-    border-radius: 12px;
-    margin-top: 20px;
-    text-align: left;
-}
-
-.warning {
-    margin-top: 20px;
-    font-weight: bold;
-}
-
-pre {
-    white-space: pre-wrap;
-    background: #111;
-    padding: 15px;
+    background:#1c1c1c;
+    padding:25px;
+    border-radius:12px;
+    margin-top:20px;
+    text-align:left;
 }
 
 #analyzeHint {
-    display: none;
-    margin-top: 15px;
-    color: #9fd3ff;
-    animation: pulse 1.2s infinite;
+    display:none;
+    margin-top:15px;
+    color:#9fd3ff;
+    animation:pulse 1.2s infinite;
 }
 
 @keyframes pulse {
-    0% { opacity: 0.4; }
-    50% { opacity: 1; }
-    100% { opacity: 0.4; }
+    0% {opacity:0.4;}
+    50% {opacity:1;}
+    100% {opacity:0.4;}
 }
 </style>
 </head>
@@ -91,23 +51,19 @@ pre {
 <div class="container">
 
 <h1>HiddenEdge</h1>
-<p class="subtitle">Analyze your CV and get a tailored version</p>
 
 <div class="section">
-    <input id="email" placeholder="Email (session only)">
+<input type="file" id="files">
 </div>
 
 <div class="section">
-    <input type="file" id="files">
-</div>
-
-<div class="section">
-    <textarea id="job" placeholder="Paste job description"></textarea>
+<textarea id="job" placeholder="Paste job description"></textarea>
 </div>
 
 <button onclick="analyze()">Analyze</button>
+<button onclick="resetAnalysis()">Reset</button>
 
-<div id="analyzeHint">⏳ Analysis in progress… scroll down shortly</div>
+<div id="analyzeHint">⏳ Running new analysis…</div>
 
 <div id="resultBox" style="display:none;">
 
@@ -118,25 +74,13 @@ pre {
 <p id="manager"></p>
 </div>
 
-<div class="warning" id="warning"></div>
-
 <div id="gapSection" class="card" style="display:none;">
-<h3>Key Gaps</h3>
 <ul id="gaps"></ul>
-<h3>Recommended Actions</h3>
 <ul id="actions"></ul>
 </div>
 
 <div id="altRolesSection" class="card" style="display:none;">
-<h3>Better Matching Roles</h3>
 <ul id="altRoles"></ul>
-</div>
-
-<button id="generateBtn" onclick="generateCV()">Generate CV</button>
-
-<div class="card">
-<pre id="alec"></pre>
-<button onclick="downloadCV()">Download CV (.docx)</button>
 </div>
 
 </div>
@@ -145,10 +89,13 @@ pre {
 
 <script>
 
-let globalCV = "";
-let globalJob = "";
-
 async function analyze(){
+
+    // 🔥 CLEAR OLD RESULTS FIRST
+    document.getElementById("resultBox").style.display = "none";
+    document.getElementById("gaps").innerHTML = "";
+    document.getElementById("actions").innerHTML = "";
+    document.getElementById("altRoles").innerHTML = "";
 
     document.getElementById("analyzeHint").style.display = "block";
 
@@ -159,51 +106,37 @@ async function analyze(){
     fd.append("file", file);
     fd.append("job", job);
 
-    const res = await fetch("/analyze", {method:"POST", body:fd});
+    const res = await fetch("/analyze?ts=" + new Date().getTime(), {
+        method:"POST",
+        body:fd,
+        cache:"no-store"
+    });
+
     const data = await res.json();
 
-    globalCV = data.cv_text;
-    globalJob = data.job_text;
-
-    const score = data.nestor.fit_score;
-
     document.getElementById("decision").innerText = data.nestor.decision;
-    document.getElementById("score").innerText = "Score: " + score;
+    document.getElementById("score").innerText = "Score: " + data.nestor.fit_score;
     document.getElementById("recruiter").innerText = data.nestor.recruiter_view;
     document.getElementById("manager").innerText = data.nestor.hiring_manager_view;
 
-    let warning = "";
-
-    if(score < 50){
-        warning = "⚠️ Low match";
-        document.getElementById("generateBtn").innerText = "Generate CV anyway";
-    } else if(score < 70){
-        warning = "⚠️ Partial match";
-    } else {
-        warning = "✅ Strong match";
+    // GAPS
+    if(data.gaps){
+        data.gaps.forEach(x=>{
+            document.getElementById("gaps").innerHTML += "<li>"+x+"</li>";
+        });
     }
 
-    document.getElementById("warning").innerText = warning;
-
-    const gaps = data.gaps || [];
-    const actions = data.actions || [];
-    const alt = data.alternative_roles || [];
-
-    if(gaps.length){
-        const g = document.getElementById("gaps");
-        const a = document.getElementById("actions");
-        g.innerHTML = "";
-        a.innerHTML = "";
-        gaps.forEach(x => g.innerHTML += "<li>"+x+"</li>");
-        actions.forEach(x => a.innerHTML += "<li>"+x+"</li>");
-        document.getElementById("gapSection").style.display = "block";
+    if(data.actions){
+        data.actions.forEach(x=>{
+            document.getElementById("actions").innerHTML += "<li>"+x+"</li>";
+        });
     }
 
-    if(alt.length){
-        const list = document.getElementById("altRoles");
-        list.innerHTML = "";
-        alt.forEach(x => list.innerHTML += "<li>"+x+"</li>");
-        document.getElementById("altRolesSection").style.display = "block";
+    // ALT ROLES
+    if(data.alternative_roles){
+        data.alternative_roles.forEach(x=>{
+            document.getElementById("altRoles").innerHTML += "<li>"+x+"</li>";
+        });
     }
 
     document.getElementById("resultBox").style.display = "block";
@@ -212,29 +145,9 @@ async function analyze(){
     document.getElementById("resultBox").scrollIntoView({behavior:"smooth"});
 }
 
-async function generateCV(){
-    const res = await fetch("/alec", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({cv_text: globalCV, job_text: globalJob})
-    });
-    const data = await res.json();
-    document.getElementById("alec").innerText = data.alec_cv;
-}
-
-async function downloadCV(){
-    const cv = document.getElementById("alec").innerText;
-    const res = await fetch("/download_cv", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({cv})
-    });
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "HiddenEdge_CV.docx";
-    a.click();
+function resetAnalysis(){
+    document.getElementById("job").value = "";
+    document.getElementById("resultBox").style.display = "none";
 }
 
 </script>
