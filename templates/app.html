@@ -1,32 +1,12 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>HiddenEdge</title>
-</head>
-
-<body>
-
-<h2>HiddenEdge</h2>
-
-<input type="file" id="file">
-<textarea id="job" placeholder="Paste job description"></textarea>
-
-<button onclick="analyze()">Analyze</button>
-<button onclick="generateCV()">Generate CV</button>
-<button onclick="pay()">Unlock</button>
-
-<div id="dashboard" style="display:none;">
-    <div id="decision"></div>
-    <div id="recruiter"></div>
-    <div id="manager"></div>
-</div>
-
 <script>
-
 let email = localStorage.getItem("email");
-if (!email) window.location.href = "/email";
 
 function analyze() {
+
+    if (!email) {
+        alert("Missing email. Go back and enter email.");
+        return;
+    }
 
     let file = document.getElementById("file").files[0];
     let job = document.getElementById("job").value;
@@ -34,59 +14,44 @@ function analyze() {
     let form = new FormData();
     form.append("file", file);
     form.append("job_text", job);
-    form.append("email", email);
+    form.append("email", email); // 🔥 FIX
 
     fetch("/analyze", {
         method: "POST",
         body: form
     })
-    .then(async r => {
+    .then(r => r.json())
+    .then(data => {
+        console.log(data);
 
-        if (!r.ok) {
-            let err = await r.text();
-            console.error(err);
-            alert("Analysis failed");
+        if (data.error === "PAYWALL") {
+            alert("Free limit reached. Please unlock.");
             return;
         }
 
-        let data = await r.json();
-
-        if (!data.nestor) {
-            console.error(data);
-            alert("Invalid response");
-            return;
-        }
-
-        document.getElementById("dashboard").style.display = "block";
-
-        document.getElementById("decision").innerText =
-            data.nestor.decision + " (" + data.nestor.fit_score + "%)";
-
-        document.getElementById("recruiter").innerText =
-            data.nestor.recruiter_view;
-
-        document.getElementById("manager").innerText =
-            data.nestor.hiring_manager_view;
+        document.getElementById("output").value =
+            "Score: " + data.nestor.fit_score + "\n" +
+            "Decision: " + data.nestor.decision + "\n\n" +
+            "Recruiter:\n" + data.nestor.recruiter_view + "\n\n" +
+            "Hiring Manager:\n" + data.nestor.hiring_manager_view;
     });
 }
 
-function generateCV() {
-    alert("CV generation test later");
-}
+function goToCheckout() {
 
-function pay() {
+    if (!email) {
+        alert("Missing email.");
+        return;
+    }
+
     fetch("/create-checkout-session", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({email:email})
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ email: email }) // 🔥 FIX
     })
-    .then(r=>r.json())
-    .then(data=>{
-        window.location.href=data.url;
+    .then(res => res.json())
+    .then(data => {
+        window.location.href = data.url;
     });
 }
-
 </script>
-
-</body>
-</html>
