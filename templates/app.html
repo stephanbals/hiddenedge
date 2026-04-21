@@ -27,20 +27,6 @@ button {
     text-align:left;
 }
 
-.warning { margin-top:15px; font-weight:bold; }
-
-pre {
-    white-space:pre-wrap;
-    background:#111;
-    padding:15px;
-    border-radius:8px;
-}
-
-.locked {
-    filter: blur(6px);
-    pointer-events: none;
-}
-
 #paywall {
     display:none;
     margin-top:20px;
@@ -76,64 +62,29 @@ pre {
 
 <br>
 <button onclick="analyze()">Analyze</button>
-<button onclick="resetAnalysis()">Reset</button>
 
-<div id="analyzeHint">⏳ Analyzing… scroll down shortly</div>
+<div id="analyzeHint">⏳ Analyzing…</div>
 
-<div id="resultBox" style="display:none;">
-
-<div class="card">
-<h2 id="decision"></h2>
-<h3 id="score"></h3>
-<div class="warning" id="applyAdvice"></div>
-</div>
-
-<div id="lockedSection" class="card">
-<h3>Recruiter View</h3>
-<p id="recruiter"></p>
-
-<h3>Hiring Manager View</h3>
-<p id="manager"></p>
-
-<h3>Key Gaps</h3>
-<ul id="gaps"></ul>
-
-<h3>Recommended Actions</h3>
-<ul id="actions"></ul>
-
-<h3>Better Matching Roles</h3>
-<ul id="altRoles"></ul>
-</div>
-
+<!-- PAYWALL -->
 <div id="paywall">
-<h3>Unlock full analysis</h3>
-<p>Full recruiter insights + tailored CV</p>
-<button onclick="pay()">Unlock (€9)</button>
+    <h2>Unlock Full Access</h2>
+    <p>You’ve used your 3 free analyses.</p>
+    <button onclick="pay()">Unlock (€9)</button>
 </div>
 
-<button id="generateBtn" onclick="generateCV()">Generate Tailored CV</button>
-
-<div id="cvSection" style="display:none;">
-<div class="card">
-<h3>Your Original CV</h3>
-<pre id="masterCV"></pre>
-</div>
-
-<div class="card">
-<h3>Tailored CV</h3>
-<pre id="alec"></pre>
-<button onclick="downloadCV()">Download CV</button>
-</div>
-</div>
-
+<!-- RESULTS -->
+<div id="resultBox" style="display:none;">
+    <div class="card">
+        <h2 id="decision"></h2>
+        <h3 id="score"></h3>
+        <p id="recruiter"></p>
+        <p id="manager"></p>
+    </div>
 </div>
 
 </div>
 
 <script>
-
-let globalCV = "";
-let globalJob = "";
 
 function getAttempts(){
     return parseInt(localStorage.getItem("attempts") || "0");
@@ -145,12 +96,17 @@ function isPaid(){
 
 async function analyze(){
 
-    document.getElementById("resultBox").style.display = "none";
-    document.getElementById("gaps").innerHTML = "";
-    document.getElementById("actions").innerHTML = "";
-    document.getElementById("altRoles").innerHTML = "";
-    document.getElementById("cvSection").style.display = "none";
+    const attempts = getAttempts();
+    const paid = isPaid();
 
+    // 🔥 HARD PAYWALL STOP
+    if(!paid && attempts >= 3){
+        document.getElementById("paywall").style.display = "block";
+        document.getElementById("resultBox").style.display = "none";
+        return;
+    }
+
+    document.getElementById("paywall").style.display = "none";
     document.getElementById("analyzeHint").style.display = "block";
 
     const file = document.getElementById("files").files[0];
@@ -167,116 +123,18 @@ async function analyze(){
 
     const data = await res.json();
 
-    globalCV = data.cv_text;
-    globalJob = data.job_text;
-
-    const score = data.nestor.fit_score;
+    // increment AFTER successful call
+    if(!paid){
+        localStorage.setItem("attempts", attempts + 1);
+    }
 
     document.getElementById("decision").innerText = data.nestor.decision;
-    document.getElementById("score").innerText = "Score: " + score;
-
-    let advice = "";
-    if(score < 20){
-        advice = "❌ Do NOT apply — hard mismatch";
-    } else if(score < 50){
-        advice = "⚠️ Not recommended — consider alternatives";
-    } else if(score < 70){
-        advice = "⚠️ Apply with improvements";
-    } else {
-        advice = "✅ Strong fit — apply";
-    }
-    document.getElementById("applyAdvice").innerText = advice;
-
-    let attempts = getAttempts();
-    const paid = isPaid();
-
-    if(!paid){
-        attempts++;
-        localStorage.setItem("attempts", attempts);
-    }
-
-    const locked = (!paid && attempts >= 3);
-
-    if(locked){
-        document.getElementById("lockedSection").classList.add("locked");
-        document.getElementById("paywall").style.display = "block";
-    } else {
-        document.getElementById("lockedSection").classList.remove("locked");
-        document.getElementById("paywall").style.display = "none";
-
-        document.getElementById("recruiter").innerText = data.nestor.recruiter_view;
-        document.getElementById("manager").innerText = data.nestor.hiring_manager_view;
-
-        data.gaps.forEach(x=>{
-            document.getElementById("gaps").innerHTML += "<li>"+x+"</li>";
-        });
-
-        data.actions.forEach(x=>{
-            document.getElementById("actions").innerHTML += "<li>"+x+"</li>";
-        });
-
-        data.alternative_roles.forEach(x=>{
-            document.getElementById("altRoles").innerHTML += "<li>"+x+"</li>";
-        });
-    }
+    document.getElementById("score").innerText = "Score: " + data.nestor.fit_score;
+    document.getElementById("recruiter").innerText = data.nestor.recruiter_view;
+    document.getElementById("manager").innerText = data.nestor.hiring_manager_view;
 
     document.getElementById("resultBox").style.display = "block";
     document.getElementById("analyzeHint").style.display = "none";
-
-    document.getElementById("resultBox").scrollIntoView({behavior:"smooth"});
-}
-
-async function generateCV(){
-
-    if(!isPaid()){
-        alert("Unlock to generate CV");
-        return;
-    }
-
-    const res = await fetch("/alec", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-            cv_text: globalCV,
-            job_text: globalJob
-        })
-    });
-
-    const data = await res.json();
-
-    document.getElementById("masterCV").innerText = globalCV;
-    document.getElementById("alec").innerText = data.alec_cv;
-
-    document.getElementById("cvSection").style.display = "block";
-}
-
-async function downloadCV(){
-
-    if(!isPaid()){
-        alert("Unlock to download");
-        return;
-    }
-
-    const cv = document.getElementById("alec").innerText;
-
-    const res = await fetch("/download_cv", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({cv})
-    });
-
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "HiddenEdge_CV.docx";
-    a.click();
-}
-
-function resetAnalysis(){
-    document.getElementById("job").value = "";
-    document.getElementById("resultBox").style.display = "none";
 }
 
 function pay(){
@@ -288,6 +146,7 @@ const params = new URLSearchParams(window.location.search);
 if(params.get("paid") === "true"){
     localStorage.setItem("paid", "true");
     localStorage.setItem("attempts", "0");
+    document.getElementById("paywall").style.display = "none";
 }
 
 </script>
