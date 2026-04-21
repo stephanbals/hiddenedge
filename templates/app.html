@@ -96,6 +96,20 @@ ul {
     margin-top: 10px;
     padding-left: 20px;
 }
+
+/* ANALYZE HINT */
+#analyzeHint {
+    display: none;
+    margin-top: 15px;
+    color: #9fd3ff;
+    animation: pulse 1.2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.4; }
+    50% { opacity: 1; }
+    100% { opacity: 0.4; }
+}
 </style>
 </head>
 
@@ -127,6 +141,10 @@ Analyze your CV against a job and generate a tailored version optimized for that
 </div>
 
 <button onclick="analyze()">Analyze Match</button>
+
+<div id="analyzeHint">
+    ⏳ Analysis in progress… results will appear below
+</div>
 
 <!-- RESULTS -->
 <div id="resultBox">
@@ -181,6 +199,9 @@ async function analyze(){
         alert("Please upload a CV and paste a job description.");
         return;
     }
+
+    // SHOW HINT
+    document.getElementById("analyzeHint").style.display = "block";
 
     const fd = new FormData();
     fd.append("file", file);
@@ -248,6 +269,14 @@ async function analyze(){
     }
 
     document.getElementById("resultBox").style.display = "block";
+
+    // HIDE HINT
+    document.getElementById("analyzeHint").style.display = "none";
+
+    // SCROLL
+    document.getElementById("resultBox").scrollIntoView({
+        behavior: "smooth"
+    });
 }
 
 async function generateCV(){
