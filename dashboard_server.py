@@ -7,6 +7,7 @@ from io import BytesIO
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
+# ===== INIT =====
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -14,6 +15,8 @@ STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
 BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
 
 USERS_FILE = "users.json"
+
+# ===== USER STORAGE =====
 
 def load_users():
     if not os.path.exists(USERS_FILE):
@@ -37,6 +40,8 @@ def update_user(email, data):
     users[email] = data
     save_users(users)
 
+# ================= ROUTES =================
+
 @app.route("/")
 def landing():
     return render_template("landing.html")
@@ -56,6 +61,8 @@ def app_page():
 @app.route("/success")
 def success():
     return render_template("success.html")
+
+# ================= HELPERS =================
 
 def map_decision(score):
     if score < 20:
@@ -94,12 +101,20 @@ def extract_cv(file):
     else:
         return file.read().decode("utf-8", errors="ignore")
 
+# ================= ANALYZE =================
+
 @app.route("/analyze", methods=["POST"])
 def analyze():
+    print("=== NEW BACKEND VERSION LOADED ===")
+
     try:
         email = request.form.get("email", "").strip().lower()
+        if not email:
+            return jsonify({"error": "Missing email"}), 400
+
         user = get_user(email)
 
+        # PAYWALL
         if not user["paid"] and user["attempts"] >= 3:
             return jsonify({"error": "PAYWALL"}), 403
 
@@ -107,13 +122,15 @@ def analyze():
         file = request.files.get("file")
         cv_text = extract_cv(file)
 
+        # ===== LLM CALL =====
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{
                 "role": "user",
                 "content": f"""
-Return STRICT JSON ONLY:
+Return STRICT JSON ONLY.
 
+Format:
 {{
 "fit_score": number,
 "recruiter_view": "text",
@@ -135,18 +152,19 @@ JOB:
 
         raw = response.choices[0].message.content.strip()
 
-        # 🔥 HARD SAFE PARSE
+        # ===== SAFE PARSE (NO CRASH EVER) =====
         try:
             data = json.loads(raw)
             if not isinstance(data, dict):
                 raise Exception("Not dict")
         except:
-            print("BAD RAW:", raw)
+            print("BAD RAW FROM MODEL:", raw)
             data = {}
 
         score = int(data.get("fit_score", 0))
         decision = map_decision(score)
 
+        # increment attempts
         if not user["paid"]:
             user["attempts"] += 1
             update_user(email, user)
@@ -177,6 +195,8 @@ JOB:
             "alternative_roles": []
         }), 200
 
+# ================= STRIPE =================
+
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
     data = request.get_json()
@@ -196,6 +216,8 @@ def create_checkout_session():
 
     return jsonify({"url": session.url})
 
+# ================= UNLOCK =================
+
 @app.route("/unlock", methods=["POST"])
 def unlock():
     data = request.json
@@ -206,6 +228,8 @@ def unlock():
     update_user(email, user)
 
     return jsonify({"status": "ok"})
+
+# ================= RUN =================
 
 if __name__ == "__main__":
     app.run(debug=True)
