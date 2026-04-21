@@ -1,93 +1,74 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Terms of Use - HiddenEdge</title>
+<title>HiddenEdge - Terms of Use</title>
 <link rel="icon" href="/static/favicon.ico">
 
 <style>
 body {
-    margin:0;
-    color:white;
-    text-align:center;
-    font-family:Arial;
-    background:black;
+    margin: 0;
+    background: black;
+    color: white;
+    font-family: Arial;
+    text-align: center;
 }
 
 /* LOGO */
 .logo {
-    position:fixed;
-    top:15px;
-    left:20px;
-    color:#9fd3ff;
+    position: fixed;
+    top: 15px;
+    left: 20px;
+    color: #9fd3ff;
+    font-weight: bold;
 }
 
-/* 🌌 BACKGROUND */
+/* BACKGROUND EFFECT */
 body::before {
-    content:"";
-    position:fixed;
-    width:200%;
-    height:200%;
+    content: "";
+    position: fixed;
+    width: 200%;
+    height: 200%;
     background:
-        radial-gradient(circle, rgba(255,255,255,0.5), transparent 40%),
+        radial-gradient(circle, rgba(255,255,255,0.4), transparent 40%),
         radial-gradient(circle at 30% 60%, rgba(0,150,255,0.5), transparent 60%),
         radial-gradient(circle at 70% 40%, rgba(200,100,255,0.5), transparent 60%);
-    transform:rotate(-20deg);
-    filter:blur(70px);
-    z-index:-2;
-}
-
-body::after {
-    content:"";
-    position:fixed;
-    width:100%;
-    height:100%;
-    background-image:
-        radial-gradient(3px 3px at 20% 30%, white, transparent),
-        radial-gradient(2px 2px at 70% 60%, white, transparent),
-        radial-gradient(3px 3px at 40% 80%, white, transparent);
-    animation:twinkle 1.5s infinite alternate;
-    z-index:-1;
-}
-
-@keyframes twinkle {
-    from {opacity:0.3;}
-    to {opacity:1;}
+    transform: rotate(-20deg);
+    filter: blur(80px);
+    z-index: -2;
 }
 
 /* CONTENT */
 .container {
-    max-width:800px;
-    margin:120px auto;
-    text-align:left;
-    line-height:1.6;
-    padding:20px;
+    margin-top: 120px;
+    width: 60%;
+    margin-left: auto;
+    margin-right: auto;
 }
 
-h2 {
-    text-align:center;
-}
-
+/* TERMS BOX */
 .terms-box {
-    max-height:300px;
-    overflow-y:auto;
-    border:1px solid #444;
-    padding:15px;
-    margin-top:20px;
-    background:rgba(0,0,0,0.6);
+    background: #1c1c1c;
+    padding: 25px;
+    border-radius: 10px;
+    text-align: left;
+    max-height: 350px;
+    overflow-y: auto;
+    line-height: 1.6;
 }
 
-.checkbox {
-    margin-top:20px;
-    text-align:center;
-}
-
+/* BUTTON */
 button {
-    display:block;
-    margin:20px auto;
-    padding:12px 25px;
-    background:#4da6ff;
-    border:none;
-    cursor:pointer;
+    padding: 12px 25px;
+    background: #4da6ff;
+    border: none;
+    cursor: pointer;
+    margin-top: 20px;
+    border-radius: 6px;
+}
+
+/* CHECKBOX */
+.checkbox {
+    margin-top: 20px;
 }
 </style>
 </head>
@@ -103,30 +84,27 @@ button {
 <div class="terms-box">
 
 <p>
-HiddenEdge provides AI-based analysis of CVs and job descriptions.
-All outputs are advisory in nature and do not guarantee job interviews,
-offers, or hiring outcomes.
+HiddenEdge is designed to simulate professional CV and job matching analysis using advanced AI models informed by recruitment practices and hiring management across industries and domains.
 </p>
 
 <p>
-By using this platform, you acknowledge that all decisions taken based on
-the analysis remain your sole responsibility.
+While we aim to provide relevant and high-quality insights, the platform does not replace human judgment or professional recruitment advice.
 </p>
 
 <p>
-HiddenEdge does not assume liability for decisions made by users based on
-generated insights.
+All decisions made based on the analysis remain solely the responsibility of the user.
 </p>
 
 <p>
-Payments for premium features are non-refundable.
+CV inputs may be provided in multiple European languages. All generated outputs, including tailored CVs, are currently produced in English to support international job applications.
 </p>
 
 <p>
-Subscriptions can be cancelled by contacting
-HiddenEdgeInfo@proton.me.
-Cancellation may take up to 30 days to process and one final billing cycle
-may apply.
+HiddenEdge does not store CV content or personal data beyond the active session.
+</p>
+
+<p>
+Payments for premium features are non-refundable. To cancel your subscription please send mail to HiddenEdgeInfo@proton.me. Cancellations take 30 days for handling, it is possible one more subscription payment may be deducted from your account. 
 </p>
 
 <p>
@@ -136,8 +114,7 @@ HiddenEdge reserves the right to update these terms at any time.
 </div>
 
 <div class="checkbox">
-    <input type="checkbox" id="agree">
-    I have read and agree to the Terms of Use
+    <input type="checkbox" id="agree"> I agree to the Terms of Use
 </div>
 
 <button onclick="go()">Continue</button>
