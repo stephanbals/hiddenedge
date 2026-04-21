@@ -7,7 +7,6 @@ from io import BytesIO
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
-# ===== INIT =====
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -15,8 +14,6 @@ STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
 BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
 
 USERS_FILE = "users.json"
-
-# ===== STORAGE =====
 
 def load_users():
     if not os.path.exists(USERS_FILE):
@@ -40,8 +37,6 @@ def update_user(email, data):
     users[email] = data
     save_users(users)
 
-# ================= ROUTES =================
-
 @app.route("/")
 def landing():
     return render_template("landing.html")
@@ -61,8 +56,6 @@ def app_page():
 @app.route("/success")
 def success():
     return render_template("success.html")
-
-# ================= HELPERS =================
 
 def map_decision(score):
     if score < 20:
@@ -101,15 +94,10 @@ def extract_cv(file):
     else:
         return file.read().decode("utf-8", errors="ignore")
 
-# ================= ANALYZE =================
-
 @app.route("/analyze", methods=["POST"])
 def analyze():
     try:
         email = request.form.get("email", "").strip().lower()
-        if not email:
-            return jsonify({"error": "Missing email"}), 400
-
         user = get_user(email)
 
         if not user["paid"] and user["attempts"] >= 3:
@@ -119,19 +107,20 @@ def analyze():
         file = request.files.get("file")
         cv_text = extract_cv(file)
 
-        prompt = f"""
-You are Nestor, a strict hiring evaluator.
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{
+                "role": "user",
+                "content": f"""
+Return STRICT JSON ONLY:
 
-Return ONLY VALID JSON. No text. No explanation.
-
-Format:
 {{
-  "fit_score": number,
-  "recruiter_view": "string",
-  "hiring_manager_view": "string",
-  "gaps": ["string"],
-  "actions": ["string"],
-  "alternative_roles": ["string"]
+"fit_score": number,
+"recruiter_view": "text",
+"hiring_manager_view": "text",
+"gaps": ["text"],
+"actions": ["text"],
+"alternative_roles": ["text"]
 }}
 
 CV:
@@ -140,20 +129,19 @@ CV:
 JOB:
 {job_text[:2000]}
 """
-
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            }],
             temperature=0
         )
 
         raw = response.choices[0].message.content.strip()
 
-        # 🔥 DIRECT JSON PARSE (NO REGEX)
+        # 🔥 HARD SAFE PARSE
         try:
             data = json.loads(raw)
+            if not isinstance(data, dict):
+                raise Exception("Not dict")
         except:
-            print("RAW BAD JSON:", raw)
+            print("BAD RAW:", raw)
             data = {}
 
         score = int(data.get("fit_score", 0))
@@ -189,8 +177,6 @@ JOB:
             "alternative_roles": []
         }), 200
 
-# ================= STRIPE =================
-
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
     data = request.get_json()
@@ -210,8 +196,6 @@ def create_checkout_session():
 
     return jsonify({"url": session.url})
 
-# ================= UNLOCK =================
-
 @app.route("/unlock", methods=["POST"])
 def unlock():
     data = request.json
@@ -222,8 +206,6 @@ def unlock():
     update_user(email, user)
 
     return jsonify({"status": "ok"})
-
-# ================= RUN =================
 
 if __name__ == "__main__":
     app.run(debug=True)
