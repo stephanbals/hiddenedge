@@ -27,6 +27,13 @@ button {
     border-radius: 10px;
     background: #1c1c1c;
     display: none;
+    text-align: left;
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+}
+.section {
+    margin-top: 20px;
 }
 </style>
 </head>
@@ -49,16 +56,33 @@ button {
 <div id="resultBox">
     <h2 id="decision"></h2>
     <h3 id="score"></h3>
-    <button onclick="pay()">Unlock Full Report (€9)</button>
+
+    <div class="section">
+        <strong>Recruiter View</strong>
+        <p id="recruiter"></p>
+    </div>
+
+    <div class="section">
+        <strong>Hiring Manager View</strong>
+        <p id="manager"></p>
+    </div>
+
+    <button id="payBtn" onclick="pay()">Unlock Full Report (€9)</button>
 </div>
 
 <script>
 
-// preload email
+// email preload
 document.getElementById("email").value =
     localStorage.getItem("email") || "";
 
-// ---------------- ANALYZE ----------------
+// payment flag
+const params = new URLSearchParams(window.location.search);
+if (params.get("paid") === "true") {
+    localStorage.setItem("paid", "true");
+}
+
+// analyze
 async function analyze(){
 
     const email = document.getElementById("email").value;
@@ -76,29 +100,37 @@ async function analyze(){
     fd.append("file", files[0]);
     fd.append("job", job);
 
-    try {
-        const res = await fetch("/analyze", {
-            method: "POST",
-            body: fd
-        });
+    const res = await fetch("/analyze", {
+        method: "POST",
+        body: fd
+    });
 
-        const data = await res.json();
+    const data = await res.json();
 
-        document.getElementById("decision").innerText =
-            "Decision: " + data.nestor.decision;
+    document.getElementById("decision").innerText =
+        "Decision: " + data.nestor.decision;
 
-        document.getElementById("score").innerText =
-            "Score: " + data.nestor.fit_score;
+    document.getElementById("score").innerText =
+        "Score: " + data.nestor.fit_score;
 
-        document.getElementById("resultBox").style.display = "block";
+    document.getElementById("recruiter").innerText =
+        data.nestor.recruiter_view;
 
-    } catch(err){
-        console.error(err);
-        alert("Analyze failed");
+    document.getElementById("manager").innerText =
+        data.nestor.hiring_manager_view;
+
+    document.getElementById("resultBox").style.display = "block";
+
+    const paid = localStorage.getItem("paid");
+
+    if (paid === "true") {
+        document.getElementById("payBtn").style.display = "none";
+    } else {
+        document.getElementById("decision").innerText += " (Preview)";
     }
 }
 
-// ---------------- PAY ----------------
+// pay
 function pay(){
     window.location.href = "/create-checkout-session";
 }
