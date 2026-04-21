@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>EULA</title>
+<title>Terms of Use - HiddenEdge</title>
 <link rel="icon" href="/static/favicon.ico">
 
 <style>
@@ -21,7 +21,7 @@ body {
     color:#9fd3ff;
 }
 
-/* 🌌 MILKY WAY */
+/* 🌌 BACKGROUND */
 body::before {
     content:"";
     position:fixed;
@@ -36,7 +36,6 @@ body::before {
     z-index:-2;
 }
 
-/* ✨ STARS */
 body::after {
     content:"";
     position:fixed;
@@ -57,10 +56,34 @@ body::after {
 
 /* CONTENT */
 .container {
-    margin-top:120px;
+    max-width:800px;
+    margin:120px auto;
+    text-align:left;
+    line-height:1.6;
+    padding:20px;
+}
+
+h2 {
+    text-align:center;
+}
+
+.terms-box {
+    max-height:300px;
+    overflow-y:auto;
+    border:1px solid #444;
+    padding:15px;
+    margin-top:20px;
+    background:rgba(0,0,0,0.6);
+}
+
+.checkbox {
+    margin-top:20px;
+    text-align:center;
 }
 
 button {
+    display:block;
+    margin:20px auto;
     padding:12px 25px;
     background:#4da6ff;
     border:none;
@@ -74,22 +97,59 @@ button {
 <div class="logo">HiddenEdge</div>
 
 <div class="container">
-    <h2>Terms</h2>
 
-    <input type="checkbox" id="agree"> I agree
+<h2>Terms of Use</h2>
 
-    <br><br>
+<div class="terms-box">
 
-    <button onclick="go()">Continue</button>
+<p>
+HiddenEdge provides AI-based analysis of CVs and job descriptions.
+All outputs are advisory in nature and do not guarantee job interviews,
+offers, or hiring outcomes.
+</p>
+
+<p>
+By using this platform, you acknowledge that all decisions taken based on
+the analysis remain your sole responsibility.
+</p>
+
+<p>
+HiddenEdge does not assume liability for decisions made by users based on
+generated insights.
+</p>
+
+<p>
+Payments for premium features are non-refundable.
+</p>
+
+<p>
+Subscriptions can be cancelled by contacting
+HiddenEdgeInfo@proton.me.
+Cancellation may take up to 30 days to process and one final billing cycle
+may apply.
+</p>
+
+<p>
+HiddenEdge reserves the right to update these terms at any time.
+</p>
+
+</div>
+
+<div class="checkbox">
+    <input type="checkbox" id="agree">
+    I have read and agree to the Terms of Use
+</div>
+
+<button onclick="go()">Continue</button>
+
 </div>
 
 <script>
 function go() {
     if (!document.getElementById("agree").checked) {
-        alert("You must agree");
+        alert("You must agree to continue");
         return;
     }
-
     window.location.replace("/email");
 }
 </script>

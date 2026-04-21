@@ -10,8 +10,11 @@ body {
     color: white;
     text-align: center;
 }
+
+/* INPUTS */
 textarea { width: 80%; height: 120px; }
-input { padding: 6px; }
+input { padding: 8px; }
+
 button {
     padding: 12px 24px;
     margin-top: 20px;
@@ -20,10 +23,30 @@ button {
     border-radius: 6px;
     font-size: 16px;
 }
+
 #analyzeBtn { background: #4ea3ff; color: white; }
+
+/* PROGRESS BAR */
+.progress-container {
+    width: 80%;
+    margin: 10px auto;
+    background: #333;
+    border-radius: 5px;
+    overflow: hidden;
+    display: none;
+}
+
+.progress-bar {
+    height: 10px;
+    width: 0%;
+    background: #4da6ff;
+    transition: width 0.3s;
+}
+
+/* RESULT */
 #resultBox {
-    margin-top: 40px;
-    padding: 25px;
+    margin-top: 30px;
+    padding: 20px;
     border-radius: 10px;
     background: #1c1c1c;
     display: none;
@@ -32,8 +55,15 @@ button {
     margin-left: auto;
     margin-right: auto;
 }
+
 .section {
-    margin-top: 20px;
+    margin-top: 15px;
+}
+
+#fileStatus {
+    font-size: 14px;
+    color: #bbb;
+    margin-top: 5px;
 }
 </style>
 </head>
@@ -46,12 +76,23 @@ button {
 <input id="email"><br><br>
 
 <h3>Upload CV</h3>
-<input type="file" id="files"><br><br>
+<input type="file" id="files" onchange="fileSelected()">
+<div id="fileStatus"></div>
+
+<div class="progress-container" id="uploadProgress">
+    <div class="progress-bar" id="uploadBar"></div>
+</div>
+
+<br>
 
 <h3>Job Description</h3>
 <textarea id="job"></textarea><br>
 
 <button id="analyzeBtn" onclick="analyze()">Analyze</button>
+
+<div class="progress-container" id="analyzeProgress">
+    <div class="progress-bar" id="analyzeBar"></div>
+</div>
 
 <div id="resultBox">
     <h2 id="decision"></h2>
@@ -82,8 +123,36 @@ if (params.get("paid") === "true") {
     localStorage.setItem("paid", "true");
 }
 
-// analyze
+// ===== FILE SELECT =====
+function fileSelected() {
+    const files = document.getElementById("files").files;
+
+    if (files.length > 0) {
+        document.getElementById("fileStatus").innerText =
+            "Selected: " + files[0].name;
+
+        const bar = document.getElementById("uploadBar");
+        const container = document.getElementById("uploadProgress");
+
+        container.style.display = "block";
+
+        // fake upload animation
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 20;
+            bar.style.width = progress + "%";
+
+            if (progress >= 100) {
+                clearInterval(interval);
+            }
+        }, 100);
+    }
+}
+
+// ===== ANALYZE =====
 async function analyze(){
+
+    const btn = document.getElementById("analyzeBtn");
 
     const email = document.getElementById("email").value;
     const job = document.getElementById("job").value;
@@ -96,41 +165,77 @@ async function analyze(){
 
     localStorage.setItem("email", email);
 
+    // loading UI
+    btn.innerText = "Analyzing...";
+    btn.disabled = true;
+
+    const bar = document.getElementById("analyzeBar");
+    const container = document.getElementById("analyzeProgress");
+
+    container.style.display = "block";
+    bar.style.width = "10%";
+
+    // simulate progress
+    let progress = 10;
+    const interval = setInterval(() => {
+        progress += 10;
+        if (progress < 90) {
+            bar.style.width = progress + "%";
+        }
+    }, 200);
+
     const fd = new FormData();
     fd.append("file", files[0]);
     fd.append("job", job);
 
-    const res = await fetch("/analyze", {
-        method: "POST",
-        body: fd
-    });
+    try {
+        const res = await fetch("/analyze", {
+            method: "POST",
+            body: fd
+        });
 
-    const data = await res.json();
+        const data = await res.json();
 
-    document.getElementById("decision").innerText =
-        "Decision: " + data.nestor.decision;
+        clearInterval(interval);
+        bar.style.width = "100%";
 
-    document.getElementById("score").innerText =
-        "Score: " + data.nestor.fit_score;
+        document.getElementById("decision").innerText =
+            "Decision: " + data.nestor.decision;
 
-    document.getElementById("recruiter").innerText =
-        data.nestor.recruiter_view;
+        document.getElementById("score").innerText =
+            "Score: " + data.nestor.fit_score;
 
-    document.getElementById("manager").innerText =
-        data.nestor.hiring_manager_view;
+        document.getElementById("recruiter").innerText =
+            data.nestor.recruiter_view;
 
-    document.getElementById("resultBox").style.display = "block";
+        document.getElementById("manager").innerText =
+            data.nestor.hiring_manager_view;
 
-    const paid = localStorage.getItem("paid");
+        document.getElementById("resultBox").style.display = "block";
 
-    if (paid === "true") {
-        document.getElementById("payBtn").style.display = "none";
-    } else {
-        document.getElementById("decision").innerText += " (Preview)";
+        const paid = localStorage.getItem("paid");
+
+        if (paid === "true") {
+            document.getElementById("payBtn").style.display = "none";
+        } else {
+            document.getElementById("decision").innerText += " (Preview)";
+        }
+
+        document.getElementById("resultBox").scrollIntoView({
+            behavior: "smooth"
+        });
+
+    } catch(err){
+        clearInterval(interval);
+        console.error(err);
+        alert("Analysis failed");
     }
+
+    btn.innerText = "Analyze";
+    btn.disabled = false;
 }
 
-// pay
+// ===== PAY =====
 function pay(){
     window.location.href = "/create-checkout-session";
 }

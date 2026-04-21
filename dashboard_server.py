@@ -4,6 +4,7 @@ import stripe
 from openai import OpenAI
 import json
 import re
+from io import BytesIO
 
 # ===== INIT =====
 app = Flask(__name__, static_folder="static", template_folder="templates")
@@ -31,7 +32,7 @@ def email():
 def app_page():
     return render_template("app.html")
 
-# ================= ANALYZE (FULL NESTOR FIXED) =================
+# ================= ANALYZE =================
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
@@ -39,20 +40,21 @@ def analyze():
         job_text = request.form.get("job", "")
         file = request.files.get("file")
 
-        # ===== SAFE CV EXTRACTION =====
         cv_text = ""
 
         if file:
             filename = file.filename.lower()
 
+            # ===== DOCX SAFE READ =====
             if filename.endswith(".docx"):
                 from docx import Document
-                doc = Document(file)
+                doc = Document(BytesIO(file.read()))
                 cv_text = "\n".join([p.text for p in doc.paragraphs])
 
+            # ===== PDF SAFE READ =====
             elif filename.endswith(".pdf"):
                 import PyPDF2
-                reader = PyPDF2.PdfReader(file)
+                reader = PyPDF2.PdfReader(BytesIO(file.read()))
                 pages = []
                 for page in reader.pages:
                     try:
@@ -61,13 +63,14 @@ def analyze():
                         pass
                 cv_text = "\n".join(pages)
 
+            # ===== TEXT FALLBACK =====
             else:
                 cv_text = file.read().decode("utf-8", errors="ignore")
 
         if not cv_text.strip():
             cv_text = "No CV content detected"
 
-        # ===== STRICT PROMPT =====
+        # ===== NESTOR PROMPT =====
         prompt = f"""
 You are Nestor, a ruthless senior hiring evaluator.
 
