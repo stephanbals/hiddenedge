@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file, redirect
+from flask import Flask, render_template, request, jsonify, redirect
 import os
 import stripe
 
@@ -7,10 +7,7 @@ app = Flask(__name__, static_folder="static", template_folder="templates")
 
 # ===== STRIPE CONFIG =====
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-
-# 👉 replace later with your real price ID
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
-
 
 # ================= ROUTES =================
 
@@ -32,6 +29,22 @@ def email():
 @app.route("/app")
 def app_page():
     return render_template("app.html")
+
+
+# ================= ANALYZE (FIXED) =================
+
+@app.route("/analyze", methods=["POST"])
+def analyze():
+    try:
+        # Minimal working response (no AI yet, just to unblock flow)
+        return jsonify({
+            "nestor": {
+                "decision": "Strong Match",
+                "fit_score": 82
+            }
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ================= STRIPE =================
