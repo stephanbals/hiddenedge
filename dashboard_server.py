@@ -3,6 +3,7 @@ import os
 import stripe
 from openai import OpenAI
 import json
+import re
 
 # ===== INIT =====
 app = Flask(__name__, static_folder="static", template_folder="templates")
@@ -30,7 +31,7 @@ def email():
 def app_page():
     return render_template("app.html")
 
-# ================= ANALYZE — NESTOR FULL =================
+# ================= ANALYZE (FULL NESTOR FIXED) =================
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
@@ -38,17 +39,42 @@ def analyze():
         job_text = request.form.get("job", "")
         file = request.files.get("file")
 
+        # ===== SAFE CV EXTRACTION =====
         cv_text = ""
-        if file:
-            cv_text = file.read().decode("utf-8", errors="ignore")
 
+        if file:
+            filename = file.filename.lower()
+
+            if filename.endswith(".docx"):
+                from docx import Document
+                doc = Document(file)
+                cv_text = "\n".join([p.text for p in doc.paragraphs])
+
+            elif filename.endswith(".pdf"):
+                import PyPDF2
+                reader = PyPDF2.PdfReader(file)
+                pages = []
+                for page in reader.pages:
+                    try:
+                        pages.append(page.extract_text() or "")
+                    except:
+                        pass
+                cv_text = "\n".join(pages)
+
+            else:
+                cv_text = file.read().decode("utf-8", errors="ignore")
+
+        if not cv_text.strip():
+            cv_text = "No CV content detected"
+
+        # ===== STRICT PROMPT =====
         prompt = f"""
 You are Nestor, a ruthless senior hiring evaluator.
 
 You evaluate CV vs job from TWO perspectives:
 
-1. Recruiter → screening, keywords, profile fit
-2. Hiring Manager → real capability, delivery ability
+1. Recruiter → screening, keywords, fit
+2. Hiring Manager → real capability, execution ability
 
 STRICT RULES:
 - If domain mismatch → score MUST be below 20
@@ -57,13 +83,7 @@ STRICT RULES:
 - No inflated scoring
 - Be direct and critical
 
-CV:
-{cv_text[:3000]}
-
-JOB:
-{job_text[:2000]}
-
-Return ONLY JSON:
+Return ONLY valid JSON:
 
 {{
   "decision": "...",
@@ -71,30 +91,44 @@ Return ONLY JSON:
   "recruiter_view": "...",
   "hiring_manager_view": "..."
 }}
+
+CV:
+{cv_text[:3000]}
+
+JOB:
+{job_text[:2000]}
 """
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.2
+            temperature=0
         )
 
-        content = response.choices[0].message.content.strip()
+        raw = response.choices[0].message.content.strip()
 
-        try:
-            data = json.loads(content)
-        except:
-            data = {
-                "decision": "Unclear Match",
-                "fit_score": 40,
-                "recruiter_view": "Parsing failed",
-                "hiring_manager_view": "Parsing failed"
-            }
+        # ===== HARD JSON EXTRACTION =====
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+
+        if match:
+            json_str = match.group(0)
+            data = json.loads(json_str)
+        else:
+            raise Exception("No JSON returned from model")
 
         return jsonify({"nestor": data})
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("ANALYZE ERROR:", str(e))
+
+        return jsonify({
+            "nestor": {
+                "decision": "Error",
+                "fit_score": 0,
+                "recruiter_view": "System error during evaluation",
+                "hiring_manager_view": str(e)
+            }
+        }), 500
 
 # ================= STRIPE =================
 
