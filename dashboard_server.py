@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect
+from flask import Flask, render_template, request, jsonify
 import os
 import stripe
 from openai import OpenAI
@@ -14,6 +14,32 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
 BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
+
+USERS_FILE = "users.json"
+
+# ===== STORAGE =====
+
+def load_users():
+    if not os.path.exists(USERS_FILE):
+        return {}
+    with open(USERS_FILE, "r") as f:
+        return json.load(f)
+
+def save_users(data):
+    with open(USERS_FILE, "w") as f:
+        json.dump(data, f)
+
+def get_user(email):
+    users = load_users()
+    if email not in users:
+        users[email] = {"attempts": 0, "paid": False}
+        save_users(users)
+    return users[email]
+
+def update_user(email, data):
+    users = load_users()
+    users[email] = data
+    save_users(users)
 
 # ================= ROUTES =================
 
@@ -32,6 +58,10 @@ def email():
 @app.route("/app")
 def app_page():
     return render_template("app.html")
+
+@app.route("/success")
+def success():
+    return render_template("success.html")
 
 # ================= HELPERS =================
 
@@ -77,7 +107,17 @@ def extract_cv(file):
 @app.route("/analyze", methods=["POST"])
 def analyze():
     try:
-        job_text = request.form.get("job", "")
+        email = request.form.get("email", "").strip().lower()
+        if not email:
+            return jsonify({"error": "Missing email"}), 400
+
+        user = get_user(email)
+
+        # HARD PAYWALL
+        if not user["paid"] and user["attempts"] >= 3:
+            return jsonify({"error": "PAYWALL"}), 403
+
+        job_text = request.form.get("job_text", "")
         file = request.files.get("file")
 
         cv_text = extract_cv(file)
@@ -129,9 +169,11 @@ JOB:
         score = int(data.get("fit_score", 0))
         decision = map_decision(score)
 
+        if not user["paid"]:
+            user["attempts"] += 1
+            update_user(email, user)
+
         return jsonify({
-            "cv_text": cv_text,
-            "job_text": job_text,
             "nestor": {
                 "decision": decision,
                 "fit_score": score,
@@ -144,27 +186,25 @@ JOB:
         })
 
     except Exception as e:
-        return jsonify({
-            "cv_text": "",
-            "job_text": "",
-            "nestor": {
-                "decision": "Error",
-                "fit_score": 0,
-                "recruiter_view": "System error",
-                "hiring_manager_view": str(e)
-            },
-            "gaps": [],
-            "actions": [],
-            "alternative_roles": []
-        }), 500
+        return jsonify({"error": str(e)}), 500
 
 # ================= ALEC =================
 
 @app.route("/alec", methods=["POST"])
 def alec():
-    data = request.json or {}
-    cv_text = data.get("cv_text", "")
-    job_text = data.get("job_text", "")
+    email = request.form.get("email", "").strip().lower()
+    if not email:
+        return jsonify({"error": "Missing email"}), 400
+
+    user = get_user(email)
+
+    if not user["paid"] and user["attempts"] >= 3:
+        return jsonify({"error": "PAYWALL"}), 403
+
+    file = request.files.get("file")
+    job_text = request.form.get("job_text", "")
+
+    cv_text = extract_cv(file)
 
     prompt = f"""
 You are Alec, a senior CV optimization expert.
@@ -193,7 +233,7 @@ JOB:
     )
 
     return jsonify({
-        "alec_cv": response.choices[0].message.content.strip()
+        "cv": response.choices[0].message.content.strip()
     })
 
 # ================= DOWNLOAD =================
@@ -220,23 +260,41 @@ def download_cv():
 
 # ================= STRIPE =================
 
-@app.route("/create-checkout-session")
+@app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
     try:
+        data = request.get_json()
+        email = data.get("email")
+
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             mode="payment",
+            customer_email=email,
             line_items=[{
                 "price": STRIPE_PRICE_ID,
                 "quantity": 1,
             }],
-            success_url=f"{BASE_URL}/app?paid=true",
+            success_url=f"{BASE_URL}/success",
             cancel_url=f"{BASE_URL}/app",
         )
-        return redirect(session.url, code=303)
+
+        return jsonify({"url": session.url})
 
     except Exception as e:
-        return f"Stripe error: {str(e)}", 500
+        return jsonify({"error": str(e)}), 500
+
+# ================= UNLOCK =================
+
+@app.route("/unlock", methods=["POST"])
+def unlock():
+    data = request.json
+    email = data.get("email")
+
+    user = get_user(email)
+    user["paid"] = True
+    update_user(email, user)
+
+    return jsonify({"status": "ok"})
 
 # ================= NO CACHE =================
 

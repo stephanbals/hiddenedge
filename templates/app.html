@@ -2,19 +2,68 @@
 <html>
 <head>
     <title>HiddenEdge</title>
+
     <style>
-        body { font-family: Arial; margin: 30px; }
+        body {
+            font-family: Arial;
+            margin: 30px;
+            color: white;
+            background: black;
+            overflow-x: hidden;
+        }
+
+        /* ===== MILKY WAY BACKGROUND ===== */
+        body::before {
+            content: "";
+            position: fixed;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(circle, rgba(255,255,255,0.4), transparent 40%),
+                radial-gradient(circle at 30% 60%, rgba(0,150,255,0.5), transparent 60%),
+                radial-gradient(circle at 70% 40%, rgba(200,100,255,0.5), transparent 60%);
+            transform: rotate(-20deg);
+            filter: blur(80px);
+            z-index: -2;
+        }
+
+        /* ===== STARS ===== */
+        body::after {
+            content: "";
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(2px 2px at 20% 30%, white, transparent),
+                radial-gradient(2px 2px at 70% 60%, white, transparent),
+                radial-gradient(2px 2px at 40% 80%, white, transparent),
+                radial-gradient(1px 1px at 60% 20%, white, transparent),
+                radial-gradient(1px 1px at 80% 50%, white, transparent);
+            animation: twinkle 2s infinite alternate;
+            z-index: -1;
+        }
+
+        @keyframes twinkle {
+            from { opacity: 0.3; }
+            to { opacity: 1; }
+        }
 
         textarea {
             width: 100%;
             height: 180px;
             margin-top: 10px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: 1px solid #444;
         }
 
         button {
             margin-top: 10px;
             padding: 10px;
             cursor: pointer;
+            background: #4da6ff;
+            border: none;
+            color: white;
         }
 
         .hidden { display: none; }
@@ -25,7 +74,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.9);
             color: white;
             display: flex;
             align-items: center;
@@ -33,11 +82,43 @@
             flex-direction: column;
             z-index: 999;
         }
+
+        /* ===== BOT STRIP ===== */
+        .bots {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .bot {
+            text-align: center;
+        }
+
+        .bot img {
+            width: 60px;
+            border-radius: 50%;
+        }
+
     </style>
 </head>
 <body>
 
 <h2>HiddenEdge</h2>
+
+<div class="bots">
+    <div class="bot">
+        <img src="/static/nestor.png">
+        <div>Nestor</div>
+    </div>
+    <div class="bot">
+        <img src="/static/alec.png">
+        <div>Alec</div>
+    </div>
+    <div class="bot">
+        <img src="/static/helper.png">
+        <div>Helper</div>
+    </div>
+</div>
 
 <input type="file" id="file">
 <textarea id="job" placeholder="Paste job description"></textarea>
@@ -49,7 +130,6 @@
 <h3>Result</h3>
 <textarea id="output"></textarea>
 
-<!-- PAYWALL -->
 <div id="paywall" class="hidden">
     <h2>Unlock Full Access</h2>
     <p>You’ve used your 3 free analyses.</p>
@@ -59,13 +139,17 @@
 <script>
 let BASE_URL = "";
 
-// ===============================
-// INIT STATE
-// ===============================
+// EMAIL GUARD
+let email = localStorage.getItem("email");
+if (!email) {
+    window.location.href = "/email";
+}
+
+// STATE
 let attempts = parseInt(localStorage.getItem("attempts") || "0");
 let paid = localStorage.getItem("paid") === "true";
 
-// Handle Stripe return
+// STRIPE RETURN
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get("paid") === "true") {
     localStorage.setItem("paid", "true");
@@ -75,9 +159,7 @@ if (urlParams.get("paid") === "true") {
     window.history.replaceState({}, document.title, "/app");
 }
 
-// ===============================
-// PAYWALL CONTROL
-// ===============================
+// PAYWALL
 function checkPaywall() {
     if (!paid && attempts >= 3) {
         document.getElementById("paywall").classList.remove("hidden");
@@ -86,12 +168,8 @@ function checkPaywall() {
     return false;
 }
 
-// ===============================
-// ANALYZE (NESTOR)
-// ===============================
+// ANALYZE
 function analyze() {
-
-    // HARD BLOCK BEFORE ANY CALL
     if (checkPaywall()) return;
 
     let file = document.getElementById("file").files[0];
@@ -110,42 +188,39 @@ function analyze() {
         method: "POST",
         body: form
     })
-    .then(r => {
-        if (!r.ok) throw new Error("Server error");
-        return r.json();
-    })
+    .then(r => r.json())
     .then(data => {
 
-        document.getElementById("output").value = data.result || "";
+        let output = "";
 
-        // Increment ONLY if not paid
+        if (data.nestor) {
+            output += "Decision: " + data.nestor.decision + "\n";
+            output += "Score: " + data.nestor.fit_score + "\n\n";
+            output += "Recruiter View:\n" + data.nestor.recruiter_view + "\n\n";
+            output += "Hiring Manager View:\n" + data.nestor.hiring_manager_view + "\n\n";
+        }
+
+        if (data.gaps) output += "Gaps:\n- " + data.gaps.join("\n- ") + "\n\n";
+        if (data.actions) output += "Actions:\n- " + data.actions.join("\n- ") + "\n\n";
+        if (data.alternative_roles) output += "Alternative Roles:\n- " + data.alternative_roles.join("\n- ");
+
+        document.getElementById("output").value = output;
+
         if (!paid) {
             attempts++;
             localStorage.setItem("attempts", attempts);
         }
 
-        // Check AFTER increment
         checkPaywall();
-    })
-    .catch(err => {
-        alert("Error: " + err.message);
     });
 }
 
-// ===============================
-// CV GENERATION (ALEC)
-// ===============================
+// ALEC
 function generateCV() {
-
     if (checkPaywall()) return;
 
     let file = document.getElementById("file").files[0];
     let job = document.getElementById("job").value;
-
-    if (!file || !job) {
-        alert("Upload CV and paste job description");
-        return;
-    }
 
     let form = new FormData();
     form.append("file", file);
@@ -155,29 +230,15 @@ function generateCV() {
         method: "POST",
         body: form
     })
-    .then(r => {
-        if (!r.ok) throw new Error("Server error");
-        return r.json();
-    })
+    .then(r => r.json())
     .then(data => {
-        document.getElementById("output").value = data.cv || "";
-    })
-    .catch(err => {
-        alert("Error: " + err.message);
+        document.getElementById("output").value = data.cv;
     });
 }
 
-// ===============================
 // DOWNLOAD
-// ===============================
 function downloadCV() {
-
     let cv = document.getElementById("output").value;
-
-    if (!cv) {
-        alert("No CV generated");
-        return;
-    }
 
     fetch(BASE_URL + "/download_cv", {
         method: "POST",
@@ -194,11 +255,8 @@ function downloadCV() {
     });
 }
 
-// ===============================
-// STRIPE CHECKOUT
-// ===============================
+// STRIPE
 function goToCheckout() {
-
     fetch(BASE_URL + "/create-checkout-session", {
         method: "POST"
     })
@@ -208,11 +266,7 @@ function goToCheckout() {
     });
 }
 
-// ===============================
-// INITIAL CHECK
-// ===============================
 checkPaywall();
-
 </script>
 
 </body>
