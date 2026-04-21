@@ -11,7 +11,6 @@ body {
     font-family: Arial;
 }
 
-/* CONTAINER */
 .container {
     width: 65%;
     margin: auto;
@@ -19,10 +18,8 @@ body {
     text-align: center;
 }
 
-/* HEADINGS */
 h1 {
     color: #9fd3ff;
-    margin-bottom: 10px;
 }
 
 .subtitle {
@@ -30,19 +27,13 @@ h1 {
     margin-bottom: 40px;
 }
 
-/* SECTIONS */
 .section {
     margin-top: 30px;
 }
 
-/* INPUTS */
 input[type="text"] {
     padding: 12px;
     width: 60%;
-}
-
-input[type="file"] {
-    margin-top: 10px;
 }
 
 textarea {
@@ -51,7 +42,6 @@ textarea {
     padding: 12px;
 }
 
-/* BUTTON */
 button {
     padding: 12px 28px;
     font-size: 16px;
@@ -62,42 +52,25 @@ button {
     border-radius: 6px;
 }
 
-/* RESULT AREA */
-#resultBox {
-    display: none;
-    margin-top: 40px;
-    text-align: left;
-}
-
-/* CARDS */
 .card {
     background: #1c1c1c;
     padding: 25px;
     border-radius: 12px;
     margin-top: 20px;
+    text-align: left;
 }
 
-/* TEXT */
 .warning {
     margin-top: 20px;
     font-weight: bold;
-    font-size: 16px;
 }
 
 pre {
     white-space: pre-wrap;
     background: #111;
     padding: 15px;
-    border-radius: 8px;
 }
 
-/* LISTS */
-ul {
-    margin-top: 10px;
-    padding-left: 20px;
-}
-
-/* ANALYZE HINT */
 #analyzeHint {
     display: none;
     margin-top: 15px;
@@ -118,67 +91,52 @@ ul {
 <div class="container">
 
 <h1>HiddenEdge</h1>
-<p class="subtitle">
-Analyze your CV against a job and generate a tailored version optimized for that role.
-</p>
+<p class="subtitle">Analyze your CV and get a tailored version</p>
 
-<!-- EMAIL -->
 <div class="section">
-    <h3>Your Email</h3>
-    <input id="email" type="text" placeholder="Used only for this session — no data is stored">
+    <input id="email" placeholder="Email (session only)">
 </div>
 
-<!-- CV UPLOAD -->
 <div class="section">
-    <h3>Upload your CV</h3>
     <input type="file" id="files">
 </div>
 
-<!-- JOB DESCRIPTION -->
 <div class="section">
-    <h3>Paste Job Description</h3>
-    <textarea id="job" placeholder="Paste the full job description here..."></textarea>
+    <textarea id="job" placeholder="Paste job description"></textarea>
 </div>
 
-<button onclick="analyze()">Analyze Match</button>
+<button onclick="analyze()">Analyze</button>
 
-<div id="analyzeHint">
-    ⏳ Analysis in progress… results will appear below
-</div>
+<div id="analyzeHint">⏳ Analysis in progress… scroll down shortly</div>
 
-<!-- RESULTS -->
-<div id="resultBox">
+<div id="resultBox" style="display:none;">
 
 <div class="card">
-    <h2 id="decision"></h2>
-    <h3 id="score"></h3>
-
-    <h4>Recruiter View</h4>
-    <p id="recruiter"></p>
-
-    <h4>Hiring Manager View</h4>
-    <p id="manager"></p>
+<h2 id="decision"></h2>
+<h3 id="score"></h3>
+<p id="recruiter"></p>
+<p id="manager"></p>
 </div>
 
 <div class="warning" id="warning"></div>
 
 <div id="gapSection" class="card" style="display:none;">
-    <h3>Key Gaps</h3>
-    <ul id="gaps"></ul>
+<h3>Key Gaps</h3>
+<ul id="gaps"></ul>
+<h3>Recommended Actions</h3>
+<ul id="actions"></ul>
+</div>
 
-    <h3>Recommended Actions</h3>
-    <ul id="actions"></ul>
+<div id="altRolesSection" class="card" style="display:none;">
+<h3>Better Matching Roles</h3>
+<ul id="altRoles"></ul>
 </div>
 
 <button id="generateBtn" onclick="generateCV()">Generate CV</button>
 
 <div class="card">
-    <h3>Optimized CV (Editable)</h3>
-    <p style="color:#aaa;">Generated in English for international job applications</p>
-
-    <pre id="alec"></pre>
-
-    <button onclick="downloadCV()">Download CV (.docx)</button>
+<pre id="alec"></pre>
+<button onclick="downloadCV()">Download CV (.docx)</button>
 </div>
 
 </div>
@@ -192,16 +150,10 @@ let globalJob = "";
 
 async function analyze(){
 
+    document.getElementById("analyzeHint").style.display = "block";
+
     const file = document.getElementById("files").files[0];
     const job = document.getElementById("job").value;
-
-    if(!file || !job){
-        alert("Please upload a CV and paste a job description.");
-        return;
-    }
-
-    // SHOW HINT
-    document.getElementById("analyzeHint").style.display = "block";
 
     const fd = new FormData();
     fd.append("file", file);
@@ -214,99 +166,71 @@ async function analyze(){
     globalJob = data.job_text;
 
     const score = data.nestor.fit_score;
-    const decision = data.nestor.decision;
 
-    document.getElementById("decision").innerText = "Decision: " + decision;
+    document.getElementById("decision").innerText = data.nestor.decision;
     document.getElementById("score").innerText = "Score: " + score;
-
     document.getElementById("recruiter").innerText = data.nestor.recruiter_view;
     document.getElementById("manager").innerText = data.nestor.hiring_manager_view;
 
-    // WARNING LOGIC
     let warning = "";
 
     if(score < 50){
-        warning = "⚠️ Low match — generating a CV for this role may reduce your chances.";
+        warning = "⚠️ Low match";
         document.getElementById("generateBtn").innerText = "Generate CV anyway";
-    }
-    else if(score < 70){
-        warning = "⚠️ Partial match — see gaps and improvement actions below.";
-        document.getElementById("generateBtn").innerText = "Generate CV";
-    }
-    else{
-        warning = "✅ Strong match — your profile aligns well with this role.";
-        document.getElementById("generateBtn").innerText = "Generate Optimized CV";
+    } else if(score < 70){
+        warning = "⚠️ Partial match";
+    } else {
+        warning = "✅ Strong match";
     }
 
     document.getElementById("warning").innerText = warning;
 
-    // GAPS
     const gaps = data.gaps || [];
     const actions = data.actions || [];
+    const alt = data.alternative_roles || [];
 
-    if(gaps.length > 0){
+    if(gaps.length){
         const g = document.getElementById("gaps");
         const a = document.getElementById("actions");
-
         g.innerHTML = "";
         a.innerHTML = "";
-
-        gaps.forEach(x => {
-            const li = document.createElement("li");
-            li.innerText = x;
-            g.appendChild(li);
-        });
-
-        actions.forEach(x => {
-            const li = document.createElement("li");
-            li.innerText = x;
-            a.appendChild(li);
-        });
-
+        gaps.forEach(x => g.innerHTML += "<li>"+x+"</li>");
+        actions.forEach(x => a.innerHTML += "<li>"+x+"</li>");
         document.getElementById("gapSection").style.display = "block";
-    } else {
-        document.getElementById("gapSection").style.display = "none";
+    }
+
+    if(alt.length){
+        const list = document.getElementById("altRoles");
+        list.innerHTML = "";
+        alt.forEach(x => list.innerHTML += "<li>"+x+"</li>");
+        document.getElementById("altRolesSection").style.display = "block";
     }
 
     document.getElementById("resultBox").style.display = "block";
-
-    // HIDE HINT
     document.getElementById("analyzeHint").style.display = "none";
 
-    // SCROLL
-    document.getElementById("resultBox").scrollIntoView({
-        behavior: "smooth"
-    });
+    document.getElementById("resultBox").scrollIntoView({behavior:"smooth"});
 }
 
 async function generateCV(){
-
     const res = await fetch("/alec", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-            cv_text: globalCV,
-            job_text: globalJob
-        })
+        body: JSON.stringify({cv_text: globalCV, job_text: globalJob})
     });
-
     const data = await res.json();
     document.getElementById("alec").innerText = data.alec_cv;
 }
 
 async function downloadCV(){
-
     const cv = document.getElementById("alec").innerText;
-
     const res = await fetch("/download_cv", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body: JSON.stringify({cv})
     });
-
     const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = "HiddenEdge_CV.docx";

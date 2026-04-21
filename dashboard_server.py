@@ -61,7 +61,7 @@ def extract_cv(file):
     else:
         return file.read().decode("utf-8", errors="ignore")
 
-# ================= ANALYZE (NESTOR) =================
+# ================= ANALYZE =================
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
@@ -74,26 +74,29 @@ def analyze():
         prompt = f"""
 You are Nestor, a strict hiring evaluator.
 
-You must:
-1. Score the match
-2. Provide recruiter and hiring manager views
-3. If score between 50 and 70 → provide 3 gaps and 3 actions
+You MUST:
+- Speak directly to the candidate ("you")
+- NEVER give advice to employers
+- Be direct, realistic, and actionable
 
-Return JSON:
+SCORING RULES:
+- Missing mandatory qualifications (doctor, lawyer, pilot, etc.) → score MUST be below 20
+- Domain mismatch → strong penalty
+- Overqualification must NOT reduce score
+
+ALTERNATIVE ROLE RULE:
+- If score < 50 → ALWAYS provide 3 alternative roles
+
+Return ONLY JSON:
 
 {{
   "fit_score": number,
   "recruiter_view": "...",
   "hiring_manager_view": "...",
   "gaps": ["...", "...", "..."],
-  "actions": ["...", "...", "..."]
+  "actions": ["...", "...", "..."],
+  "alternative_roles": ["...", "...", "..."]
 }}
-
-RULES:
-- <50 → gaps optional
-- >70 → gaps/actions empty []
-- No generic advice
-- No hallucinations
 
 CV:
 {cv_text[:3000]}
@@ -124,7 +127,8 @@ JOB:
                 "hiring_manager_view": data.get("hiring_manager_view", "")
             },
             "gaps": data.get("gaps", []),
-            "actions": data.get("actions", [])
+            "actions": data.get("actions", []),
+            "alternative_roles": data.get("alternative_roles", [])
         })
 
     except Exception as e:
@@ -136,7 +140,8 @@ JOB:
                 "hiring_manager_view": str(e)
             },
             "gaps": [],
-            "actions": []
+            "actions": [],
+            "alternative_roles": []
         }), 500
 
 # ================= ALEC =================
@@ -154,9 +159,8 @@ Rewrite the CV to match the job.
 
 Rules:
 - Do NOT invent experience
-- Improve clarity and impact
+- Improve clarity and structure
 - Align with job keywords
-- Keep it professional and structured
 
 Return ONLY the CV text.
 
