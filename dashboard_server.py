@@ -3,7 +3,6 @@ import os
 import stripe
 from openai import OpenAI
 import json
-import re
 from io import BytesIO
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
@@ -118,21 +117,21 @@ def analyze():
 
         job_text = request.form.get("job_text", "")
         file = request.files.get("file")
-
         cv_text = extract_cv(file)
 
         prompt = f"""
 You are Nestor, a strict hiring evaluator.
 
-Return ONLY JSON.
+Return ONLY VALID JSON. No text. No explanation.
 
+Format:
 {{
   "fit_score": number,
-  "recruiter_view": "...",
-  "hiring_manager_view": "...",
-  "gaps": ["...", "..."],
-  "actions": ["...", "..."],
-  "alternative_roles": ["...", "..."]
+  "recruiter_view": "string",
+  "hiring_manager_view": "string",
+  "gaps": ["string"],
+  "actions": ["string"],
+  "alternative_roles": ["string"]
 }}
 
 CV:
@@ -150,25 +149,11 @@ JOB:
 
         raw = response.choices[0].message.content.strip()
 
-        # 🔥 ROBUST PARSING (DICT OR LIST)
+        # 🔥 DIRECT JSON PARSE (NO REGEX)
         try:
-            match = re.search(r"\{.*\}|\[.*\]", raw, re.DOTALL)
-
-            if match:
-                parsed = json.loads(match.group(0))
-
-                if isinstance(parsed, list):
-                    data = parsed[0] if parsed else {}
-                elif isinstance(parsed, dict):
-                    data = parsed
-                else:
-                    data = {}
-            else:
-                data = {}
-
-        except Exception as e:
-            print("JSON PARSE ERROR:", str(e))
-            print("RAW RESPONSE:", raw)
+            data = json.loads(raw)
+        except:
+            print("RAW BAD JSON:", raw)
             data = {}
 
         score = int(data.get("fit_score", 0))
@@ -203,33 +188,6 @@ JOB:
             "actions": [],
             "alternative_roles": []
         }), 200
-
-# ================= ALEC =================
-
-@app.route("/alec", methods=["POST"])
-def alec():
-    email = request.form.get("email", "").strip().lower()
-    user = get_user(email)
-
-    if not user["paid"] and user["attempts"] >= 3:
-        return jsonify({"error": "PAYWALL"}), 403
-
-    file = request.files.get("file")
-    job_text = request.form.get("job_text", "")
-    cv_text = extract_cv(file)
-
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{
-            "role": "user",
-            "content": f"Rewrite CV:\n{cv_text}\n\nJob:\n{job_text}"
-        }],
-        temperature=0.3
-    )
-
-    return jsonify({
-        "cv": response.choices[0].message.content.strip()
-    })
 
 # ================= STRIPE =================
 
