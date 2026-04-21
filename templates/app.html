@@ -82,14 +82,12 @@ pre {
 
 <div id="resultBox" style="display:none;">
 
-<!-- DECISION -->
 <div class="card">
 <h2 id="decision"></h2>
 <h3 id="score"></h3>
 <div class="warning" id="applyAdvice"></div>
 </div>
 
-<!-- LOCKED CONTENT -->
 <div id="lockedSection" class="card">
 <h3>Recruiter View</h3>
 <p id="recruiter"></p>
@@ -107,14 +105,12 @@ pre {
 <ul id="altRoles"></ul>
 </div>
 
-<!-- PAYWALL -->
 <div id="paywall">
 <h3>Unlock full analysis</h3>
 <p>Full recruiter insights + tailored CV</p>
 <button onclick="pay()">Unlock (€9)</button>
 </div>
 
-<!-- CV -->
 <button id="generateBtn" onclick="generateCV()">Generate Tailored CV</button>
 
 <div id="cvSection" style="display:none;">
@@ -136,11 +132,16 @@ pre {
 
 <script>
 
-let attempts = parseInt(localStorage.getItem("attempts") || "0");
-let paid = localStorage.getItem("paid") === "true";
-
 let globalCV = "";
 let globalJob = "";
+
+function getAttempts(){
+    return parseInt(localStorage.getItem("attempts") || "0");
+}
+
+function isPaid(){
+    return localStorage.getItem("paid") === "true";
+}
 
 async function analyze(){
 
@@ -174,7 +175,6 @@ async function analyze(){
     document.getElementById("decision").innerText = data.nestor.decision;
     document.getElementById("score").innerText = "Score: " + score;
 
-    // APPLY ADVICE
     let advice = "";
     if(score < 20){
         advice = "❌ Do NOT apply — hard mismatch";
@@ -187,11 +187,15 @@ async function analyze(){
     }
     document.getElementById("applyAdvice").innerText = advice;
 
-    // attempts logic
-    attempts++;
-    localStorage.setItem("attempts", attempts);
+    let attempts = getAttempts();
+    const paid = isPaid();
 
-    const locked = (!paid && attempts > 3);
+    if(!paid){
+        attempts++;
+        localStorage.setItem("attempts", attempts);
+    }
+
+    const locked = (!paid && attempts >= 3);
 
     if(locked){
         document.getElementById("lockedSection").classList.add("locked");
@@ -224,7 +228,7 @@ async function analyze(){
 
 async function generateCV(){
 
-    if(!paid){
+    if(!isPaid()){
         alert("Unlock to generate CV");
         return;
     }
@@ -248,7 +252,7 @@ async function generateCV(){
 
 async function downloadCV(){
 
-    if(!paid){
+    if(!isPaid()){
         alert("Unlock to download");
         return;
     }
@@ -283,6 +287,7 @@ function pay(){
 const params = new URLSearchParams(window.location.search);
 if(params.get("paid") === "true"){
     localStorage.setItem("paid", "true");
+    localStorage.setItem("attempts", "0");
 }
 
 </script>
