@@ -6,13 +6,20 @@
 <style>
 body { margin:0; background:black; color:white; font-family:Arial; }
 
-.container { width:65%; margin:auto; margin-top:80px; text-align:center; }
+.container {
+    width:65%;
+    margin:auto;
+    margin-top:80px;
+    text-align:center;
+}
 
 h1 { color:#9fd3ff; }
 
-.section { margin-top:30px; }
-
-textarea { width:100%; height:160px; padding:12px; }
+textarea {
+    width:100%;
+    height:160px;
+    padding:12px;
+}
 
 button {
     padding:12px 28px;
@@ -29,6 +36,18 @@ button {
     border-radius:12px;
     margin-top:20px;
     text-align:left;
+}
+
+.warning {
+    margin-top:15px;
+    font-weight:bold;
+}
+
+pre {
+    white-space:pre-wrap;
+    background:#111;
+    padding:15px;
+    border-radius:8px;
 }
 
 #analyzeHint {
@@ -52,35 +71,66 @@ button {
 
 <h1>HiddenEdge</h1>
 
-<div class="section">
-<input type="file" id="files">
-</div>
+<input type="file" id="files"><br><br>
 
-<div class="section">
 <textarea id="job" placeholder="Paste job description"></textarea>
-</div>
 
+<br>
 <button onclick="analyze()">Analyze</button>
 <button onclick="resetAnalysis()">Reset</button>
 
-<div id="analyzeHint">⏳ Running new analysis…</div>
+<div id="analyzeHint">⏳ Analyzing… scroll down shortly</div>
 
 <div id="resultBox" style="display:none;">
 
+<!-- DECISION -->
 <div class="card">
 <h2 id="decision"></h2>
 <h3 id="score"></h3>
+<div class="warning" id="applyAdvice"></div>
+</div>
+
+<!-- ANALYSIS -->
+<div class="card">
+<h3>Recruiter View</h3>
 <p id="recruiter"></p>
+
+<h3>Hiring Manager View</h3>
 <p id="manager"></p>
 </div>
 
+<!-- GAPS -->
 <div id="gapSection" class="card" style="display:none;">
+<h3>Key Gaps</h3>
 <ul id="gaps"></ul>
+
+<h3>Recommended Actions</h3>
 <ul id="actions"></ul>
 </div>
 
+<!-- ALT ROLES -->
 <div id="altRolesSection" class="card" style="display:none;">
+<h3>Better Matching Roles</h3>
 <ul id="altRoles"></ul>
+</div>
+
+<!-- CV GENERATION -->
+<button id="generateBtn" onclick="generateCV()">Generate Tailored CV</button>
+
+<!-- CV OUTPUT -->
+<div id="cvSection" style="display:none;">
+
+<div class="card">
+<h3>Your Original CV</h3>
+<pre id="masterCV"></pre>
+</div>
+
+<div class="card">
+<h3>Tailored CV (Editable)</h3>
+<pre id="alec"></pre>
+<button onclick="downloadCV()">Download CV (.docx)</button>
+</div>
+
 </div>
 
 </div>
@@ -89,13 +139,17 @@ button {
 
 <script>
 
+let globalCV = "";
+let globalJob = "";
+
 async function analyze(){
 
-    // 🔥 CLEAR OLD RESULTS FIRST
+    // reset UI
     document.getElementById("resultBox").style.display = "none";
     document.getElementById("gaps").innerHTML = "";
     document.getElementById("actions").innerHTML = "";
     document.getElementById("altRoles").innerHTML = "";
+    document.getElementById("cvSection").style.display = "none";
 
     document.getElementById("analyzeHint").style.display = "block";
 
@@ -106,43 +160,101 @@ async function analyze(){
     fd.append("file", file);
     fd.append("job", job);
 
-    const res = await fetch("/analyze?ts=" + new Date().getTime(), {
+    const res = await fetch("/analyze?ts=" + Date.now(), {
         method:"POST",
-        body:fd,
-        cache:"no-store"
+        body:fd
     });
 
     const data = await res.json();
 
+    globalCV = data.cv_text;
+    globalJob = data.job_text;
+
+    const score = data.nestor.fit_score;
+
     document.getElementById("decision").innerText = data.nestor.decision;
-    document.getElementById("score").innerText = "Score: " + data.nestor.fit_score;
+    document.getElementById("score").innerText = "Score: " + score;
+
     document.getElementById("recruiter").innerText = data.nestor.recruiter_view;
     document.getElementById("manager").innerText = data.nestor.hiring_manager_view;
 
+    // APPLY ADVICE
+    let advice = "";
+    if(score < 20){
+        advice = "❌ Do NOT apply — hard mismatch";
+    } else if(score < 50){
+        advice = "⚠️ Not recommended — consider alternatives";
+    } else if(score < 70){
+        advice = "⚠️ Apply with improvements";
+    } else {
+        advice = "✅ Strong fit — apply";
+    }
+    document.getElementById("applyAdvice").innerText = advice;
+
     // GAPS
-    if(data.gaps){
+    if(data.gaps && data.gaps.length){
         data.gaps.forEach(x=>{
             document.getElementById("gaps").innerHTML += "<li>"+x+"</li>";
         });
-    }
 
-    if(data.actions){
         data.actions.forEach(x=>{
             document.getElementById("actions").innerHTML += "<li>"+x+"</li>";
         });
+
+        document.getElementById("gapSection").style.display = "block";
     }
 
     // ALT ROLES
-    if(data.alternative_roles){
+    if(data.alternative_roles && data.alternative_roles.length){
         data.alternative_roles.forEach(x=>{
             document.getElementById("altRoles").innerHTML += "<li>"+x+"</li>";
         });
+
+        document.getElementById("altRolesSection").style.display = "block";
     }
 
     document.getElementById("resultBox").style.display = "block";
     document.getElementById("analyzeHint").style.display = "none";
 
     document.getElementById("resultBox").scrollIntoView({behavior:"smooth"});
+}
+
+async function generateCV(){
+
+    const res = await fetch("/alec", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            cv_text: globalCV,
+            job_text: globalJob
+        })
+    });
+
+    const data = await res.json();
+
+    document.getElementById("masterCV").innerText = globalCV;
+    document.getElementById("alec").innerText = data.alec_cv;
+
+    document.getElementById("cvSection").style.display = "block";
+}
+
+async function downloadCV(){
+
+    const cv = document.getElementById("alec").innerText;
+
+    const res = await fetch("/download_cv", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({cv})
+    });
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "HiddenEdge_CV.docx";
+    a.click();
 }
 
 function resetAnalysis(){
