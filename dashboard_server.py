@@ -1,9 +1,9 @@
 print("=== NEW BACKEND VERSION LOADED ===")
 
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect
 import os
 import stripe
-import re
+import docx
 from openai import OpenAI
 
 app = Flask(__name__)
@@ -22,16 +22,18 @@ FREE_LIMIT = 3
 usage_counter = {}
 
 # =========================
-# UTIL
+# HELPERS
 # =========================
-def normalize(text):
-    return re.sub(r'[^a-zA-Z0-9\s]', '', text.lower())
 
-def extract_tokens(text):
-    return set(normalize(text).split())
+def extract_text_from_docx(file):
+    try:
+        doc = docx.Document(file)
+        return "\n".join([p.text for p in doc.paragraphs])
+    except Exception as e:
+        return ""
 
 # =========================
-# ROUTES (ALL WIRED)
+# ROUTES
 # =========================
 
 @app.route("/")
@@ -55,7 +57,7 @@ def success():
     return render_template("success.html")
 
 # =========================
-# ANALYZE (ENGINE + AI)
+# ANALYZE (AI-BASED)
 # =========================
 
 @app.route("/analyze", methods=["POST"])
@@ -69,95 +71,72 @@ def analyze():
     usage_counter[user_id] = usage + 1
 
     try:
-        data = request.json or {}
+        cv_file = request.files.get("cv_file")
+        job_description = request.form.get("job_description", "")
 
-        job_description = data.get("job_description", "")
-        cv_text = data.get("cv_text", "")
+        if not cv_file:
+            return jsonify({"error": "No CV uploaded"})
 
-        if not cv_text:
+        # Extract CV text
+        if cv_file.filename.endswith(".docx"):
+            cv_text = extract_text_from_docx(cv_file)
+        else:
+            cv_text = cv_file.read().decode("utf-8", errors="ignore")
+
+        if not cv_text.strip():
             return jsonify({
                 "fit_score": 0,
                 "decision": "Error",
-                "recruiter_view": "Please upload CV",
-                "hiring_manager_view": "CV missing"
+                "recruiter_view": "CV could not be read properly.",
+                "hiring_manager_view": "Invalid CV format."
             })
 
         # =========================
-        # SCORING ENGINE
-        # =========================
-        job_tokens = extract_tokens(job_description)
-        cv_tokens = extract_tokens(cv_text)
-
-        overlap = job_tokens.intersection(cv_tokens)
-        overlap_score = len(overlap)
-        mismatch_score = len(job_tokens - cv_tokens)
-
-        score = int((overlap_score * 2) - (mismatch_score * 0.3))
-        score = max(0, min(score, 100))
-
-        if score >= 70:
-            decision = "Strong Apply"
-        elif score >= 40:
-            decision = "Consider"
-        else:
-            decision = "Reject"
-
-        # =========================
-        # AI EXPLANATION
+        # AI ANALYSIS
         # =========================
 
         prompt = f"""
-You are a professional recruiter and hiring manager.
+You are an experienced recruiter and hiring manager.
 
-Evaluate the match between this CV and job description.
+Compare the following CV and job description.
 
-Be realistic, direct, and specific.
-Do NOT hallucinate.
-Do NOT be generic.
+Return:
+- fit_score (0-100)
+- decision (Strong Apply / Consider / Reject)
+- recruiter_view (natural, human tone, professional)
+- hiring_manager_view (executive tone, realistic)
+- recommended_roles (if mismatch, suggest better roles)
 
 CV:
-{cv_text[:4000]}
+{cv_text}
 
 JOB DESCRIPTION:
-{job_description[:4000]}
+{job_description}
 
-SYSTEM SCORE: {score}
-SYSTEM DECISION: {decision}
-
-Respond EXACTLY in this format:
-
-Recruiter View:
-<short realistic screening explanation>
-
-Hiring Manager View:
-<decision + reasoning + recommendation>
+Respond in JSON format only.
 """
 
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3
+            messages=[{"role": "user", "content": prompt}]
         )
 
-        text = response.choices[0].message.content
+        content = response.choices[0].message.content
 
-        recruiter_view = ""
-        hiring_manager_view = ""
+        # Fallback if parsing fails
+        try:
+            import json
+            result = json.loads(content)
+        except:
+            result = {
+                "fit_score": 50,
+                "decision": "Consider",
+                "recruiter_view": content,
+                "hiring_manager_view": content,
+                "recommended_roles": []
+            }
 
-        if "Hiring Manager View:" in text:
-            parts = text.split("Hiring Manager View:")
-            recruiter_view = parts[0].replace("Recruiter View:", "").strip()
-            hiring_manager_view = parts[1].strip()
-        else:
-            recruiter_view = text
-            hiring_manager_view = "Could not parse AI response."
-
-        return jsonify({
-            "fit_score": score,
-            "decision": decision,
-            "recruiter_view": recruiter_view,
-            "hiring_manager_view": hiring_manager_view
-        })
+        return jsonify(result)
 
     except Exception as e:
         return jsonify({
@@ -166,6 +145,7 @@ Hiring Manager View:
             "recruiter_view": "System error",
             "hiring_manager_view": str(e)
         })
+
 
 # =========================
 # STRIPE CHECKOUT
@@ -195,6 +175,7 @@ def create_checkout_session():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 # =========================
 # RUN

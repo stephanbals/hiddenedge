@@ -26,20 +26,13 @@
 <p id="manager"></p>
 
 <script>
-let cvText = "";
+let cvFile = null;
 
 // =========================
 // CV UPLOAD
 // =========================
 document.getElementById("cvFile").addEventListener("change", function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        cvText = e.target.result;
-    };
-    reader.readAsText(file);
+    cvFile = event.target.files[0];
 });
 
 // =========================
@@ -48,20 +41,18 @@ document.getElementById("cvFile").addEventListener("change", function(event) {
 async function analyze() {
     const jobDescription = document.getElementById("jobDescription").value;
 
-    if (!cvText) {
+    if (!cvFile) {
         alert("Please upload your CV first.");
         return;
     }
 
+    const formData = new FormData();
+    formData.append("cv_file", cvFile);
+    formData.append("job_description", jobDescription);
+
     const response = await fetch("/analyze", {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            job_description: jobDescription,
-            cv_text: cvText
-        })
+        body: formData
     });
 
     const data = await response.json();
@@ -78,24 +69,19 @@ async function analyze() {
 }
 
 // =========================
-// UNLOCK (FIXED)
+// UNLOCK → STRIPE
 // =========================
 async function unlock() {
-    try {
-        const response = await fetch("/create-checkout-session", {
-            method: "POST"
-        });
+    const response = await fetch("/create-checkout-session", {
+        method: "POST"
+    });
 
-        const data = await response.json();
+    const data = await response.json();
 
-        if (data.url) {
-            window.location.href = data.url;
-        } else {
-            alert("Stripe session failed.");
-        }
-
-    } catch (error) {
-        alert("Error connecting to Stripe.");
+    if (data.url) {
+        window.location.href = data.url;
+    } else {
+        alert("Stripe session failed.");
     }
 }
 </script>
