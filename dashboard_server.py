@@ -19,9 +19,6 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 stripe.api_key = STRIPE_SECRET_KEY
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-FREE_LIMIT = 3
-usage_counter = {}
-
 # =========================
 # HELPERS
 # =========================
@@ -64,19 +61,11 @@ def success():
     return render_template("success.html")
 
 # =========================
-# ANALYZE (FULL ENGINE KEPT)
+# ANALYZE (AI ENGINE)
 # =========================
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    user_id = request.remote_addr
-    usage = usage_counter.get(user_id, 0)
-
-    if usage >= FREE_LIMIT:
-        return jsonify({"error": "PAYWALL"})
-
-    usage_counter[user_id] = usage + 1
-
     try:
         cv_file = request.files.get("cv_file")
         job_description = request.form.get("job_description", "")
@@ -84,7 +73,7 @@ def analyze():
         if not cv_file:
             return jsonify({"error": "No CV uploaded"})
 
-        # CV extraction
+        # Extract CV
         if cv_file.filename.endswith(".docx"):
             cv_text = extract_text_from_docx(cv_file)
         else:
@@ -99,9 +88,6 @@ def analyze():
                 "recommended_roles": []
             })
 
-        # =========================
-        # AI ENGINE (UNCHANGED LOGIC)
-        # =========================
         prompt = f"""
 You are two professionals evaluating a candidate:
 
@@ -120,6 +106,8 @@ Return ONLY valid JSON:
 
 Rules:
 - recruiter_view and hiring_manager_view must be different
+- recommended_roles MUST ALWAYS contain 3–5 roles
+- roles must be realistic based on CV + job
 - no markdown
 - no explanation outside JSON
 
@@ -168,7 +156,7 @@ JOB:
         })
 
 # =========================
-# STRIPE (FIXED REDIRECT)
+# STRIPE
 # =========================
 
 @app.route("/create-checkout-session")
@@ -181,7 +169,7 @@ def create_checkout_session():
                 "price_data": {
                     "currency": "eur",
                     "product_data": {
-                        "name": "HiddenEdge Premium (Monthly Access)"
+                        "name": "HiddenEdge Premium Access"
                     },
                     "unit_amount": 900,
                 },

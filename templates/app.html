@@ -1,29 +1,3 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>HiddenEdge</title>
-</head>
-<body>
-
-<h1>HiddenEdge</h1>
-
-<input type="file" id="cvFile"><br><br>
-
-<textarea id="jobDescription" rows="10" cols="60" placeholder="Paste job description here..."></textarea><br><br>
-
-<button onclick="analyze()">Analyze</button>
-
-<h2>Result</h2>
-
-<p>Score: <span id="score">-</span></p>
-<p>Decision: <span id="decision">-</span></p>
-
-<h3>Recruiter View:</h3>
-<p id="recruiter"></p>
-
-<h3>Hiring Manager View:</h3>
-<p id="manager"></p>
-
 <script>
 let cvFile = null;
 
@@ -31,11 +5,33 @@ document.getElementById("cvFile").addEventListener("change", function(event) {
     cvFile = event.target.files[0];
 });
 
+function getUsage() {
+    return parseInt(localStorage.getItem("usage") || "0");
+}
+
+function incrementUsage() {
+    let usage = getUsage() + 1;
+    localStorage.setItem("usage", usage);
+    return usage;
+}
+
 async function analyze() {
     const jobDescription = document.getElementById("jobDescription").value;
 
     if (!cvFile) {
         alert("Please upload your CV first.");
+        return;
+    }
+
+    // 🔥 PAYWALL CHECK BEFORE CALL
+    let usage = getUsage();
+    if (usage >= 3) {
+        alert("You’ve reached your free limit. Upgrade to continue.");
+
+        setTimeout(() => {
+            window.location.href = "/create-checkout-session";
+        }, 500);
+
         return;
     }
 
@@ -50,17 +46,7 @@ async function analyze() {
 
     const data = await response.json();
 
-    // 🔥 PAYWALL LOGIC
-    if (data.error === "PAYWALL") {
-        alert("You’ve reached your free limit. Upgrade to continue unlimited analyses.");
-
-        // short delay so user sees message
-        setTimeout(() => {
-            window.location.href = "/create-checkout-session";
-        }, 800);
-
-        return;
-    }
+    incrementUsage(); // 🔥 ONLY AFTER SUCCESS
 
     document.getElementById("score").innerText = data.fit_score;
     document.getElementById("decision").innerText = data.decision;
@@ -68,6 +54,3 @@ async function analyze() {
     document.getElementById("manager").innerText = data.hiring_manager_view || "";
 }
 </script>
-
-</body>
-</html>
