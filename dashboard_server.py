@@ -31,7 +31,7 @@ def extract_tokens(text):
     return set(normalize(text).split())
 
 # =========================
-# ROUTES
+# ROUTES (ALL WIRED)
 # =========================
 
 @app.route("/")
@@ -42,12 +42,20 @@ def home():
 def app_page():
     return render_template("app.html", stripe_public_key=STRIPE_PUBLIC_KEY)
 
+@app.route("/eula")
+def eula():
+    return render_template("eula.html")
+
+@app.route("/email")
+def email():
+    return render_template("email.html")
+
 @app.route("/success")
 def success():
     return render_template("success.html")
 
 # =========================
-# ANALYZE
+# ANALYZE (ENGINE + AI)
 # =========================
 
 @app.route("/analyze", methods=["POST"])
@@ -75,7 +83,7 @@ def analyze():
             })
 
         # =========================
-        # SCORING ENGINE (KEEP THIS)
+        # SCORING ENGINE
         # =========================
         job_tokens = extract_tokens(job_description)
         cv_tokens = extract_tokens(cv_text)
@@ -95,36 +103,34 @@ def analyze():
             decision = "Reject"
 
         # =========================
-        # AI EXPLANATION (NO HARDCODING)
+        # AI EXPLANATION
         # =========================
 
         prompt = f"""
-You are an experienced recruiter and hiring manager.
+You are a professional recruiter and hiring manager.
 
-Analyze the fit between this CV and job description.
+Evaluate the match between this CV and job description.
 
-Be realistic, direct, and professional.
-
-Do NOT be generic. Do NOT hallucinate skills.
+Be realistic, direct, and specific.
+Do NOT hallucinate.
+Do NOT be generic.
 
 CV:
 {cv_text[:4000]}
 
-JOB:
+JOB DESCRIPTION:
 {job_description[:4000]}
 
 SYSTEM SCORE: {score}
 SYSTEM DECISION: {decision}
 
-Output:
+Respond EXACTLY in this format:
 
 Recruiter View:
-Explain briefly why this candidate would or would not pass screening.
+<short realistic screening explanation>
 
 Hiring Manager View:
-Explain if you would proceed, with reasoning.
-
-Keep it natural, human, and realistic.
+<decision + reasoning + recommendation>
 """
 
         response = client.chat.completions.create(
@@ -135,9 +141,16 @@ Keep it natural, human, and realistic.
 
         text = response.choices[0].message.content
 
-        # split output
-        recruiter_view = text.split("Hiring Manager View:")[0].replace("Recruiter View:", "").strip()
-        hiring_manager_view = text.split("Hiring Manager View:")[1].strip()
+        recruiter_view = ""
+        hiring_manager_view = ""
+
+        if "Hiring Manager View:" in text:
+            parts = text.split("Hiring Manager View:")
+            recruiter_view = parts[0].replace("Recruiter View:", "").strip()
+            hiring_manager_view = parts[1].strip()
+        else:
+            recruiter_view = text
+            hiring_manager_view = "Could not parse AI response."
 
         return jsonify({
             "fit_score": score,
@@ -154,30 +167,38 @@ Keep it natural, human, and realistic.
             "hiring_manager_view": str(e)
         })
 
-
 # =========================
-# STRIPE
+# STRIPE CHECKOUT
 # =========================
 
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
-    session = stripe.checkout.Session.create(
-        payment_method_types=["card"],
-        mode="payment",
-        line_items=[{
-            "price_data": {
-                "currency": "eur",
-                "product_data": {"name": "HiddenEdge Unlock"},
-                "unit_amount": 1900,
-            },
-            "quantity": 1,
-        }],
-        success_url=request.host_url + "success",
-        cancel_url=request.host_url + "app"
-    )
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="payment",
+            line_items=[{
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {
+                        "name": "HiddenEdge Unlock"
+                    },
+                    "unit_amount": 1900,
+                },
+                "quantity": 1,
+            }],
+            success_url=request.host_url + "success",
+            cancel_url=request.host_url + "app"
+        )
 
-    return jsonify({"url": session.url})
+        return jsonify({"url": session.url})
 
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# =========================
+# RUN
+# =========================
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
