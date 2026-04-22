@@ -4,8 +4,7 @@ from flask import Flask, request, jsonify, render_template, redirect
 import os
 import stripe
 
-# FORCE correct template loading
-app = Flask(__name__, template_folder="templates")
+app = Flask(__name__)
 
 # =========================
 # CONFIG
@@ -24,46 +23,26 @@ usage_counter = {}
 
 @app.route("/")
 def home():
-    try:
-        return render_template("index.html")
-    except Exception as e:
-        return f"TEMPLATE ERROR (index.html): {str(e)}"
-
+    return render_template("index.html")
 
 @app.route("/app")
 def app_page():
-    try:
-        return render_template("app.html", stripe_public_key=STRIPE_PUBLIC_KEY)
-    except Exception as e:
-        return f"TEMPLATE ERROR (app.html): {str(e)}"
-
+    return render_template("app.html", stripe_public_key=STRIPE_PUBLIC_KEY)
 
 @app.route("/eula")
 def eula():
-    try:
-        return render_template("eula.html")
-    except Exception as e:
-        return f"TEMPLATE ERROR (eula.html): {str(e)}"
-
+    return render_template("eula.html")
 
 @app.route("/email")
 def email():
-    try:
-        return render_template("email.html")
-    except Exception as e:
-        return f"TEMPLATE ERROR (email.html): {str(e)}"
-
+    return render_template("email.html")
 
 @app.route("/success")
 def success():
-    try:
-        return render_template("success.html")
-    except Exception as e:
-        return f"TEMPLATE ERROR (success.html): {str(e)}"
-
+    return render_template("success.html")
 
 # =========================
-# ANALYZE
+# ANALYZE (STABLE + DETAILED)
 # =========================
 
 @app.route("/analyze", methods=["POST"])
@@ -84,15 +63,14 @@ def analyze():
         # =========================
         # SIGNAL EXTRACTION
         # =========================
-
         keywords_match = [
-            "project", "program", "stakeholder", "delivery",
-            "transformation", "governance", "agile", "portfolio"
+            "project", "program", "delivery", "transformation",
+            "governance", "stakeholder", "portfolio", "agile"
         ]
 
         keywords_mismatch = [
             "python", "developer", "engineering", "coding",
-            "data science", "machine learning"
+            "data science", "machine learning", "deep learning"
         ]
 
         match_hits = sum(1 for k in keywords_match if k in job_description)
@@ -101,7 +79,6 @@ def analyze():
         # =========================
         # SCORING
         # =========================
-
         base_score = min(len(job_description) // 40, 100)
         score = max(0, min(base_score + (match_hits * 5) - (mismatch_hits * 5), 100))
 
@@ -118,7 +95,6 @@ def analyze():
         # =========================
         # ROLE TARGETING
         # =========================
-
         if mismatch_hits > match_hits:
             recommended_roles = [
                 "Technical Program Manager",
@@ -139,46 +115,46 @@ def analyze():
                 "Delivery Coordinator"
             ]
 
-        roles_text = "\n".join([f"- {role}" for role in recommended_roles])
+        roles_text = "\n".join([f"- {r}" for r in recommended_roles])
 
         # =========================
-        # OUTPUT
+        # OUTPUT (DETAILED)
         # =========================
 
         recruiter_view = f"""
 SUMMARY:
-The candidate shows alignment with key transformation and delivery-related competencies.
+Candidate shows alignment with transformation and delivery-oriented roles.
 
 MATCH STRENGTHS:
-- Alignment with program/project keywords: {match_hits} matches
-- Strong delivery and stakeholder coordination signals
+- {match_hits} relevant transformation/program keywords detected
+- Evidence of structured delivery and stakeholder coordination language
 
-GAPS:
-- Non-aligned technical indicators: {mismatch_hits}
+GAPS / RISKS:
+- {mismatch_hits} technical/engineering indicators detected
+- Possible mismatch if role is highly technical
 
-VERDICT:
-{'Strong alignment' if score >= 75 else 'Partial alignment' if score >= 50 else 'Misaligned'}
+SCREENING VERDICT:
+{"Strong alignment" if score >= 75 else "Partial alignment" if score >= 50 else "Misaligned"}
 """
 
         hiring_manager_view = f"""
-EXECUTIVE VIEW:
+EXECUTIVE ASSESSMENT:
+Candidate demonstrates experience aligned with program delivery, governance, and transformation oversight.
 
-Strong background in structured delivery and transformation.
+VALUE CONTRIBUTION:
+- Strong in structuring initiatives and aligning stakeholders
+- Effective in multi-stakeholder environments
 
-VALUE:
-- Stakeholder alignment
-- Program execution
-- Governance
-
-RISKS:
-- Possible mismatch in technical depth depending on role
+CONCERNS:
+- Technical depth may not match highly engineering-focused roles
+- Requires validation against actual responsibilities
 
 RECOMMENDATION:
-{'Proceed to interview' if score >= 60 else 'Proceed with caution' if score >= 40 else 'Do not proceed'}
+{"Proceed to interview" if score >= 60 else "Proceed with caution" if score >= 40 else "Do not proceed"}
 
 RISK LEVEL: {risk}
 
-RECOMMENDED ROLES:
+RECOMMENDED ROLE TARGETS:
 {roles_text}
 """
 
@@ -199,7 +175,7 @@ RECOMMENDED ROLES:
 
 
 # =========================
-# STRIPE
+# STRIPE CHECKOUT
 # =========================
 
 @app.route("/create-checkout-session", methods=["POST"])
