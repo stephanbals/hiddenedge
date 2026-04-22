@@ -16,6 +16,9 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
 BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
 
+# ===== SIMPLE USAGE TRACKER =====
+usage_tracker = {}
+
 # ================= ROUTES =================
 
 @app.route("/")
@@ -78,6 +81,17 @@ def extract_cv(file):
 @app.route("/analyze", methods=["POST"])
 def analyze():
     try:
+        email = request.form.get("email", "anonymous")
+
+        # ===== PAYWALL LOGIC =====
+        usage = usage_tracker.get(email, 0)
+
+        if usage >= 3:
+            return jsonify({"error": "PAYWALL"}), 200
+
+        usage_tracker[email] = usage + 1
+
+        # ===== NORMAL FLOW =====
         job_text = request.form.get("job_text", "")
         file = request.files.get("file")
 
@@ -86,7 +100,7 @@ def analyze():
         prompt = f"""
 You are Nestor, a strict hiring evaluator.
 
-Return ONLY valid JSON. No explanation.
+Return ONLY valid JSON.
 
 {{
   "fit_score": number,
@@ -111,15 +125,7 @@ JOB:
             temperature=0
         )
 
-        raw = response.choices[0].message.content
-
-        print("=== RAW GPT OUTPUT ===")
-        print(raw)
-
-        data = json.loads(raw)
-
-        if not isinstance(data, dict):
-            raise Exception("Parsed JSON is not a dict")
+        data = json.loads(response.choices[0].message.content)
 
         score = int(data.get("fit_score", 0))
         decision = map_decision(score)
@@ -134,8 +140,6 @@ JOB:
         })
 
     except Exception as e:
-        print("=== ERROR ===", str(e))
-
         return jsonify({
             "nestor": {
                 "decision": "Error",
