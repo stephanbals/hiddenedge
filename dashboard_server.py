@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify, render_template
 import os
 import stripe
 import re
+from openai import OpenAI
 
 app = Flask(__name__)
 
@@ -12,24 +13,22 @@ app = Flask(__name__)
 # =========================
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 stripe.api_key = STRIPE_SECRET_KEY
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 FREE_LIMIT = 3
 usage_counter = {}
 
 # =========================
-# UTIL: TEXT CLEANING
+# UTIL
 # =========================
 def normalize(text):
     return re.sub(r'[^a-zA-Z0-9\s]', '', text.lower())
 
-# =========================
-# UTIL: TOKEN EXTRACTION
-# =========================
 def extract_tokens(text):
-    words = normalize(text).split()
-    return set(words)
+    return set(normalize(text).split())
 
 # =========================
 # ROUTES
@@ -43,20 +42,12 @@ def home():
 def app_page():
     return render_template("app.html", stripe_public_key=STRIPE_PUBLIC_KEY)
 
-@app.route("/eula")
-def eula():
-    return render_template("eula.html")
-
-@app.route("/email")
-def email():
-    return render_template("email.html")
-
 @app.route("/success")
 def success():
     return render_template("success.html")
 
 # =========================
-# ANALYZE (CV vs JOB REAL COMPARISON)
+# ANALYZE
 # =========================
 
 @app.route("/analyze", methods=["POST"])
@@ -79,45 +70,21 @@ def analyze():
             return jsonify({
                 "fit_score": 0,
                 "decision": "Error",
-                "recruiter_view": "No CV provided",
-                "hiring_manager_view": "Upload or provide CV text"
+                "recruiter_view": "Please upload CV",
+                "hiring_manager_view": "CV missing"
             })
 
         # =========================
-        # TOKENIZATION
+        # SCORING ENGINE (KEEP THIS)
         # =========================
         job_tokens = extract_tokens(job_description)
         cv_tokens = extract_tokens(cv_text)
 
-        # =========================
-        # SIGNALS
-        # =========================
         overlap = job_tokens.intersection(cv_tokens)
         overlap_score = len(overlap)
+        mismatch_score = len(job_tokens - cv_tokens)
 
-        job_unique = job_tokens - cv_tokens
-        mismatch_score = len(job_unique)
-
-        # =========================
-        # DOMAIN DETECTION (DYNAMIC)
-        # =========================
-        technical_terms = {
-            "python", "chemistry", "laboratory", "analysis",
-            "chromatography", "engineering", "developer"
-        }
-
-        cv_technical = len(cv_tokens.intersection(technical_terms))
-        job_technical = len(job_tokens.intersection(technical_terms))
-
-        # =========================
-        # SCORING
-        # =========================
         score = int((overlap_score * 2) - (mismatch_score * 0.3))
-
-        # domain mismatch penalty
-        if job_technical > 5 and cv_technical < 2:
-            score -= 40
-
         score = max(0, min(score, 100))
 
         if score >= 70:
@@ -128,49 +95,55 @@ def analyze():
             decision = "Reject"
 
         # =========================
-        # ROLE TARGETING (DYNAMIC)
+        # AI EXPLANATION (NO HARDCODING)
         # =========================
-        if score < 30:
-            recommended_roles = ["Different domain required"]
-        elif score < 60:
-            recommended_roles = ["Adjacent roles", "Bridging positions"]
-        else:
-            recommended_roles = ["Direct match roles"]
 
-        roles_text = "\n".join([f"- {r}" for r in recommended_roles])
+        prompt = f"""
+You are an experienced recruiter and hiring manager.
 
-        # =========================
-        # OUTPUT
-        # =========================
-        recruiter_view = f"""
-SUMMARY:
-Overlap tokens: {overlap_score}
-Mismatch tokens: {mismatch_score}
+Analyze the fit between this CV and job description.
 
-Key overlap examples:
-{list(overlap)[:10]}
+Be realistic, direct, and professional.
 
-Screening verdict:
-{"Aligned" if score >= 70 else "Partial" if score >= 40 else "Misaligned"}
+Do NOT be generic. Do NOT hallucinate skills.
+
+CV:
+{cv_text[:4000]}
+
+JOB:
+{job_description[:4000]}
+
+SYSTEM SCORE: {score}
+SYSTEM DECISION: {decision}
+
+Output:
+
+Recruiter View:
+Explain briefly why this candidate would or would not pass screening.
+
+Hiring Manager View:
+Explain if you would proceed, with reasoning.
+
+Keep it natural, human, and realistic.
 """
 
-        hiring_manager_view = f"""
-ASSESSMENT:
-- Overlap strength: {overlap_score}
-- Domain mismatch signals: {job_technical - cv_technical}
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
+        )
 
-RECOMMENDATION:
-{"Proceed" if score >= 60 else "Caution" if score >= 40 else "Reject"}
+        text = response.choices[0].message.content
 
-RECOMMENDED ROLES:
-{roles_text}
-"""
+        # split output
+        recruiter_view = text.split("Hiring Manager View:")[0].replace("Recruiter View:", "").strip()
+        hiring_manager_view = text.split("Hiring Manager View:")[1].strip()
 
         return jsonify({
             "fit_score": score,
             "decision": decision,
-            "recruiter_view": recruiter_view.strip(),
-            "hiring_manager_view": hiring_manager_view.strip()
+            "recruiter_view": recruiter_view,
+            "hiring_manager_view": hiring_manager_view
         })
 
     except Exception as e:
@@ -205,10 +178,6 @@ def create_checkout_session():
 
     return jsonify({"url": session.url})
 
-
-# =========================
-# RUN
-# =========================
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
