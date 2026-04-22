@@ -1,56 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HiddenEdge</title>
+</head>
+<body>
+
+<h1>HiddenEdge</h1>
+
+<input type="file" id="cvFile"><br><br>
+
+<textarea id="jobDescription" rows="10" cols="60" placeholder="Paste job description here..."></textarea><br><br>
+
+<button onclick="analyze()">Analyze</button>
+
+<h2>Result</h2>
+
+<p>Score: <span id="score">-</span></p>
+<p>Decision: <span id="decision">-</span></p>
+
+<h3>Recruiter View:</h3>
+<p id="recruiter"></p>
+
+<h3>Hiring Manager View:</h3>
+<p id="manager"></p>
+
+<h3>Recommended Roles:</h3>
+<ul id="roles"></ul>
+
 <script>
-let cvFile = null;
+document.addEventListener("DOMContentLoaded", function() {
 
-document.getElementById("cvFile").addEventListener("change", function(event) {
-    cvFile = event.target.files[0];
+    let cvFile = null;
+
+    const fileInput = document.getElementById("cvFile");
+
+    if (fileInput) {
+        fileInput.addEventListener("change", function(event) {
+            cvFile = event.target.files[0];
+        });
+    }
+
+    function getUsage() {
+        return parseInt(localStorage.getItem("usage") || "0");
+    }
+
+    function incrementUsage() {
+        let usage = getUsage() + 1;
+        localStorage.setItem("usage", usage);
+        return usage;
+    }
+
+    window.analyze = async function() {
+        const jobDescription = document.getElementById("jobDescription").value;
+
+        if (!cvFile) {
+            alert("Please upload your CV first.");
+            return;
+        }
+
+        let usage = getUsage();
+        if (usage >= 3) {
+            alert("You’ve reached your free limit. Upgrade to continue.");
+
+            setTimeout(() => {
+                window.location.href = "/create-checkout-session";
+            }, 500);
+
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("cv_file", cvFile);
+        formData.append("job_description", jobDescription);
+
+        const response = await fetch("/analyze", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await response.json();
+
+        incrementUsage();
+
+        document.getElementById("score").innerText = data.fit_score;
+        document.getElementById("decision").innerText = data.decision;
+        document.getElementById("recruiter").innerText = data.recruiter_view || "";
+        document.getElementById("manager").innerText = data.hiring_manager_view || "";
+
+        const rolesList = document.getElementById("roles");
+        rolesList.innerHTML = "";
+
+        if (data.recommended_roles) {
+            data.recommended_roles.forEach(role => {
+                const li = document.createElement("li");
+                li.innerText = role;
+                rolesList.appendChild(li);
+            });
+        }
+    }
+
 });
-
-function getUsage() {
-    return parseInt(localStorage.getItem("usage") || "0");
-}
-
-function incrementUsage() {
-    let usage = getUsage() + 1;
-    localStorage.setItem("usage", usage);
-    return usage;
-}
-
-async function analyze() {
-    const jobDescription = document.getElementById("jobDescription").value;
-
-    if (!cvFile) {
-        alert("Please upload your CV first.");
-        return;
-    }
-
-    // 🔥 PAYWALL CHECK BEFORE CALL
-    let usage = getUsage();
-    if (usage >= 3) {
-        alert("You’ve reached your free limit. Upgrade to continue.");
-
-        setTimeout(() => {
-            window.location.href = "/create-checkout-session";
-        }, 500);
-
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append("cv_file", cvFile);
-    formData.append("job_description", jobDescription);
-
-    const response = await fetch("/analyze", {
-        method: "POST",
-        body: formData
-    });
-
-    const data = await response.json();
-
-    incrementUsage(); // 🔥 ONLY AFTER SUCCESS
-
-    document.getElementById("score").innerText = data.fit_score;
-    document.getElementById("decision").innerText = data.decision;
-    document.getElementById("recruiter").innerText = data.recruiter_view || "";
-    document.getElementById("manager").innerText = data.hiring_manager_view || "";
-}
 </script>
+
+</body>
+</html>
