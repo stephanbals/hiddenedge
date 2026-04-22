@@ -1,8 +1,9 @@
 print("=== NEW BACKEND VERSION LOADED ===")
 
-from flask import Flask, request, jsonify, render_template, redirect
+from flask import Flask, request, jsonify, render_template
 import os
 import stripe
+import re
 
 app = Flask(__name__)
 
@@ -16,6 +17,19 @@ stripe.api_key = STRIPE_SECRET_KEY
 
 FREE_LIMIT = 3
 usage_counter = {}
+
+# =========================
+# UTIL: TEXT CLEANING
+# =========================
+def normalize(text):
+    return re.sub(r'[^a-zA-Z0-9\s]', '', text.lower())
+
+# =========================
+# UTIL: TOKEN EXTRACTION
+# =========================
+def extract_tokens(text):
+    words = normalize(text).split()
+    return set(words)
 
 # =========================
 # ROUTES
@@ -42,13 +56,12 @@ def success():
     return render_template("success.html")
 
 # =========================
-# ANALYZE (STABLE + DETAILED)
+# ANALYZE (CV vs JOB REAL COMPARISON)
 # =========================
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
     user_id = request.remote_addr
-
     usage = usage_counter.get(user_id, 0)
 
     if usage >= FREE_LIMIT:
@@ -58,103 +71,98 @@ def analyze():
 
     try:
         data = request.json or {}
-        job_description = data.get("job_description", "").lower()
+
+        job_description = data.get("job_description", "")
+        cv_text = data.get("cv_text", "")
+
+        if not cv_text:
+            return jsonify({
+                "fit_score": 0,
+                "decision": "Error",
+                "recruiter_view": "No CV provided",
+                "hiring_manager_view": "Upload or provide CV text"
+            })
 
         # =========================
-        # SIGNAL EXTRACTION
+        # TOKENIZATION
         # =========================
-        keywords_match = [
-            "project", "program", "delivery", "transformation",
-            "governance", "stakeholder", "portfolio", "agile"
-        ]
+        job_tokens = extract_tokens(job_description)
+        cv_tokens = extract_tokens(cv_text)
 
-        keywords_mismatch = [
-            "python", "developer", "engineering", "coding",
-            "data science", "machine learning", "deep learning"
-        ]
+        # =========================
+        # SIGNALS
+        # =========================
+        overlap = job_tokens.intersection(cv_tokens)
+        overlap_score = len(overlap)
 
-        match_hits = sum(1 for k in keywords_match if k in job_description)
-        mismatch_hits = sum(1 for k in keywords_mismatch if k in job_description)
+        job_unique = job_tokens - cv_tokens
+        mismatch_score = len(job_unique)
+
+        # =========================
+        # DOMAIN DETECTION (DYNAMIC)
+        # =========================
+        technical_terms = {
+            "python", "chemistry", "laboratory", "analysis",
+            "chromatography", "engineering", "developer"
+        }
+
+        cv_technical = len(cv_tokens.intersection(technical_terms))
+        job_technical = len(job_tokens.intersection(technical_terms))
 
         # =========================
         # SCORING
         # =========================
-        base_score = min(len(job_description) // 40, 100)
-        score = max(0, min(base_score + (match_hits * 5) - (mismatch_hits * 5), 100))
+        score = int((overlap_score * 2) - (mismatch_score * 0.3))
 
-        if score >= 75:
+        # domain mismatch penalty
+        if job_technical > 5 and cv_technical < 2:
+            score -= 40
+
+        score = max(0, min(score, 100))
+
+        if score >= 70:
             decision = "Strong Apply"
-            risk = "Low"
-        elif score >= 50:
+        elif score >= 40:
             decision = "Consider"
-            risk = "Medium"
         else:
             decision = "Reject"
-            risk = "High"
 
         # =========================
-        # ROLE TARGETING
+        # ROLE TARGETING (DYNAMIC)
         # =========================
-        if mismatch_hits > match_hits:
-            recommended_roles = [
-                "Technical Program Manager",
-                "Data Program Manager",
-                "IT Project Manager (Technical Environment)"
-            ]
-        elif match_hits >= 3:
-            recommended_roles = [
-                "Senior Program Manager",
-                "Transformation Manager",
-                "Portfolio Manager",
-                "PMO Lead"
-            ]
+        if score < 30:
+            recommended_roles = ["Different domain required"]
+        elif score < 60:
+            recommended_roles = ["Adjacent roles", "Bridging positions"]
         else:
-            recommended_roles = [
-                "Project Manager",
-                "PMO Analyst",
-                "Delivery Coordinator"
-            ]
+            recommended_roles = ["Direct match roles"]
 
         roles_text = "\n".join([f"- {r}" for r in recommended_roles])
 
         # =========================
-        # OUTPUT (DETAILED)
+        # OUTPUT
         # =========================
-
         recruiter_view = f"""
 SUMMARY:
-Candidate shows alignment with transformation and delivery-oriented roles.
+Overlap tokens: {overlap_score}
+Mismatch tokens: {mismatch_score}
 
-MATCH STRENGTHS:
-- {match_hits} relevant transformation/program keywords detected
-- Evidence of structured delivery and stakeholder coordination language
+Key overlap examples:
+{list(overlap)[:10]}
 
-GAPS / RISKS:
-- {mismatch_hits} technical/engineering indicators detected
-- Possible mismatch if role is highly technical
-
-SCREENING VERDICT:
-{"Strong alignment" if score >= 75 else "Partial alignment" if score >= 50 else "Misaligned"}
+Screening verdict:
+{"Aligned" if score >= 70 else "Partial" if score >= 40 else "Misaligned"}
 """
 
         hiring_manager_view = f"""
-EXECUTIVE ASSESSMENT:
-Candidate demonstrates experience aligned with program delivery, governance, and transformation oversight.
-
-VALUE CONTRIBUTION:
-- Strong in structuring initiatives and aligning stakeholders
-- Effective in multi-stakeholder environments
-
-CONCERNS:
-- Technical depth may not match highly engineering-focused roles
-- Requires validation against actual responsibilities
+ASSESSMENT:
+- Overlap strength: {overlap_score}
+- Domain mismatch signals: {job_technical - cv_technical}
 
 RECOMMENDATION:
-{"Proceed to interview" if score >= 60 else "Proceed with caution" if score >= 40 else "Do not proceed"}
+{"Proceed" if score >= 60 else "Caution" if score >= 40 else "Reject"}
 
-RISK LEVEL: {risk}
-
-RECOMMENDED ROLE TARGETS:
+RECOMMENDED ROLES:
 {roles_text}
 """
 
@@ -175,33 +183,27 @@ RECOMMENDED ROLE TARGETS:
 
 
 # =========================
-# STRIPE CHECKOUT
+# STRIPE
 # =========================
 
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
-    try:
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            mode="payment",
-            line_items=[{
-                "price_data": {
-                    "currency": "eur",
-                    "product_data": {
-                        "name": "HiddenEdge Unlock"
-                    },
-                    "unit_amount": 1900,
-                },
-                "quantity": 1,
-            }],
-            success_url=request.host_url + "success",
-            cancel_url=request.host_url + "app"
-        )
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        mode="payment",
+        line_items=[{
+            "price_data": {
+                "currency": "eur",
+                "product_data": {"name": "HiddenEdge Unlock"},
+                "unit_amount": 1900,
+            },
+            "quantity": 1,
+        }],
+        success_url=request.host_url + "success",
+        cancel_url=request.host_url + "app"
+    )
 
-        return jsonify({"url": session.url})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"url": session.url})
 
 
 # =========================
