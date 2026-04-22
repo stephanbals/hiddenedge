@@ -6,84 +6,66 @@
 
 <body>
 
-<h2>HiddenEdge</h2>
+<h1>HiddenEdge</h1>
 
-<input type="file" id="file"><br><br>
+<input type="file" id="cvFile"><br><br>
 
-<textarea id="job" placeholder="Paste job description" rows="10" cols="60"></textarea><br><br>
+<textarea id="jobDesc" placeholder="Paste job description"></textarea><br><br>
 
 <button onclick="analyze()">Analyze</button>
-<button onclick="goToCheckout()">Unlock</button>
+<button id="unlockBtn">Unlock</button>
 
-<br><br>
-
-<textarea id="output" rows="20" cols="80"></textarea>
+<h3>Result</h3>
+<textarea id="resultBox" rows="15" cols="80"></textarea>
 
 <script>
 
-let email = localStorage.getItem("email");
+let paidUser = new URLSearchParams(window.location.search).get("paid");
 
-function analyze() {
+async function analyze() {
+    const jobDesc = document.getElementById("jobDesc").value;
 
-    if (!email) {
-        alert("No email found. Restart flow.");
-        return;
-    }
-
-    let file = document.getElementById("file").files[0];
-    let job = document.getElementById("job").value;
-
-    if (!file || !job) {
-        alert("Upload CV and paste job description");
-        return;
-    }
-
-    let form = new FormData();
-    form.append("file", file);
-    form.append("job_text", job);
-    form.append("email", email);
-
-    fetch("/analyze", {
+    const res = await fetch("/analyze", {
         method: "POST",
-        body: form
-    })
-    .then(res => res.json())
-    .then(data => {
-
-        if (data.error === "PAYWALL") {
-            alert("Free limit reached. Please unlock.");
-            return;
-        }
-
-        document.getElementById("output").value =
-            "Score: " + data.nestor.fit_score + "\n" +
-            "Decision: " + data.nestor.decision + "\n\n" +
-            "Recruiter View:\n" + data.nestor.recruiter_view + "\n\n" +
-            "Hiring Manager View:\n" + data.nestor.hiring_manager_view;
-
-    })
-    .catch(err => {
-        alert("Error: " + err);
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ job_description: jobDesc })
     });
+
+    const data = await res.json();
+
+    if (data.error === "PAYWALL" && !paidUser) {
+        alert("Free limit reached. Please unlock.");
+        return;
+    }
+
+    document.getElementById("resultBox").value =
+        "Score: " + data.fit_score + "\n" +
+        "Decision: " + data.decision + "\n\n" +
+        "Recruiter View:\n" + data.recruiter_view + "\n\n" +
+        "Hiring Manager View:\n" + data.hiring_manager_view;
 }
 
-function goToCheckout() {
 
-    if (!email) {
-        alert("Missing email.");
-        return;
-    }
+// =========================
+// STRIPE UNLOCK
+// =========================
 
-    fetch("/create-checkout-session", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ email: email })
-    })
-    .then(res => res.json())
-    .then(data => {
+document.getElementById("unlockBtn").onclick = async () => {
+
+    const res = await fetch("/create-checkout-session", {
+        method: "POST"
+    });
+
+    const data = await res.json();
+
+    if (data.url) {
         window.location.href = data.url;
-    });
-}
+    } else {
+        alert("Stripe error");
+    }
+};
 
 </script>
 
