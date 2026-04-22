@@ -11,7 +11,6 @@ app = Flask(__name__)
 # =========================
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
-STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
 
 stripe.api_key = STRIPE_SECRET_KEY
 
@@ -26,9 +25,20 @@ usage_counter = {}
 def home():
     return render_template("index.html")
 
+
 @app.route("/app")
 def app_page():
     return render_template("app.html", stripe_public_key=STRIPE_PUBLIC_KEY)
+
+
+@app.route("/eula")
+def eula():
+    return render_template("eula.html")
+
+
+@app.route("/success")
+def success():
+    return redirect("/app?paid=true")
 
 
 # =========================
@@ -47,9 +57,10 @@ def analyze():
     usage_counter[user_id] = usage + 1
 
     try:
-        data = request.json
+        data = request.get_json(force=True)
         job_description = data.get("job_description", "")
 
+        # Safe scoring logic
         score = min(len(job_description) // 50, 100)
 
         if score > 70:
@@ -76,7 +87,7 @@ def analyze():
 
 
 # =========================
-# STRIPE CHECKOUT (FIXED)
+# STRIPE CHECKOUT
 # =========================
 
 @app.route("/create-checkout-session", methods=["POST"])
@@ -86,7 +97,13 @@ def create_checkout_session():
             payment_method_types=["card"],
             mode="payment",
             line_items=[{
-                "price": STRIPE_PRICE_ID,   # ✅ THIS IS THE FIX
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {
+                        "name": "HiddenEdge Unlock"
+                    },
+                    "unit_amount": 1900,  # €19
+                },
                 "quantity": 1,
             }],
             success_url=request.host_url + "success",
@@ -97,11 +114,6 @@ def create_checkout_session():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-@app.route("/success")
-def success():
-    return redirect("/app?paid=true")
 
 
 # =========================
