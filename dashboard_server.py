@@ -43,7 +43,7 @@ def success():
 
 
 # =========================
-# ANALYZE (UPGRADED)
+# ANALYZE (WITH ROLE TARGETING)
 # =========================
 
 @app.route("/analyze", methods=["POST"])
@@ -96,6 +96,32 @@ def analyze():
             risk = "High"
 
         # =========================
+        # ROLE TARGETING LOGIC
+        # =========================
+
+        if mismatch_hits > match_hits:
+            recommended_roles = [
+                "Technical Program Manager",
+                "Data Program Manager",
+                "IT Project Manager (Technical Environment)"
+            ]
+        elif match_hits >= 3:
+            recommended_roles = [
+                "Senior Program Manager",
+                "Transformation Manager",
+                "Portfolio Manager",
+                "PMO Lead"
+            ]
+        else:
+            recommended_roles = [
+                "Project Manager",
+                "PMO Analyst",
+                "Delivery Coordinator"
+            ]
+
+        roles_text = "\n".join([f"- {role}" for role in recommended_roles])
+
+        # =========================
         # DETAILED OUTPUT
         # =========================
 
@@ -134,6 +160,9 @@ RECOMMENDATION:
 Proceed with {'interview' if score >= 60 else 'caution' if score >= 40 else 'no-go'}.
 
 RISK LEVEL: {risk}
+
+RECOMMENDED ROLE TARGETS:
+{roles_text}
 """
 
         return jsonify({
