@@ -31,14 +31,18 @@ def app_page():
     return render_template("app.html", stripe_public_key=STRIPE_PUBLIC_KEY)
 
 
-@app.route("/eula")
-def eula():
-    return render_template("eula.html")
-
-
 @app.route("/success")
 def success():
     return redirect("/app?paid=true")
+
+
+# ✅ GENERIC ROUTE FOR ALL STATIC PAGES (eula, email, etc.)
+@app.route("/<page>")
+def render_page(page):
+    try:
+        return render_template(f"{page}.html")
+    except:
+        return "Page not found", 404
 
 
 # =========================
