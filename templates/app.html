@@ -7,7 +7,7 @@
 
 <h1>HiddenEdge</h1>
 
-<input type="file" id="cvFile" accept=".txt,.docx"><br><br>
+<input type="file" id="cvFile"><br><br>
 
 <textarea id="jobDescription" rows="10" cols="60" placeholder="Paste job description here..."></textarea><br><br>
 
@@ -16,36 +16,35 @@
 
 <h2>Result</h2>
 
-<div id="result">
-    <p>Score: -</p>
-    <p>Decision: -</p>
-    <p><strong>Recruiter View:</strong></p>
-    <pre id="recruiterView"></pre>
-    <p><strong>Hiring Manager View:</strong></p>
-    <pre id="hiringView"></pre>
-</div>
+<p>Score: <span id="score">-</span></p>
+<p>Decision: <span id="decision">-</span></p>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+<h3>Recruiter View:</h3>
+<p id="recruiter"></p>
+
+<h3>Hiring Manager View:</h3>
+<p id="manager"></p>
 
 <script>
 let cvText = "";
 
-document.getElementById("cvFile").addEventListener("change", async function(event) {
+// =========================
+// CV UPLOAD
+// =========================
+document.getElementById("cvFile").addEventListener("change", function(event) {
     const file = event.target.files[0];
-
     if (!file) return;
 
-    if (file.name.endsWith(".docx")) {
-        const arrayBuffer = await file.arrayBuffer();
-        const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
-        cvText = result.value;
-    } else {
-        cvText = await file.text();
-    }
-
-    console.log("CV extracted");
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        cvText = e.target.result;
+    };
+    reader.readAsText(file);
 });
 
+// =========================
+// ANALYZE
+// =========================
 async function analyze() {
     const jobDescription = document.getElementById("jobDescription").value;
 
@@ -54,7 +53,7 @@ async function analyze() {
         return;
     }
 
-    const res = await fetch("/analyze", {
+    const response = await fetch("/analyze", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -65,30 +64,39 @@ async function analyze() {
         })
     });
 
-    const data = await res.json();
+    const data = await response.json();
 
     if (data.error === "PAYWALL") {
         alert("Free limit reached. Please unlock.");
         return;
     }
 
-    document.getElementById("result").innerHTML = `
-        <p>Score: ${data.fit_score}</p>
-        <p>Decision: ${data.decision}</p>
-        <p><strong>Recruiter View:</strong></p>
-        <pre>${data.recruiter_view}</pre>
-        <p><strong>Hiring Manager View:</strong></p>
-        <pre>${data.hiring_manager_view}</pre>
-    `;
+    document.getElementById("score").innerText = data.fit_score;
+    document.getElementById("decision").innerText = data.decision;
+    document.getElementById("recruiter").innerText = data.recruiter_view;
+    document.getElementById("manager").innerText = data.hiring_manager_view;
 }
 
+// =========================
+// UNLOCK (FIXED)
+// =========================
 async function unlock() {
-    const res = await fetch("/create-checkout-session", {
-        method: "POST"
-    });
+    try {
+        const response = await fetch("/create-checkout-session", {
+            method: "POST"
+        });
 
-    const data = await res.json();
-    window.location.href = data.url;
+        const data = await response.json();
+
+        if (data.url) {
+            window.location.href = data.url;
+        } else {
+            alert("Stripe session failed.");
+        }
+
+    } catch (error) {
+        alert("Error connecting to Stripe.");
+    }
 }
 </script>
 
