@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify, render_template, redirect
 import os
 import stripe
 import docx
+import json
 from openai import OpenAI
 
 app = Flask(__name__)
@@ -29,8 +30,14 @@ def extract_text_from_docx(file):
     try:
         doc = docx.Document(file)
         return "\n".join([p.text for p in doc.paragraphs])
-    except Exception as e:
+    except:
         return ""
+
+def clean_json_response(raw):
+    raw = raw.strip()
+    if raw.startswith("```"):
+        raw = raw.replace("```json", "").replace("```", "").strip()
+    return raw
 
 # =========================
 # ROUTES
@@ -57,7 +64,7 @@ def success():
     return render_template("success.html")
 
 # =========================
-# ANALYZE (AI-BASED)
+# ANALYZE (FULL ENGINE KEPT)
 # =========================
 
 @app.route("/analyze", methods=["POST"])
@@ -77,7 +84,7 @@ def analyze():
         if not cv_file:
             return jsonify({"error": "No CV uploaded"})
 
-        # Extract CV text
+        # CV extraction
         if cv_file.filename.endswith(".docx"):
             cv_text = extract_text_from_docx(cv_file)
         else:
@@ -87,71 +94,84 @@ def analyze():
             return jsonify({
                 "fit_score": 0,
                 "decision": "Error",
-                "recruiter_view": "CV could not be read properly.",
-                "hiring_manager_view": "Invalid CV format."
+                "recruiter_view": "CV unreadable",
+                "hiring_manager_view": "Invalid CV format",
+                "recommended_roles": []
             })
 
         # =========================
-        # AI ANALYSIS
+        # AI ENGINE (UNCHANGED LOGIC)
         # =========================
-
         prompt = f"""
-You are an experienced recruiter and hiring manager.
+You are two professionals evaluating a candidate:
 
-Compare the following CV and job description.
+1. Recruiter → screening, positioning, CV fit
+2. Hiring Manager → delivery capability, risk, impact
 
-Return:
-- fit_score (0-100)
-- decision (Strong Apply / Consider / Reject)
-- recruiter_view (natural, human tone, professional)
-- hiring_manager_view (executive tone, realistic)
-- recommended_roles (if mismatch, suggest better roles)
+Return ONLY valid JSON:
+
+{{
+"fit_score": number,
+"decision": "Strong Apply | Consider | Reject",
+"recruiter_view": "...",
+"hiring_manager_view": "...",
+"recommended_roles": ["...", "..."]
+}}
+
+Rules:
+- recruiter_view and hiring_manager_view must be different
+- no markdown
+- no explanation outside JSON
 
 CV:
-{cv_text}
+{cv_text[:4000]}
 
-JOB DESCRIPTION:
-{job_description}
-
-Respond in JSON format only.
+JOB:
+{job_description[:4000]}
 """
 
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
         )
 
-        content = response.choices[0].message.content
+        raw = response.choices[0].message.content
+        raw = clean_json_response(raw)
 
-        # Fallback if parsing fails
         try:
-            import json
-            result = json.loads(content)
+            parsed = json.loads(raw)
         except:
-            result = {
-                "fit_score": 50,
-                "decision": "Consider",
-                "recruiter_view": content,
-                "hiring_manager_view": content,
+            return jsonify({
+                "fit_score": 0,
+                "decision": "Error",
+                "recruiter_view": raw,
+                "hiring_manager_view": "Parsing failed",
                 "recommended_roles": []
-            }
+            })
 
-        return jsonify(result)
+        return jsonify({
+            "fit_score": parsed.get("fit_score", 0),
+            "decision": parsed.get("decision", "Error"),
+            "recruiter_view": parsed.get("recruiter_view", ""),
+            "hiring_manager_view": parsed.get("hiring_manager_view", ""),
+            "recommended_roles": parsed.get("recommended_roles", [])
+        })
 
     except Exception as e:
         return jsonify({
             "fit_score": 0,
             "decision": "Error",
             "recruiter_view": "System error",
-            "hiring_manager_view": str(e)
+            "hiring_manager_view": str(e),
+            "recommended_roles": []
         })
 
-
 # =========================
-# STRIPE CHECKOUT
+# STRIPE (FIXED REDIRECT)
 # =========================
 
-@app.route("/create-checkout-session", methods=["POST"])
+@app.route("/create-checkout-session")
 def create_checkout_session():
     try:
         session = stripe.checkout.Session.create(
@@ -161,9 +181,9 @@ def create_checkout_session():
                 "price_data": {
                     "currency": "eur",
                     "product_data": {
-                        "name": "HiddenEdge Unlock"
+                        "name": "HiddenEdge Premium (Monthly Access)"
                     },
-                    "unit_amount": 1900,
+                    "unit_amount": 900,
                 },
                 "quantity": 1,
             }],
@@ -171,11 +191,10 @@ def create_checkout_session():
             cancel_url=request.host_url + "app"
         )
 
-        return jsonify({"url": session.url})
+        return redirect(session.url)
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
+        return str(e)
 
 # =========================
 # RUN

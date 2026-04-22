@@ -12,7 +12,6 @@
 <textarea id="jobDescription" rows="10" cols="60" placeholder="Paste job description here..."></textarea><br><br>
 
 <button onclick="analyze()">Analyze</button>
-<button onclick="unlock()">Unlock</button>
 
 <h2>Result</h2>
 
@@ -28,16 +27,10 @@
 <script>
 let cvFile = null;
 
-// =========================
-// CV UPLOAD
-// =========================
 document.getElementById("cvFile").addEventListener("change", function(event) {
     cvFile = event.target.files[0];
 });
 
-// =========================
-// ANALYZE
-// =========================
 async function analyze() {
     const jobDescription = document.getElementById("jobDescription").value;
 
@@ -57,34 +50,22 @@ async function analyze() {
 
     const data = await response.json();
 
-    // 🔥 FIX: AUTO REDIRECT
+    // 🔥 PAYWALL LOGIC
     if (data.error === "PAYWALL") {
-        alert("Free limit reached. Redirecting to unlock...");
-        unlock();
+        alert("You’ve reached your free limit. Upgrade to continue unlimited analyses.");
+
+        // short delay so user sees message
+        setTimeout(() => {
+            window.location.href = "/create-checkout-session";
+        }, 800);
+
         return;
     }
 
     document.getElementById("score").innerText = data.fit_score;
     document.getElementById("decision").innerText = data.decision;
-    document.getElementById("recruiter").innerText = data.recruiter_view;
-    document.getElementById("manager").innerText = data.hiring_manager_view;
-}
-
-// =========================
-// UNLOCK → STRIPE
-// =========================
-async function unlock() {
-    const response = await fetch("/create-checkout-session", {
-        method: "POST"
-    });
-
-    const data = await response.json();
-
-    if (data.url) {
-        window.location.href = data.url;
-    } else {
-        alert("Stripe session failed.");
-    }
+    document.getElementById("recruiter").innerText = data.recruiter_view || "";
+    document.getElementById("manager").innerText = data.hiring_manager_view || "";
 }
 </script>
 
