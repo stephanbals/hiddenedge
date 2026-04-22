@@ -7,7 +7,7 @@
 
 <h1>HiddenEdge</h1>
 
-<input type="file" id="cvFile"><br><br>
+<input type="file" id="cvFile" accept=".txt,.docx"><br><br>
 
 <textarea id="jobDescription" rows="10" cols="60" placeholder="Paste job description here..."></textarea><br><br>
 
@@ -25,16 +25,44 @@
     <pre id="hiringView"></pre>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+
 <script>
+let cvText = "";
+
+document.getElementById("cvFile").addEventListener("change", async function(event) {
+    const file = event.target.files[0];
+
+    if (!file) return;
+
+    if (file.name.endsWith(".docx")) {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+        cvText = result.value;
+    } else {
+        cvText = await file.text();
+    }
+
+    console.log("CV extracted");
+});
+
 async function analyze() {
     const jobDescription = document.getElementById("jobDescription").value;
+
+    if (!cvText) {
+        alert("Please upload your CV first.");
+        return;
+    }
 
     const res = await fetch("/analyze", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({ job_description: jobDescription })
+        body: JSON.stringify({
+            job_description: jobDescription,
+            cv_text: cvText
+        })
     });
 
     const data = await res.json();
