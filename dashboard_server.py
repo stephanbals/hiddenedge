@@ -4,7 +4,8 @@ from flask import Flask, request, jsonify, render_template, redirect
 import os
 import stripe
 
-app = Flask(__name__)
+# FORCE correct template loading
+app = Flask(__name__, template_folder="templates")
 
 # =========================
 # CONFIG
@@ -23,27 +24,46 @@ usage_counter = {}
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    try:
+        return render_template("index.html")
+    except Exception as e:
+        return f"TEMPLATE ERROR (index.html): {str(e)}"
+
 
 @app.route("/app")
 def app_page():
-    return render_template("app.html", stripe_public_key=STRIPE_PUBLIC_KEY)
+    try:
+        return render_template("app.html", stripe_public_key=STRIPE_PUBLIC_KEY)
+    except Exception as e:
+        return f"TEMPLATE ERROR (app.html): {str(e)}"
+
 
 @app.route("/eula")
 def eula():
-    return render_template("eula.html")
+    try:
+        return render_template("eula.html")
+    except Exception as e:
+        return f"TEMPLATE ERROR (eula.html): {str(e)}"
+
 
 @app.route("/email")
 def email():
-    return render_template("email.html")
+    try:
+        return render_template("email.html")
+    except Exception as e:
+        return f"TEMPLATE ERROR (email.html): {str(e)}"
+
 
 @app.route("/success")
 def success():
-    return render_template("success.html")
+    try:
+        return render_template("success.html")
+    except Exception as e:
+        return f"TEMPLATE ERROR (success.html): {str(e)}"
 
 
 # =========================
-# ANALYZE (WITH ROLE TARGETING)
+# ANALYZE
 # =========================
 
 @app.route("/analyze", methods=["POST"])
@@ -96,7 +116,7 @@ def analyze():
             risk = "High"
 
         # =========================
-        # ROLE TARGETING LOGIC
+        # ROLE TARGETING
         # =========================
 
         if mismatch_hits > match_hits:
@@ -122,7 +142,7 @@ def analyze():
         roles_text = "\n".join([f"- {role}" for role in recommended_roles])
 
         # =========================
-        # DETAILED OUTPUT
+        # OUTPUT
         # =========================
 
         recruiter_view = f"""
@@ -130,38 +150,35 @@ SUMMARY:
 The candidate shows alignment with key transformation and delivery-related competencies.
 
 MATCH STRENGTHS:
-- Alignment with core program/project management keywords: {match_hits} matches detected
-- Evidence of structured delivery, governance, and stakeholder coordination capabilities
+- Alignment with program/project keywords: {match_hits} matches
+- Strong delivery and stakeholder coordination signals
 
-GAPS / RISKS:
-- Presence of non-aligned technical requirements: {mismatch_hits} indicators detected
-- Potential mismatch if role is heavily technical or engineering-focused
+GAPS:
+- Non-aligned technical indicators: {mismatch_hits}
 
-SCREENING VERDICT:
-Profile is {'strongly aligned' if score >= 75 else 'partially aligned' if score >= 50 else 'misaligned'} 
-with typical expectations for transformation/program roles.
+VERDICT:
+{'Strong alignment' if score >= 75 else 'Partial alignment' if score >= 50 else 'Misaligned'}
 """
 
         hiring_manager_view = f"""
-EXECUTIVE ASSESSMENT:
+EXECUTIVE VIEW:
 
-The candidate demonstrates a background consistent with leading complex initiatives, 
-particularly in transformation, governance, and delivery oversight.
+Strong background in structured delivery and transformation.
 
-VALUE CONTRIBUTION:
-- Likely strong in structuring programs, aligning stakeholders, and driving execution
-- Can bring immediate value in ambiguous or multi-stakeholder environments
+VALUE:
+- Stakeholder alignment
+- Program execution
+- Governance
 
-CONCERNS:
-- Role-specific technical depth may not be sufficient depending on expectations
-- Requires validation against actual responsibilities (strategic vs hands-on execution)
+RISKS:
+- Possible mismatch in technical depth depending on role
 
 RECOMMENDATION:
-Proceed with {'interview' if score >= 60 else 'caution' if score >= 40 else 'no-go'}.
+{'Proceed to interview' if score >= 60 else 'Proceed with caution' if score >= 40 else 'Do not proceed'}
 
 RISK LEVEL: {risk}
 
-RECOMMENDED ROLE TARGETS:
+RECOMMENDED ROLES:
 {roles_text}
 """
 
@@ -176,13 +193,13 @@ RECOMMENDED ROLE TARGETS:
         return jsonify({
             "fit_score": 0,
             "decision": "Error",
-            "recruiter_view": "System error during analysis",
+            "recruiter_view": "System error",
             "hiring_manager_view": str(e)
         })
 
 
 # =========================
-# STRIPE CHECKOUT
+# STRIPE
 # =========================
 
 @app.route("/create-checkout-session", methods=["POST"])
