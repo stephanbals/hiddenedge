@@ -57,8 +57,10 @@ async function analyze() {
 
     const data = await response.json();
 
+    // 🔥 FIX: AUTO REDIRECT
     if (data.error === "PAYWALL") {
-        alert("Free limit reached. Please unlock.");
+        alert("Free limit reached. Redirecting to unlock...");
+        unlock();
         return;
     }
 
