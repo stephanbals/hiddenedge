@@ -18,6 +18,18 @@
 <p>Score: <span id="score">-</span></p>
 <p>Decision: <span id="decision">-</span></p>
 
+<h3>Match Summary:</h3>
+<p id="summary"></p>
+
+<h3>Strengths:</h3>
+<ul id="strengths"></ul>
+
+<h3>Key Gaps:</h3>
+<ul id="gaps"></ul>
+
+<h3>CV Improvements:</h3>
+<ul id="improvements"></ul>
+
 <h3>Recruiter View:</h3>
 <p id="recruiter"></p>
 
@@ -50,6 +62,15 @@ document.addEventListener("DOMContentLoaded", function() {
         return usage;
     }
 
+    async function readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+            reader.readAsText(file);
+        });
+    }
+
     window.analyze = async function() {
         const jobDescription = document.getElementById("jobDescription").value;
 
@@ -69,9 +90,11 @@ document.addEventListener("DOMContentLoaded", function() {
             return;
         }
 
+        const cvText = await readFileAsText(cvFile);
+
         const formData = new FormData();
-        formData.append("cv_file", cvFile);
-        formData.append("job_description", jobDescription);
+        formData.append("cv_text", cvText);
+        formData.append("job_text", jobDescription);
 
         const response = await fetch("/analyze", {
             method: "POST",
@@ -84,17 +107,57 @@ document.addEventListener("DOMContentLoaded", function() {
 
         document.getElementById("score").innerText = data.fit_score;
         document.getElementById("decision").innerText = data.decision;
+        document.getElementById("summary").innerText = data.match_summary || "";
+
         document.getElementById("recruiter").innerText = data.recruiter_view || "";
         document.getElementById("manager").innerText = data.hiring_manager_view || "";
 
+        // Strengths
+        const strengthsList = document.getElementById("strengths");
+        strengthsList.innerHTML = "";
+        (data.strengths || []).forEach(item => {
+            const li = document.createElement("li");
+            li.innerText = item;
+            strengthsList.appendChild(li);
+        });
+
+        // Gaps
+        const gapsList = document.getElementById("gaps");
+        gapsList.innerHTML = "";
+        (data.key_gaps || []).forEach(item => {
+            const li = document.createElement("li");
+            li.innerText = item;
+            gapsList.appendChild(li);
+        });
+
+        // Improvements
+        const improvementsList = document.getElementById("improvements");
+        improvementsList.innerHTML = "";
+        (data.cv_improvements || []).forEach(item => {
+            const li = document.createElement("li");
+            li.innerText = item;
+            improvementsList.appendChild(li);
+        });
+
+        // Roles
         const rolesList = document.getElementById("roles");
         rolesList.innerHTML = "";
 
         if (data.recommended_roles) {
-            data.recommended_roles.forEach(role => {
-                const li = document.createElement("li");
-                li.innerText = role;
-                rolesList.appendChild(li);
+            ["strong_fit", "good_fit", "stretch"].forEach(category => {
+                const roles = data.recommended_roles[category] || [];
+
+                roles.forEach(role => {
+                    const li = document.createElement("li");
+
+                    if (typeof role === "object") {
+                        li.innerText = `${role.role || ""} — ${role.reason || ""}`;
+                    } else {
+                        li.innerText = role;
+                    }
+
+                    rolesList.appendChild(li);
+                });
             });
         }
     }
