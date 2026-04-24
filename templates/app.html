@@ -9,7 +9,7 @@
 
 <input type="file" id="cvFile"><br><br>
 
-<textarea id="jobDescription" rows="10" cols="60" placeholder="Paste job description here..."></textarea><br><br>
+<textarea id="jobDescription" rows="10" cols="60"></textarea><br><br>
 
 <button onclick="analyze()">Analyze</button>
 
@@ -21,148 +21,29 @@
 <h3>Match Summary:</h3>
 <p id="summary"></p>
 
-<h3>Strengths:</h3>
-<ul id="strengths"></ul>
-
-<h3>Key Gaps:</h3>
-<ul id="gaps"></ul>
-
-<h3>CV Improvements:</h3>
-<ul id="improvements"></ul>
-
-<h3>Recruiter View:</h3>
-<p id="recruiter"></p>
-
-<h3>Hiring Manager View:</h3>
-<p id="manager"></p>
-
-<h3>Recommended Roles:</h3>
-<ul id="roles"></ul>
-
 <script>
-document.addEventListener("DOMContentLoaded", function() {
+let cvFile = null;
 
-    let cvFile = null;
+document.getElementById("cvFile").addEventListener("change", e => {
+    cvFile = e.target.files[0];
+});
 
-    const fileInput = document.getElementById("cvFile");
+function analyze() {
+    const formData = new FormData();
+    formData.append("cv_file", cvFile);
+    formData.append("job_text", document.getElementById("jobDescription").value);
 
-    if (fileInput) {
-        fileInput.addEventListener("change", function(event) {
-            cvFile = event.target.files[0];
-        });
-    }
-
-    function getUsage() {
-        return parseInt(localStorage.getItem("usage") || "0");
-    }
-
-    function incrementUsage() {
-        let usage = getUsage() + 1;
-        localStorage.setItem("usage", usage);
-        return usage;
-    }
-
-    async function readFileAsText(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error);
-            reader.readAsText(file);
-        });
-    }
-
-    window.analyze = async function() {
-        const jobDescription = document.getElementById("jobDescription").value;
-
-        if (!cvFile) {
-            alert("Please upload your CV first.");
-            return;
-        }
-
-        let usage = getUsage();
-        if (usage >= 3) {
-            alert("You’ve reached your free limit. Upgrade to continue.");
-
-            setTimeout(() => {
-                window.location.href = "/create-checkout-session";
-            }, 500);
-
-            return;
-        }
-
-        const cvText = await readFileAsText(cvFile);
-
-        const formData = new FormData();
-        formData.append("cv_text", cvText);
-        formData.append("job_text", jobDescription);
-
-        const response = await fetch("/analyze", {
-            method: "POST",
-            body: formData
-        });
-
-        const data = await response.json();
-
-        incrementUsage();
-
+    fetch("/analyze", {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
         document.getElementById("score").innerText = data.fit_score;
         document.getElementById("decision").innerText = data.decision;
-        document.getElementById("summary").innerText = data.match_summary || "";
-
-        document.getElementById("recruiter").innerText = data.recruiter_view || "";
-        document.getElementById("manager").innerText = data.hiring_manager_view || "";
-
-        // Strengths
-        const strengthsList = document.getElementById("strengths");
-        strengthsList.innerHTML = "";
-        (data.strengths || []).forEach(item => {
-            const li = document.createElement("li");
-            li.innerText = item;
-            strengthsList.appendChild(li);
-        });
-
-        // Gaps
-        const gapsList = document.getElementById("gaps");
-        gapsList.innerHTML = "";
-        (data.key_gaps || []).forEach(item => {
-            const li = document.createElement("li");
-            li.innerText = item;
-            gapsList.appendChild(li);
-        });
-
-        // Improvements
-        const improvementsList = document.getElementById("improvements");
-        improvementsList.innerHTML = "";
-        (data.cv_improvements || []).forEach(item => {
-            const li = document.createElement("li");
-            li.innerText = item;
-            improvementsList.appendChild(li);
-        });
-
-        // Roles
-        const rolesList = document.getElementById("roles");
-        rolesList.innerHTML = "";
-
-        if (data.recommended_roles) {
-            ["strong_fit", "good_fit", "stretch"].forEach(category => {
-                const roles = data.recommended_roles[category] || [];
-
-                roles.forEach(role => {
-                    const li = document.createElement("li");
-
-                    if (typeof role === "object") {
-                        li.innerText = `${role.role || ""} — ${role.reason || ""}`;
-                    } else {
-                        li.innerText = role;
-                    }
-
-                    rolesList.appendChild(li);
-                });
-            });
-        }
-    }
-
-});
+        document.getElementById("summary").innerText = data.match_summary;
+    });
+}
 </script>
 
 </body>
