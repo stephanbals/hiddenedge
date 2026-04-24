@@ -82,13 +82,7 @@ def analyze_cv_job(cv_text, job_text):
     system_prompt = """
 You are an expert recruiter and hiring manager evaluator.
 
-You MUST return ONLY valid JSON. No explanations. No markdown. No code blocks.
-
-STRICT RULES:
-- Do NOT wrap JSON in ```
-- Do NOT repeat JSON
-- Do NOT include commentary
-- All fields MUST be present
+You MUST return ONLY valid JSON.
 
 RETURN EXACT JSON STRUCTURE:
 
@@ -139,7 +133,7 @@ JOB DESCRIPTION:
 
 
 # =========================
-# ROUTES
+# ROUTES (FULLY ALIGNED)
 # =========================
 
 @app.route("/")
@@ -155,6 +149,11 @@ def app_page():
 @app.route("/eula")
 def eula():
     return render_template("eula.html")
+
+
+@app.route("/email")
+def email():
+    return render_template("email.html")
 
 
 @app.route("/success")
@@ -178,7 +177,7 @@ def analyze():
 
 
 # =========================
-# RUN (RENDER SAFE)
+# RUN
 # =========================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
