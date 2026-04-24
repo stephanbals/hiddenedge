@@ -10,7 +10,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 # =========================
-# SAFE PARSER (STRICT)
+# SAFE PARSER
 # =========================
 def safe_parse_ai_output(text):
     try:
@@ -117,31 +117,25 @@ JOB DESCRIPTION:
 {job_text}
 """
 
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0.3,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ]
-        )
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        temperature=0.3,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+    )
 
-        content = response.choices[0].message.content
+    content = response.choices[0].message.content
 
-        if content is None:
-            raise ValueError("OpenAI returned empty content")
+    if content is None:
+        raise ValueError("OpenAI returned empty content")
 
-        raw_output = content.strip()
+    raw_output = content.strip()
 
-        parsed = safe_parse_ai_output(raw_output)
+    parsed = safe_parse_ai_output(raw_output)
 
-        return parsed
-
-    except Exception as e:
-        print("=== OPENAI ERROR ===")
-        traceback.print_exc()
-        raise e
+    return parsed
 
 
 # =========================
@@ -150,12 +144,22 @@ JOB DESCRIPTION:
 
 @app.route("/")
 def home():
-    return render_template("index.html")   # ✅ FIX HERE
+    return render_template("index.html")
 
 
 @app.route("/app")
 def app_page():
     return render_template("app.html")
+
+
+@app.route("/eula")
+def eula():
+    return render_template("eula.html")
+
+
+@app.route("/success")
+def success():
+    return render_template("success.html")
 
 
 @app.route("/analyze", methods=["POST"])
@@ -169,12 +173,8 @@ def analyze():
         return jsonify(result)
 
     except Exception as e:
-        print("=== FINAL ERROR ===")
         traceback.print_exc()
-
-        return jsonify({
-            "error": str(e)
-        }), 500
+        return jsonify({"error": str(e)}), 500
 
 
 # =========================
