@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template
 import os
 import json
+import traceback
 from openai import OpenAI
 
 app = Flask(__name__)
@@ -17,14 +18,10 @@ def safe_parse_ai_output(text):
         end = text.rfind('}') + 1
 
         if start == -1 or end == -1:
-            raise ValueError("No JSON found")
+            raise ValueError("No JSON found in model output")
 
         json_str = text[start:end]
         parsed = json.loads(json_str)
-
-        # =========================
-        # ENFORCE STRUCTURE
-        # =========================
 
         def ensure_list(value):
             return value if isinstance(value, list) else []
@@ -43,11 +40,7 @@ def safe_parse_ai_output(text):
         parsed["key_gaps"] = ensure_list(parsed.get("key_gaps", []))
         parsed["cv_improvements"] = ensure_list(parsed.get("cv_improvements", []))
 
-        # =========================
-        # NESTED STRUCTURE FIX
-        # =========================
         roles = parsed.get("recommended_roles", {})
-
         if not isinstance(roles, dict):
             roles = {}
 
@@ -62,7 +55,8 @@ def safe_parse_ai_output(text):
 
         return parsed
 
-    except Exception:
+    except Exception as e:
+        print("PARSER ERROR:", str(e))
         return {
             "fit_score": 0,
             "decision": "Error",
@@ -96,36 +90,6 @@ STRICT RULES:
 - Do NOT include commentary
 - All fields MUST be present
 
-EVALUATION:
-
-1. Fit score (0–100)
-2. Decision: Apply | Consider | Reject
-
-3. Match summary:
-2–3 sentences explaining overall fit
-
-4. Strengths:
-3–5 bullet points
-
-5. Key gaps:
-3–5 bullet points
-
-6. CV improvements:
-3–5 actionable suggestions
-
-7. Recommended roles:
-Grouped into:
-- strong_fit
-- good_fit
-- stretch
-Each with role + reason
-
-8. Recruiter view:
-Short paragraph
-
-9. Hiring manager view:
-Short paragraph
-
 RETURN EXACT JSON STRUCTURE:
 
 {
@@ -153,20 +117,31 @@ JOB DESCRIPTION:
 {job_text}
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        temperature=0.3,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
-    )
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0.3,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ]
+        )
 
-    raw_output = response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
 
-    parsed = safe_parse_ai_output(raw_output)
+        if content is None:
+            raise ValueError("OpenAI returned empty content")
 
-    return parsed
+        raw_output = content.strip()
+
+        parsed = safe_parse_ai_output(raw_output)
+
+        return parsed
+
+    except Exception as e:
+        print("=== OPENAI ERROR ===")
+        traceback.print_exc()
+        raise e
 
 
 # =========================
@@ -175,7 +150,7 @@ JOB DESCRIPTION:
 
 @app.route("/")
 def home():
-    return render_template("landing.html")
+    return render_template("index.html")   # ✅ FIX HERE
 
 
 @app.route("/app")
@@ -194,21 +169,12 @@ def analyze():
         return jsonify(result)
 
     except Exception as e:
+        print("=== FINAL ERROR ===")
+        traceback.print_exc()
+
         return jsonify({
-            "fit_score": 0,
-            "decision": "Error",
-            "match_summary": str(e),
-            "strengths": [],
-            "key_gaps": [],
-            "cv_improvements": [],
-            "recommended_roles": {
-                "strong_fit": [],
-                "good_fit": [],
-                "stretch": []
-            },
-            "recruiter_view": "Error occurred.",
-            "hiring_manager_view": "Error occurred."
-        })
+            "error": str(e)
+        }), 500
 
 
 # =========================
