@@ -1,162 +1,46 @@
-from flask import Flask, request, jsonify, render_template
+# =========================================
+# HiddenEdge / SB3PM Advisory & Services Ltd
+# Author: Stephan Bals
+# © 2026 SB3PM Advisory & Services Ltd
+# =========================================
+
+from flask import Flask, request, jsonify, send_file, render_template, Response, session
+from core.cv.cv_service import CVService
+import zipfile
+import io
 import os
-import json
-import traceback
-from openai import OpenAI
-from docx import Document
-import pdfplumber
 import stripe
 
-app = Flask(__name__)
+from docx import Document
+import PyPDF2
 
-# =========================
-# CONFIG
-# =========================
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+print("HiddenEdge Engine v1.0 | SB3PM")
+
+app = Flask(__name__, template_folder="templates")
+
+# 🔥 REQUIRED FOR SESSION (EMAIL FLOW)
+app.secret_key = "hiddenedge_dev_secret"
+
+cv_service = CVService()
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
 
 
-# =========================
-# FILE TEXT EXTRACTION
-# =========================
-def extract_text_from_file(file):
-    filename = file.filename.lower()
-
-    if filename.endswith(".docx"):
-        doc = Document(file)
-        return "\n".join([p.text for p in doc.paragraphs])
-
-    elif filename.endswith(".pdf"):
-        text = ""
-        with pdfplumber.open(file) as pdf:
-            for page in pdf.pages:
-                text += page.extract_text() or ""
-        return text
-
-    elif filename.endswith(".txt"):
-        return file.read().decode("utf-8")
-
-    else:
-        return ""
-
-
-# =========================
-# SAFE PARSER
-# =========================
-def safe_parse_ai_output(text):
-    try:
-        start = text.find('{')
-        end = text.rfind('}') + 1
-
-        if start == -1 or end == -1:
-            raise ValueError("No JSON found")
-
-        json_str = text[start:end]
-        parsed = json.loads(json_str)
-
-        def ensure_list(v): return v if isinstance(v, list) else []
-        def ensure_str(v): return v if isinstance(v, str) else ""
-        def ensure_int(v): return v if isinstance(v, int) else 0
-
-        parsed["fit_score"] = ensure_int(parsed.get("fit_score"))
-        parsed["decision"] = ensure_str(parsed.get("decision"))
-        parsed["match_summary"] = ensure_str(parsed.get("match_summary"))
-
-        parsed["strengths"] = ensure_list(parsed.get("strengths"))
-        parsed["key_gaps"] = ensure_list(parsed.get("key_gaps"))
-        parsed["cv_improvements"] = ensure_list(parsed.get("cv_improvements"))
-
-        roles = parsed.get("recommended_roles", {})
-        if not isinstance(roles, dict):
-            roles = {}
-
-        parsed["recommended_roles"] = {
-            "strong_fit": ensure_list(roles.get("strong_fit")),
-            "good_fit": ensure_list(roles.get("good_fit")),
-            "stretch": ensure_list(roles.get("stretch"))
-        }
-
-        parsed["recruiter_view"] = ensure_str(parsed.get("recruiter_view"))
-        parsed["hiring_manager_view"] = ensure_str(parsed.get("hiring_manager_view"))
-
-        return parsed
-
-    except Exception as e:
-        print("PARSER ERROR:", str(e))
-        return {
-            "fit_score": 0,
-            "decision": "Error",
-            "match_summary": "Parsing error occurred.",
-            "strengths": [],
-            "key_gaps": [],
-            "cv_improvements": [],
-            "recommended_roles": {
-                "strong_fit": [],
-                "good_fit": [],
-                "stretch": []
-            },
-            "recruiter_view": "",
-            "hiring_manager_view": ""
-        }
-
-
-# =========================
-# AI ANALYSIS
-# =========================
-def analyze_cv_job(cv_text, job_text):
-
-    system_prompt = """
-You are an expert recruiter.
-
-Return ONLY JSON:
-
-{
-  "fit_score": 0,
-  "decision": "",
-  "match_summary": "",
-  "strengths": [],
-  "key_gaps": [],
-  "cv_improvements": [],
-  "recommended_roles": {
-    "strong_fit": [],
-    "good_fit": [],
-    "stretch": []
-  },
-  "recruiter_view": "",
-  "hiring_manager_view": ""
-}
-"""
-
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        temperature=0.3,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"CV:\n{cv_text}\n\nJOB:\n{job_text}"}
-        ]
-    )
-
-    content = response.choices[0].message.content
-    if not content:
-        raise ValueError("Empty OpenAI response")
-
-    return safe_parse_ai_output(content.strip())
-
-
-# =========================
+# =========================================
 # ROUTES
-# =========================
+# =========================================
 
 @app.route("/")
-def home():
+def index():
     return render_template("index.html")
 
 
+# 🔥 KEEP YOUR CURRENT SAFE VERSION
 @app.route("/app")
 def app_page():
-    return render_template("app.html")
+    with open("templates/app.html", "r", encoding="utf-8") as f:
+        html = f.read()
+    return Response(html, content_type="text/html; charset=utf-8")
 
 
 @app.route("/eula")
@@ -169,57 +53,211 @@ def email():
     return render_template("email.html")
 
 
-@app.route("/success")
-def success():
-    return render_template("success.html")
+# =========================================
+# 🔥 FIX: EMAIL SUBMIT (MISSING LINK IN FLOW)
+# =========================================
 
-
-@app.route("/create-checkout-session")
-def create_checkout_session():
+@app.route("/submit-email", methods=["POST"])
+def submit_email():
     try:
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            mode="subscription",
-            line_items=[{
-                "price": STRIPE_PRICE_ID,
-                "quantity": 1
-            }],
-            success_url=request.host_url + "success",
-            cancel_url=request.host_url + "app"
-        )
+        data = request.get_json()
+        email = data.get("email")
 
-        return jsonify({"url": session.url})
+        if not email:
+            return jsonify({"success": False, "error": "No email provided"}), 400
+
+        # Store email (future: DB)
+        session["user_email"] = email
+
+        print(f"Captured email: {email}")
+
+        return jsonify({
+            "success": True,
+            "redirect": "/app"
+        })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("EMAIL ERROR:", str(e))
+        return jsonify({"success": False}), 500
 
+
+# =========================================
+# SUCCESS PAGE (UNCHANGED)
+# =========================================
+
+@app.route("/success")
+def success():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>HiddenEdge – Payment Successful</title>
+        <style>
+            body {
+                background: linear-gradient(135deg, #0b1220, #132a4a);
+                color: white;
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding-top: 60px;
+            }
+            .container {
+                max-width: 700px;
+                margin: auto;
+            }
+            img {
+                width: 180px;
+                margin-bottom: 20px;
+            }
+            .btn {
+                display: inline-block;
+                padding: 14px 24px;
+                font-size: 16px;
+                font-weight: bold;
+                border-radius: 10px;
+                background: linear-gradient(135deg, #4facfe, #6a82fb);
+                color: white;
+                text-decoration: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <img src="/static/robots/nestor.png">
+            <h1>✅ Your payment was successful</h1>
+            <p>You now have full access to HiddenEdge.</p>
+            <a href="/app" class="btn">🚀 Back to platform</a>
+        </div>
+    </body>
+    </html>
+    """
+
+
+# =========================================
+# FILE EXTRACTION
+# =========================================
+
+def extract_text_from_docx(file_bytes):
+    doc = Document(io.BytesIO(file_bytes))
+    return "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+
+
+def extract_text_from_pdf(file_bytes):
+    reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
+    return "\n".join([p.extract_text() or "" for p in reader.pages])
+
+
+def extract_text_from_file(filename, file_bytes):
+    if filename.endswith(".docx"):
+        return extract_text_from_docx(file_bytes)
+    if filename.endswith(".pdf"):
+        return extract_text_from_pdf(file_bytes)
+    return None
+
+
+# =========================================
+# ANALYZE
+# =========================================
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
     try:
-        file = request.files.get("cv_file")
+        files = request.files.getlist("files")
         job_text = request.form.get("job_text", "")
 
-        if not file:
-            return jsonify({"error": "No file uploaded"}), 400
+        texts = []
+        for file in files:
+            extracted = extract_text_from_file(file.filename.lower(), file.read())
+            if extracted:
+                texts.append(extracted)
 
-        cv_text = extract_text_from_file(file)
+        if not texts:
+            return jsonify({"error": "No CV content extracted"}), 400
 
-        if not cv_text.strip():
-            return jsonify({"error": "Unreadable CV"}), 400
-
-        result = analyze_cv_job(cv_text, job_text)
-
+        result = cv_service.analyze_cv(texts, job_text)
         return jsonify(result)
 
     except Exception as e:
-        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
-# =========================
+# =========================================
+# REFINE
+# =========================================
+
+@app.route("/refine-cv", methods=["POST"])
+def refine_cv():
+    try:
+        files = request.files.getlist("files")
+        job_text = request.form.get("job_text", "")
+        answers = request.form.get("answers", "")
+
+        texts = []
+        for file in files:
+            extracted = extract_text_from_file(file.filename.lower(), file.read())
+            if extracted:
+                texts.append(extracted)
+
+        if not texts:
+            return jsonify({"error": "No CV content extracted"}), 400
+
+        result = cv_service.refine_cv_with_answers(texts, job_text, answers)
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# =========================================
+# DOWNLOAD
+# =========================================
+
+@app.route("/download_cv", methods=["POST"])
+def download_cv():
+    data = request.json
+    cv = data.get("cv", {})
+
+    doc = Document()
+    doc.add_heading(cv.get("name", "Candidate"), 0)
+
+    if cv.get("summary"):
+        doc.add_heading("Summary", level=1)
+        doc.add_paragraph(cv.get("summary"))
+
+    stream = io.BytesIO()
+    doc.save(stream)
+    stream.seek(0)
+
+    return send_file(
+        stream,
+        as_attachment=True,
+        download_name="HiddenEdge_CV.docx",
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+
+
+# =========================================
+# STRIPE TEST
+# =========================================
+
+@app.route("/test-stripe")
+def test_stripe():
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        mode="payment",
+        line_items=[{
+            "price": os.getenv("STRIPE_PRICE_ID"),
+            "quantity": 1,
+        }],
+        success_url="http://127.0.0.1:5000/success",
+        cancel_url="http://127.0.0.1:5000/",
+    )
+
+    return f"<a href='{session.url}'>Test Payment</a>"
+
+
+# =========================================
 # RUN
-# =========================
+# =========================================
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(debug=True)

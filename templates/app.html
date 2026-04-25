@@ -1,49 +1,373 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>HiddenEdge</title>
+<meta charset="UTF-8">
+<title>HiddenEdge</title>
+
+<style>
+
+body {
+    margin:0;
+    font-family: Arial, sans-serif;
+    background: radial-gradient(circle at top, #0d1b2a, #020617);
+    color:white;
+}
+
+.wrapper {
+    display:flex;
+    height:100vh;
+}
+
+/* LEFT */
+.left {
+    width:380px;
+    padding:20px;
+    background:linear-gradient(180deg,#0b1220,#0f172a);
+    border-right:1px solid #1e293b;
+}
+
+.logo {
+    display:flex;
+    gap:10px;
+    margin-bottom:20px;
+}
+
+.logo img { width:40px; }
+
+.steps div {
+    margin-bottom:6px;
+    opacity:0.8;
+}
+
+.card {
+    background:#111827;
+    border-radius:12px;
+    padding:15px;
+    margin-bottom:15px;
+}
+
+textarea {
+    width:100%;
+    height:120px;
+    background:#020617;
+    border:1px solid #334155;
+    color:white;
+    border-radius:8px;
+    padding:10px;
+}
+
+.button {
+    width:100%;
+    margin-top:10px;
+    padding:12px;
+    border:none;
+    border-radius:10px;
+    background:linear-gradient(135deg,#6366f1,#3b82f6);
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.progress-bar {
+    height:6px;
+    background:#1e293b;
+    border-radius:5px;
+    margin-top:8px;
+}
+
+.progress-fill {
+    height:100%;
+    background:linear-gradient(90deg,#22c55e,#4ade80);
+    width:0%;
+    border-radius:5px;
+}
+
+/* RIGHT */
+.right {
+    flex:1;
+    padding:20px;
+    overflow-y:auto;
+}
+
+.summary {
+    display:flex;
+    justify-content:space-between;
+    background:#111827;
+    padding:20px;
+    border-radius:12px;
+    margin-bottom:20px;
+}
+
+.fit {
+    width:80px;
+    height:80px;
+    border-radius:50%;
+    border:6px solid #3b82f6;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:bold;
+}
+
+.grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+}
+
+.section-card {
+    background:#111827;
+    padding:20px;
+    border-radius:12px;
+}
+
+.robot-header {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:10px;
+}
+
+.robot-header img {
+    width:50px;
+}
+
+ul { padding-left:18px; }
+
+.top-actions {
+    text-align:right;
+    margin-bottom:10px;
+}
+
+.small-btn {
+    padding:10px 16px;
+    border:none;
+    border-radius:8px;
+    background:#3b82f6;
+    color:white;
+    cursor:pointer;
+}
+
+</style>
 </head>
+
 <body>
 
-<h1>HiddenEdge</h1>
+<div class="wrapper">
 
-<input type="file" id="cvFile"><br><br>
+<!-- LEFT -->
+<div class="left">
 
-<textarea id="jobDescription" rows="10" cols="60"></textarea><br><br>
+    <div class="logo">
+        <img src="/static/logo.png">
+        <div>
+            <b>HIDDENEDGE</b><br>
+            <small>AI CV Intelligence</small>
+        </div>
+    </div>
 
-<button onclick="analyze()">Analyze</button>
+    <div class="steps">
+        <div>1. Upload CV</div>
+        <div>2. Analyze Fit</div>
+        <div>3. Tailor CV</div>
+    </div>
 
-<h2>Result</h2>
+    <div class="card">
 
-<p>Score: <span id="score">-</span></p>
-<p>Decision: <span id="decision">-</span></p>
+        <input type="file" id="files" multiple><br><br>
 
-<h3>Match Summary:</h3>
-<p id="summary"></p>
+        <textarea id="job_text" placeholder="Paste job description..."></textarea>
+
+        <button class="button" onclick="analyze()">Analyze CV Fit</button>
+        <button class="button" onclick="tailor()">Tailor CV</button>
+
+    </div>
+
+    <div class="card">
+        <b>Progress</b><br><br>
+
+        CV Upload
+        <div class="progress-bar"><div id="uploadBar" class="progress-fill"></div></div>
+
+        Analyzing
+        <div class="progress-bar"><div id="analyzeBar" class="progress-fill"></div></div>
+
+        Tailoring
+        <div class="progress-bar"><div id="tailorBar" class="progress-fill"></div></div>
+
+    </div>
+
+</div>
+
+<!-- RIGHT -->
+<div class="right">
+
+    <div class="top-actions">
+        <button class="small-btn" onclick="downloadCV()">Download CV</button>
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="summary">
+        <div>
+            <b>Summary</b><br>
+            <div id="summaryText"></div>
+        </div>
+        <div id="fitScore" class="fit">--</div>
+    </div>
+
+    <!-- NESTOR / ALEC -->
+    <div class="grid">
+
+        <div class="section-card">
+            <div class="robot-header">
+                <img src="/static/robots/nestor.png">
+                <b>Nestor</b>
+            </div>
+            <div id="recruiterText"></div>
+        </div>
+
+        <div class="section-card">
+            <div class="robot-header">
+                <img src="/static/robots/alec.png">
+                <b>Alec</b>
+            </div>
+            <div id="managerText"></div>
+        </div>
+
+    </div>
+
+    <!-- STRENGTHS / GAPS -->
+    <div class="grid">
+
+        <div class="section-card">
+            <b>Key Strengths</b>
+            <ul id="strengthsList"></ul>
+        </div>
+
+        <div class="section-card">
+            <b>Areas to Develop</b>
+            <ul id="gapsList"></ul>
+        </div>
+
+    </div>
+
+    <!-- JOBS -->
+    <div class="section-card">
+        <b>Jobs to Look Into</b>
+        <ul id="jobsList"></ul>
+    </div>
+
+</div>
+
+</div>
 
 <script>
-let cvFile = null;
 
-document.getElementById("cvFile").addEventListener("change", e => {
-    cvFile = e.target.files[0];
-});
+let lastCV = null;
 
-function analyze() {
-    const formData = new FormData();
-    formData.append("cv_file", cvFile);
-    formData.append("job_text", document.getElementById("jobDescription").value);
+async function analyze() {
 
-    fetch("/analyze", {
+    document.getElementById("uploadBar").style.width = "100%";
+
+    const files = document.getElementById("files").files;
+    const job_text = document.getElementById("job_text").value;
+
+    let formData = new FormData();
+
+    for (let f of files) {
+        formData.append("files", f);
+    }
+
+    formData.append("job_text", job_text);
+
+    document.getElementById("analyzeBar").style.width = "50%";
+
+    const res = await fetch("/analyze", {
         method: "POST",
         body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        document.getElementById("score").innerText = data.fit_score;
-        document.getElementById("decision").innerText = data.decision;
-        document.getElementById("summary").innerText = data.match_summary;
     });
+
+    const data = await res.json();
+
+    document.getElementById("analyzeBar").style.width = "100%";
+
+    document.getElementById("summaryText").innerText =
+        data.match_summary || "";
+
+    document.getElementById("fitScore").innerText =
+        data.fit_score ? data.fit_score + "%" : "--";
+
+    document.getElementById("recruiterText").innerText =
+        data.recruiter_view || "";
+
+    document.getElementById("managerText").innerText =
+        data.hiring_manager_view || "";
+
+    let s = "";
+    (data.strengths || []).forEach(x => s += "<li>"+x+"</li>");
+    document.getElementById("strengthsList").innerHTML = s;
+
+    let g = "";
+    (data.key_gaps || []).forEach(x => g += "<li>"+x+"</li>");
+    document.getElementById("gapsList").innerHTML = g;
+
+    let j = "";
+    (data.recommended_roles?.good_fit || []).forEach(x => j += "<li>"+x+"</li>");
+    document.getElementById("jobsList").innerHTML = j;
 }
+
+async function tailor() {
+
+    const files = document.getElementById("files").files;
+    const job_text = document.getElementById("job_text").value;
+
+    let formData = new FormData();
+
+    for (let f of files) {
+        formData.append("files", f);
+    }
+
+    formData.append("job_text", job_text);
+    formData.append("answers", "");
+
+    document.getElementById("tailorBar").style.width = "40%";
+
+    const res = await fetch("/refine-cv", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await res.json();
+
+    document.getElementById("tailorBar").style.width = "100%";
+
+    lastCV = data.cv;
+
+    alert("CV tailored successfully");
+}
+
+async function downloadCV() {
+
+    if (!lastCV) {
+        alert("Please tailor CV first");
+        return;
+    }
+
+    const res = await fetch("/download_cv", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ cv: lastCV })
+    });
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "HiddenEdge_CV.docx";
+    a.click();
+}
+
 </script>
 
 </body>

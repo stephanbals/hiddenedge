@@ -1,100 +1,194 @@
-import os
+# =========================================
+# HiddenEdge / SB3PM Advisory & Services Ltd
+# Author: Stephan Bals
+# © 2026 SB3PM Advisory & Services Ltd
+#
+# This code is proprietary and confidential.
+# Unauthorized use, distribution, or replication is prohibited.
+# =========================================
+
 from openai import OpenAI
+import json
+import re
 
-# Initialize OpenAI client safely
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+print("HiddenEdge Engine v1.0 | SB3PM")
 
-if not OPENAI_API_KEY:
-    raise ValueError("Missing OPENAI_API_KEY environment variable")
-
-client = OpenAI(api_key=OPENAI_API_KEY)
+client = OpenAI()
 
 
 # =========================================
-# EXISTING FUNCTION (UNCHANGED)
+# SAFE JSON PARSER (CRITICAL FIX)
 # =========================================
 
-def tailor_cv(texts, job, evaluation):
-    """
-    Takes:
-        texts: extracted CV text
-        job: job description
-        evaluation: match analysis (score, reasoning, etc.)
-    Returns:
-        improved CV text
-    """
+def safe_parse_json(raw_text):
+
+    print("RAW AI OUTPUT:\n", raw_text)
+
+    if not raw_text:
+        return {}
 
     try:
-        prompt = f"""
-You are an expert CV optimization assistant.
+        # Remove markdown wrappers
+        cleaned = re.sub(r"```json", "", raw_text, flags=re.IGNORECASE)
+        cleaned = re.sub(r"```", "", cleaned)
 
-TASK:
-Rewrite and improve the candidate's CV to maximize alignment with the job description.
+        cleaned = cleaned.strip()
 
-RULES:
-- Keep it realistic and truthful
-- Strengthen alignment with required skills
-- Use strong, professional language
-- Improve structure and clarity
-- Keep it concise and impactful
+        # Extract JSON block
+        match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+        if match:
+            cleaned = match.group(0)
 
-INPUTS:
+        parsed = json.loads(cleaned)
 
-=== CURRENT CV ===
-{texts}
-
-=== JOB DESCRIPTION ===
-{job}
-
-=== MATCH ANALYSIS ===
-{evaluation}
-
-OUTPUT:
-Provide the improved CV only.
-"""
-
-        response = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.4,
-        )
-
-        result = response.choices[0].message.content
-
-        if not result:
-            raise ValueError("Empty response from OpenAI")
-
-        return result
+        return parsed
 
     except Exception as e:
-        print("❌ OpenAI CV generation failed:", str(e))
-        raise
+        print("JSON PARSE ERROR:", str(e))
+        return {}
 
 
 # =========================================
-# REQUIRED CLASS (NEW — WRAPPER ONLY)
+# CV SERVICE
 # =========================================
 
 class CVService:
 
-    def generate_master_cv(self, texts):
-        """
-        Simple aggregation of CV inputs
-        (keeps your existing behavior intact)
-        """
-        return {"cv": "\n\n".join(texts)}
+    # =====================================
+    # ANALYZE CV
+    # =====================================
+    def analyze_cv(self, texts, job_text):
 
-    def tailor_cv_to_job(self, texts, job_text):
-        """
-        Uses existing tailor_cv function
-        """
-        combined_cv = "\n\n".join(texts)
+        cv_text = "\n".join(texts)
 
-        # Minimal evaluation placeholder (safe)
-        evaluation = "Initial match analysis placeholder"
+        prompt = f"""
+You are an expert recruiter and hiring manager.
 
-        improved = tailor_cv(combined_cv, job_text, evaluation)
+STRICT RULES:
+- Return ONLY valid JSON
+- NO markdown
+- NO ``` blocks
+- If job description is too vague → clearly say so in match_summary
 
-        return {"cv": improved}
+Return EXACT structure:
+
+{{
+  "fit_score": number,
+  "decision": "",
+  "advice": "",
+  "match_summary": "",
+  "strengths": [],
+  "key_gaps": [],
+  "cv_improvements": [],
+  "learning_recommendations": [],
+  "recruiter_view": "",
+  "hiring_manager_view": "",
+  "recommended_roles": {{
+    "strong_fit": [],
+    "good_fit": [],
+    "stretch": []
+  }}
+}}
+
+CV:
+{cv_text}
+
+JOB:
+{job_text}
+"""
+
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2,
+            )
+
+            raw_output = response.choices[0].message.content
+
+            parsed = safe_parse_json(raw_output)
+
+            # Ensure safe structure for UI
+            return {
+                "fit_score": parsed.get("fit_score"),
+                "match_summary": parsed.get("match_summary"),
+                "recruiter_view": parsed.get("recruiter_view"),
+                "hiring_manager_view": parsed.get("hiring_manager_view"),
+                "strengths": parsed.get("strengths", []),
+                "key_gaps": parsed.get("key_gaps", []),
+                "recommended_roles": parsed.get("recommended_roles", {}),
+            }
+
+        except Exception as e:
+            print("ANALYZE ERROR:", str(e))
+
+            return {
+                "fit_score": None,
+                "match_summary": "Error during analysis",
+                "recruiter_view": "",
+                "hiring_manager_view": "",
+                "strengths": [],
+                "key_gaps": [],
+                "recommended_roles": {}
+            }
+
+
+    # =====================================
+    # REFINE CV (TAILORING)
+    # =====================================
+    def refine_cv_with_answers(self, texts, job_text, answers):
+
+        cv_text = "\n".join(texts)
+
+        prompt = f"""
+You are an expert CV writer.
+
+Rewrite the CV into a clean, professional, structured format.
+
+STRICT RULES:
+- Return ONLY valid JSON
+- NO markdown
+- NO ``` blocks
+
+Structure:
+
+{{
+  "name": "",
+  "summary": "",
+  "skills": [],
+  "experience": [
+    {{
+      "company": "",
+      "title": "",
+      "duration": "",
+      "bullets": []
+    }}
+  ]
+}}
+
+CV:
+{cv_text}
+
+JOB:
+{job_text}
+
+ANSWERS:
+{answers}
+"""
+
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2,
+            )
+
+            raw_output = response.choices[0].message.content
+
+            parsed = safe_parse_json(raw_output)
+
+            return {"cv": parsed}
+
+        except Exception as e:
+            print("REFINE ERROR:", str(e))
+            return {"cv": {}}

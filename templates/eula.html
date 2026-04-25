@@ -1,135 +1,202 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>HiddenEdge - Terms of Use</title>
-<link rel="icon" href="/static/favicon.ico">
+    <title>HiddenEdge - End User License Agreement</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<style>
-body {
-    margin: 0;
-    background: black;
-    color: white;
-    font-family: Arial;
-    text-align: center;
-}
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #0b0f1a;
+            color: white;
+        }
 
-/* LOGO */
-.logo {
-    position: fixed;
-    top: 15px;
-    left: 20px;
-    color: #9fd3ff;
-    font-weight: bold;
-}
+        .container {
+            max-width: 900px;
+            margin: auto;
+            padding: 30px 20px;
+        }
 
-/* BACKGROUND EFFECT */
-body::before {
-    content: "";
-    position: fixed;
-    width: 200%;
-    height: 200%;
-    background:
-        radial-gradient(circle, rgba(255,255,255,0.4), transparent 40%),
-        radial-gradient(circle at 30% 60%, rgba(0,150,255,0.5), transparent 60%),
-        radial-gradient(circle at 70% 40%, rgba(200,100,255,0.5), transparent 60%);
-    transform: rotate(-20deg);
-    filter: blur(80px);
-    z-index: -2;
-}
+        .card {
+            background: #121826;
+            padding: 25px;
+            border-radius: 12px;
+        }
 
-/* CONTENT */
-.container {
-    margin-top: 120px;
-    width: 60%;
-    margin-left: auto;
-    margin-right: auto;
-}
+        h1 { color: white; }
+        h2 { color: #9fb3d9; margin-top: 25px; }
+        p { line-height: 1.6; opacity: 0.9; }
 
-/* TERMS BOX */
-.terms-box {
-    background: #1c1c1c;
-    padding: 25px;
-    border-radius: 10px;
-    text-align: left;
-    max-height: 350px;
-    overflow-y: auto;
-    line-height: 1.6;
-}
+        ul {
+            line-height: 1.6;
+            opacity: 0.9;
+        }
 
-/* BUTTON */
-button {
-    padding: 12px 25px;
-    background: #4da6ff;
-    border: none;
-    cursor: pointer;
-    margin-top: 20px;
-    border-radius: 6px;
-}
+        .actions {
+            margin-top: 30px;
+            text-align: center;
+        }
 
-/* CHECKBOX */
-.checkbox {
-    margin-top: 20px;
-}
-</style>
+        .btn {
+            padding: 14px 22px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            margin: 10px;
+        }
+
+        .accept {
+            background: linear-gradient(135deg, #4facfe, #6a82fb);
+            color: white;
+        }
+
+        .decline {
+            background: #333;
+            color: #aaa;
+        }
+
+        .checkbox {
+            margin-top: 25px;
+            text-align: center;
+        }
+    </style>
+
+    <script>
+        function proceed() {
+            const cb = document.getElementById("acceptBox");
+
+            if (!cb.checked) {
+                alert("You must accept the terms to continue.");
+                return;
+            }
+
+            window.location.href = "/email";
+        }
+    </script>
+
 </head>
 
 <body>
 
-<div class="logo">HiddenEdge</div>
-
 <div class="container">
+    <div class="card">
 
-<h2>Terms of Use</h2>
+        <h1>HiddenEdge – End User License Agreement (EULA)</h1>
 
-<div class="terms-box">
+        <p>
+            This agreement governs your use of the HiddenEdge platform,
+            operated by <strong>SB3PM Advisory & Services Ltd</strong>.
+        </p>
 
-<p>
-HiddenEdge is designed to simulate professional CV and job matching analysis using advanced AI models informed by recruitment practices and hiring management across industries and domains.
-</p>
+        <h2>1. Nature of the Service</h2>
+        <p>
+            HiddenEdge is an AI-assisted advisory platform designed to analyze CVs,
+            provide improvement recommendations, and support job application processes.
+        </p>
+        <ul>
+            <li>The platform provides guidance, not guarantees</li>
+            <li>No employment or interview outcome is guaranteed</li>
+            <li>You remain fully responsible for your decisions and applications</li>
+        </ul>
 
-<p>
-While we aim to provide relevant and high-quality insights, the platform does not replace human judgment or professional recruitment advice.
-</p>
+        <h2>2. AI Transparency (EU AI Act Alignment)</h2>
+        <ul>
+            <li>Outputs are probabilistic and may contain inaccuracies</li>
+            <li>The system does not make automated decisions on your behalf</li>
+            <li>You must review all outputs before using them</li>
+            <li>This tool is advisory in nature, not decision-making</li>
+        </ul>
 
-<p>
-All decisions made based on the analysis remain solely the responsibility of the user.
-</p>
+        <h2>3. Data Processing (GDPR Compliance)</h2>
+        <ul>
+            <li>Your CV and inputs are processed solely to generate analysis results</li>
+            <li>Your data is not sold to third parties</li>
+            <li>You are responsible for the data you upload</li>
+            <li>You may request deletion of your data at any time</li>
+        </ul>
 
-<p>
-CV inputs may be provided in multiple European languages. All generated outputs, including tailored CVs, are currently produced in English to support international job applications.
-</p>
+        <h2>4. Payments & Billing</h2>
+        <ul>
+            <li>Payments are processed securely via third-party providers such as Stripe</li>
+            <li>All pricing is clearly communicated before purchase</li>
+            <li>Payments are non-refundable unless required by law</li>
+            <li>Abuse or misuse may result in suspension without refund</li>
+        </ul>
 
-<p>
-HiddenEdge does not store CV content or personal data beyond the active session.
-</p>
+        <p>
+            In the case of subscription-based services, users may request termination of their subscription
+            by contacting <strong>HiddenEdgeInfo@proton.me</strong>.
+        </p>
 
-<p>
-Payments for premium features are non-refundable. To cancel your subscription please send mail to HiddenEdgeInfo@proton.me. Cancellations take 30 days for handling, it is possible one more subscription payment may be deducted from your account. 
-</p>
+        <p>
+            Subscription termination requests are processed within a reasonable administrative timeframe,
+            which may take up to <strong>30 days</strong>. During this period, the subscription may remain active,
+            and there is a possibility that one final billing cycle may occur before full termination is completed.
+        </p>
 
-<p>
-HiddenEdge reserves the right to update these terms at any time.
-</p>
+        <p>
+            By subscribing to HiddenEdge services, you acknowledge and accept these billing and termination conditions.
+        </p>
 
+        <h2>5. Acceptable Use</h2>
+        <ul>
+            <li>No unlawful or fraudulent use</li>
+            <li>No reverse engineering or exploitation of the system</li>
+            <li>No submission of misleading or false information</li>
+        </ul>
+
+        <h2>6. Limitation of Liability</h2>
+        <ul>
+            <li>SB3PM is not liable for job outcomes or hiring decisions</li>
+            <li>No liability for financial loss or missed opportunities</li>
+            <li>No liability for AI inaccuracies</li>
+        </ul>
+
+        <h2>7. Intellectual Property</h2>
+        <p>
+            All code, systems, methodologies, and outputs of the HiddenEdge platform
+            are the exclusive property of SB3PM Advisory & Services Ltd and are protected
+            under applicable copyright laws.
+        </p>
+        <ul>
+            <li>All rights are reserved</li>
+            <li>Unauthorized use, copying, or distribution is strictly prohibited</li>
+        </ul>
+
+        <h2>8. Changes to Terms</h2>
+        <p>
+            These terms may be updated over time. Continued use of HiddenEdge
+            constitutes acceptance of the latest version.
+        </p>
+
+        <h2>9. Contact</h2>
+        <p>
+            For any questions, requests, or support inquiries, please contact:
+        </p>
+        <p><strong>HiddenEdgeInfo@proton.me</strong></p>
+
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" id="acceptBox">
+                I accept the terms and conditions
+            </label>
+        </div>
+
+        <div class="actions">
+            <button class="btn accept" onclick="proceed()">
+                Accept & Continue
+            </button>
+
+            <button class="btn decline" onclick="window.location.href='/'">
+                Cancel
+            </button>
+        </div>
+
+    </div>
 </div>
-
-<div class="checkbox">
-    <input type="checkbox" id="agree"> I agree to the Terms of Use
-</div>
-
-<button onclick="go()">Continue</button>
-
-</div>
-
-<script>
-function go() {
-    if (!document.getElementById("agree").checked) {
-        alert("You must agree to continue");
-        return;
-    }
-    window.location.replace("/email");
-}
-</script>
 
 </body>
 </html>
