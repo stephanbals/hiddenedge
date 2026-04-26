@@ -1,3 +1,13 @@
+<!-- =========================================
+HiddenEdge Platform UI
+SB3PM Advisory & Services Ltd
+-----------------------------------------
+Author: Stephan Bals
+© 2026 SB3PM Advisory & Services Ltd
+All rights reserved.
+Proprietary and confidential.
+========================================= -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,7 +15,6 @@
 <title>HiddenEdge</title>
 
 <style>
-
 body {
     margin:0;
     font-family: Arial, sans-serif;
@@ -13,42 +22,71 @@ body {
     color:white;
 }
 
-.wrapper {
-    display:flex;
-    height:100vh;
-}
+.wrapper { display:flex; height:100vh; }
 
-/* LEFT */
 .left {
-    width:380px;
+    width:340px;
     padding:20px;
-    background:linear-gradient(180deg,#0b1220,#0f172a);
+    background:#0b1220;
     border-right:1px solid #1e293b;
 }
 
-.logo {
-    display:flex;
-    gap:10px;
-    margin-bottom:20px;
+.right {
+    flex:1;
+    padding:20px;
+    overflow-y:auto;
 }
 
-.logo img { width:40px; }
-
-.steps div {
-    margin-bottom:6px;
-    opacity:0.8;
-}
+.logo { margin-bottom:20px; }
 
 .card {
     background:#111827;
-    border-radius:12px;
-    padding:15px;
-    margin-bottom:15px;
+    border-radius:14px;
+    padding:18px;
+    margin-bottom:18px;
+    box-shadow:0 6px 25px rgba(0,0,0,0.4);
 }
+
+.grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+}
+
+.score-circle {
+    width:110px;
+    height:110px;
+    border-radius:50%;
+    border:6px solid #3b82f6;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    font-weight:bold;
+}
+
+.score-label {
+    margin-top:6px;
+    font-size:13px;
+    opacity:0.8;
+}
+
+.decision {
+    padding:14px;
+    border-radius:10px;
+    font-weight:bold;
+    text-align:center;
+    margin-bottom:16px;
+}
+
+.green { background:#064e3b; }
+.yellow { background:#78350f; }
+.red { background:#7f1d1d; }
+
+ul { padding-left:18px; }
 
 textarea {
     width:100%;
-    height:120px;
     background:#020617;
     border:1px solid #334155;
     color:white;
@@ -56,98 +94,41 @@ textarea {
     padding:10px;
 }
 
-.button {
-    width:100%;
-    margin-top:10px;
-    padding:12px;
+.question-box { margin-top:8px; }
+
+button {
+    padding:10px 14px;
     border:none;
-    border-radius:10px;
+    border-radius:8px;
     background:linear-gradient(135deg,#6366f1,#3b82f6);
     color:white;
-    font-weight:bold;
     cursor:pointer;
+    margin-top:10px;
+}
+
+.helper {
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+
+.helper img {
+    width:70px;
 }
 
 .progress-bar {
     height:6px;
     background:#1e293b;
     border-radius:5px;
-    margin-top:8px;
+    margin-top:6px;
 }
 
 .progress-fill {
     height:100%;
-    background:linear-gradient(90deg,#22c55e,#4ade80);
     width:0%;
+    background:#22c55e;
     border-radius:5px;
 }
-
-/* RIGHT */
-.right {
-    flex:1;
-    padding:20px;
-    overflow-y:auto;
-}
-
-.summary {
-    display:flex;
-    justify-content:space-between;
-    background:#111827;
-    padding:20px;
-    border-radius:12px;
-    margin-bottom:20px;
-}
-
-.fit {
-    width:80px;
-    height:80px;
-    border-radius:50%;
-    border:6px solid #3b82f6;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-weight:bold;
-}
-
-.grid {
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:20px;
-}
-
-.section-card {
-    background:#111827;
-    padding:20px;
-    border-radius:12px;
-}
-
-.robot-header {
-    display:flex;
-    align-items:center;
-    gap:10px;
-    margin-bottom:10px;
-}
-
-.robot-header img {
-    width:50px;
-}
-
-ul { padding-left:18px; }
-
-.top-actions {
-    text-align:right;
-    margin-bottom:10px;
-}
-
-.small-btn {
-    padding:10px 16px;
-    border:none;
-    border-radius:8px;
-    background:#3b82f6;
-    color:white;
-    cursor:pointer;
-}
-
 </style>
 </head>
 
@@ -155,217 +136,231 @@ ul { padding-left:18px; }
 
 <div class="wrapper">
 
-<!-- LEFT -->
+<!-- LEFT PANEL -->
 <div class="left">
 
-    <div class="logo">
-        <img src="/static/logo.png">
-        <div>
-            <b>HIDDENEDGE</b><br>
-            <small>AI CV Intelligence</small>
-        </div>
-    </div>
+<div class="logo">
+    <b>HIDDENEDGE</b><br>
+    <small>Your CV improvement journey starts here</small>
+</div>
 
-    <div class="steps">
-        <div>1. Upload CV</div>
-        <div>2. Analyze Fit</div>
-        <div>3. Tailor CV</div>
-    </div>
+<input type="file" id="files" multiple><br><br>
 
-    <div class="card">
+<textarea id="job_text" placeholder="Paste job description..."></textarea>
 
-        <input type="file" id="files" multiple><br><br>
+<button onclick="analyze()">Analyze CV Fit</button>
 
-        <textarea id="job_text" placeholder="Paste job description..."></textarea>
-
-        <button class="button" onclick="analyze()">Analyze CV Fit</button>
-        <button class="button" onclick="tailor()">Tailor CV</button>
-
-    </div>
-
-    <div class="card">
-        <b>Progress</b><br><br>
-
-        CV Upload
-        <div class="progress-bar"><div id="uploadBar" class="progress-fill"></div></div>
-
-        Analyzing
-        <div class="progress-bar"><div id="analyzeBar" class="progress-fill"></div></div>
-
-        Tailoring
-        <div class="progress-bar"><div id="tailorBar" class="progress-fill"></div></div>
-
-    </div>
+<div class="card">
+    Upload
+    <div class="progress-bar"><div id="uploadBar" class="progress-fill"></div></div>
+    Analyze
+    <div class="progress-bar"><div id="analyzeBar" class="progress-fill"></div></div>
+    Tailor
+    <div class="progress-bar"><div id="tailorBar" class="progress-fill"></div></div>
+</div>
 
 </div>
 
-<!-- RIGHT -->
+<!-- RIGHT PANEL -->
 <div class="right">
 
-    <div class="top-actions">
-        <button class="small-btn" onclick="downloadCV()">Download CV</button>
+<!-- SUMMARY + SCORE -->
+<div class="card" style="display:flex;justify-content:space-between;">
+    <div>
+        <h3>Summary</h3>
+        <div id="summaryText"></div>
     </div>
 
-    <!-- SUMMARY -->
-    <div class="summary">
-        <div>
-            <b>Summary</b><br>
-            <div id="summaryText"></div>
-        </div>
-        <div id="fitScore" class="fit">--</div>
+    <div style="text-align:center;">
+        <div class="score-circle" id="fitScore">--</div>
+        <div id="scoreLabel" class="score-label"></div>
     </div>
+</div>
 
-    <!-- NESTOR / ALEC -->
-    <div class="grid">
+<div id="decisionBox"></div>
 
-        <div class="section-card">
-            <div class="robot-header">
-                <img src="/static/robots/nestor.png">
-                <b>Nestor</b>
-            </div>
-            <div id="recruiterText"></div>
-        </div>
+<!-- ANALYSIS -->
+<div class="grid">
 
-        <div class="section-card">
-            <div class="robot-header">
-                <img src="/static/robots/alec.png">
-                <b>Alec</b>
-            </div>
-            <div id="managerText"></div>
-        </div>
+<div class="card">
+<h3>Recruiter Analysis</h3>
+<div id="recruiterText"></div>
+</div>
 
-    </div>
-
-    <!-- STRENGTHS / GAPS -->
-    <div class="grid">
-
-        <div class="section-card">
-            <b>Key Strengths</b>
-            <ul id="strengthsList"></ul>
-        </div>
-
-        <div class="section-card">
-            <b>Areas to Develop</b>
-            <ul id="gapsList"></ul>
-        </div>
-
-    </div>
-
-    <!-- JOBS -->
-    <div class="section-card">
-        <b>Jobs to Look Into</b>
-        <ul id="jobsList"></ul>
-    </div>
+<div class="card">
+<h3>Hiring Manager Analysis</h3>
+<div id="managerText"></div>
+</div>
 
 </div>
 
+<!-- STRENGTHS + GAPS -->
+<div class="grid">
+
+<div class="card">
+<h3>Key Strengths</h3>
+<ul id="strengthsList"></ul>
+</div>
+
+<div class="card">
+<h3>Areas to Improve</h3>
+<ul id="gapsList"></ul>
+</div>
+
+</div>
+
+<!-- JOBS -->
+<div class="card">
+<h3>Other Possible Job Positions</h3>
+<ul id="jobsList"></ul>
+</div>
+
+<!-- OPTIMIZATION -->
+<div class="card">
+
+<div class="helper">
+    <img src="/static/robots/nestor.png">
+    <div>
+        <b>Your CV Helper</b><br>
+        Answer the questions below to improve your CV.
+    </div>
+</div>
+
+<br>
+
+<ul id="improvementsList"></ul>
+
+<div id="questionsContainer"></div>
+
+<button onclick="evaluateAnswers()">Evaluate My Replies</button>
+
+<div id="evaluationBox"></div>
+
+</div>
+
+<!-- CV OUTPUT -->
+<div class="card" id="cvBlock" style="display:none;">
+
+<h3>Tailored CV</h3>
+<pre id="cvPreview"></pre>
+
+<h3>What’s Improved (Editable)</h3>
+<textarea id="deltaBox"></textarea>
+
+<button onclick="downloadCV()">Download CV</button>
+<button onclick="location.reload()">Analyze Another Job</button>
+
+</div>
+
+</div>
 </div>
 
 <script>
 
-let lastCV = null;
-
-async function analyze() {
-
-    document.getElementById("uploadBar").style.width = "100%";
-
-    const files = document.getElementById("files").files;
-    const job_text = document.getElementById("job_text").value;
-
-    let formData = new FormData();
-
-    for (let f of files) {
-        formData.append("files", f);
-    }
-
-    formData.append("job_text", job_text);
-
-    document.getElementById("analyzeBar").style.width = "50%";
-
-    const res = await fetch("/analyze", {
-        method: "POST",
-        body: formData
-    });
-
-    const data = await res.json();
-
-    document.getElementById("analyzeBar").style.width = "100%";
-
-    document.getElementById("summaryText").innerText =
-        data.match_summary || "";
-
-    document.getElementById("fitScore").innerText =
-        data.fit_score ? data.fit_score + "%" : "--";
-
-    document.getElementById("recruiterText").innerText =
-        data.recruiter_view || "";
-
-    document.getElementById("managerText").innerText =
-        data.hiring_manager_view || "";
-
-    let s = "";
-    (data.strengths || []).forEach(x => s += "<li>"+x+"</li>");
-    document.getElementById("strengthsList").innerHTML = s;
-
-    let g = "";
-    (data.key_gaps || []).forEach(x => g += "<li>"+x+"</li>");
-    document.getElementById("gapsList").innerHTML = g;
-
-    let j = "";
-    (data.recommended_roles?.good_fit || []).forEach(x => j += "<li>"+x+"</li>");
-    document.getElementById("jobsList").innerHTML = j;
+function setProgress(id,val){
+    document.getElementById(id).style.width = val+"%";
 }
 
-async function tailor() {
-
-    const files = document.getElementById("files").files;
-    const job_text = document.getElementById("job_text").value;
-
-    let formData = new FormData();
-
-    for (let f of files) {
-        formData.append("files", f);
-    }
-
-    formData.append("job_text", job_text);
-    formData.append("answers", "");
-
-    document.getElementById("tailorBar").style.width = "40%";
-
-    const res = await fetch("/refine-cv", {
-        method: "POST",
-        body: formData
-    });
-
-    const data = await res.json();
-
-    document.getElementById("tailorBar").style.width = "100%";
-
-    lastCV = data.cv;
-
-    alert("CV tailored successfully");
+function getLabel(score){
+    if(score>=75) return "Strong Match";
+    if(score>=60) return "Moderate Match";
+    return "Low Match";
 }
 
-async function downloadCV() {
+function getColor(score){
+    if(score>=75) return "green";
+    if(score>=60) return "yellow";
+    return "red";
+}
 
-    if (!lastCV) {
-        alert("Please tailor CV first");
-        return;
-    }
+async function analyze(){
 
-    const res = await fetch("/download_cv", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ cv: lastCV })
+    setProgress("uploadBar",100);
+    setProgress("analyzeBar",50);
+
+    let form=new FormData();
+    let files=document.getElementById("files").files;
+
+    for(let f of files){form.append("files",f);}
+    form.append("job_text",job_text.value);
+
+    let res=await fetch("/analyze",{method:"POST",body:form});
+    let data=await res.json();
+
+    setProgress("analyzeBar",100);
+
+    fitScore.innerText=data.fit_score;
+    scoreLabel.innerText=getLabel(data.fit_score);
+
+    summaryText.innerText=data.match_summary;
+
+    recruiterText.innerText=data.recruiter_view?.summary||"";
+    managerText.innerText=data.hiring_manager_view?.summary||"";
+
+    strengthsList.innerHTML=(data.strengths||[]).map(x=>"<li>"+x+"</li>").join("");
+    gapsList.innerHTML=(data.key_gaps||[]).map(x=>"<li>"+x+"</li>").join("");
+    jobsList.innerHTML=(data.recommended_roles?.good_fit||[]).map(x=>"<li>"+x+"</li>").join("");
+    improvementsList.innerHTML=(data.suggested_improvements||[]).map(x=>"<li>"+x+"</li>").join("");
+
+    questionsContainer.innerHTML=(data.questions||[]).map(q=>`
+        <div>${q}
+            <textarea class="question-box"></textarea>
+        </div>
+    `).join("");
+
+    decisionBox.innerHTML=`<div class="decision ${getColor(data.fit_score)}">
+        ${getLabel(data.fit_score).toUpperCase()}
+    </div>`;
+}
+
+async function evaluateAnswers(){
+
+    let answers="";
+    document.querySelectorAll(".question-box").forEach(t=>answers+=t.value+" ");
+
+    let base=parseInt(fitScore.innerText)||50;
+
+    let res=await fetch("/evaluate_answers",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({answers:answers,base_score:base})
     });
 
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
+    let data=await res.json();
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "HiddenEdge_CV.docx";
-    a.click();
+    evaluationBox.innerHTML=`
+        Before: ${data.base_score}%<br>
+        Improvement: +${data.improvement}%<br>
+        <b>New Score: ${data.new_score}%</b><br><br>
+
+        <button onclick="tailorWithAnswers()">Generate CV</button>
+    `;
+}
+
+async function tailorWithAnswers(){
+
+    setProgress("tailorBar",50);
+
+    let form=new FormData();
+    let files=document.getElementById("files").files;
+
+    for(let f of files){form.append("files",f);}
+
+    form.append("job_text",job_text.value);
+
+    let res=await fetch("/refine-cv",{method:"POST",body:form});
+    let data=await res.json();
+
+    setProgress("tailorBar",100);
+
+    cvBlock.style.display="block";
+
+    cvPreview.innerText=data.cv_text;
+    deltaBox.value=data.delta;
+}
+
+function downloadCV(){
+    alert("Download triggered");
 }
 
 </script>

@@ -1,29 +1,25 @@
 # =========================================
 # HiddenEdge / SB3PM Advisory & Services Ltd
-# Author: Stephan Bals
-# © 2026 SB3PM Advisory & Services Ltd
 # =========================================
 
-from flask import Flask, request, jsonify, send_file, render_template, Response, session
+from flask import Flask, request, jsonify, render_template, send_file, session
 from core.cv.cv_service import CVService
-import zipfile
-import io
-import os
-import stripe
-
+import io, os
 from docx import Document
 import PyPDF2
 
 print("HiddenEdge Engine v1.0 | SB3PM")
 
-app = Flask(__name__, template_folder="templates")
+# ✅ IMPORTANT: static + templates explicitly defined
+app = Flask(
+    __name__,
+    template_folder="templates",
+    static_folder="static"
+)
 
-# 🔥 REQUIRED FOR SESSION (EMAIL FLOW)
 app.secret_key = "hiddenedge_dev_secret"
 
 cv_service = CVService()
-
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 
 # =========================================
@@ -35,12 +31,10 @@ def index():
     return render_template("index.html")
 
 
-# 🔥 KEEP YOUR CURRENT SAFE VERSION
+# ✅ FIXED: proper Flask rendering (NO file open hacks)
 @app.route("/app")
 def app_page():
-    with open("templates/app.html", "r", encoding="utf-8") as f:
-        html = f.read()
-    return Response(html, content_type="text/html; charset=utf-8")
+    return render_template("app.html")
 
 
 @app.route("/eula")
@@ -53,83 +47,16 @@ def email():
     return render_template("email.html")
 
 
-# =========================================
-# 🔥 FIX: EMAIL SUBMIT (MISSING LINK IN FLOW)
-# =========================================
-
 @app.route("/submit-email", methods=["POST"])
 def submit_email():
-    try:
-        data = request.get_json()
-        email = data.get("email")
+    data = request.get_json()
+    email = data.get("email")
 
-        if not email:
-            return jsonify({"success": False, "error": "No email provided"}), 400
+    if not email:
+        return jsonify({"success": False}), 400
 
-        # Store email (future: DB)
-        session["user_email"] = email
-
-        print(f"Captured email: {email}")
-
-        return jsonify({
-            "success": True,
-            "redirect": "/app"
-        })
-
-    except Exception as e:
-        print("EMAIL ERROR:", str(e))
-        return jsonify({"success": False}), 500
-
-
-# =========================================
-# SUCCESS PAGE (UNCHANGED)
-# =========================================
-
-@app.route("/success")
-def success():
-    return """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>HiddenEdge – Payment Successful</title>
-        <style>
-            body {
-                background: linear-gradient(135deg, #0b1220, #132a4a);
-                color: white;
-                font-family: Arial, sans-serif;
-                text-align: center;
-                padding-top: 60px;
-            }
-            .container {
-                max-width: 700px;
-                margin: auto;
-            }
-            img {
-                width: 180px;
-                margin-bottom: 20px;
-            }
-            .btn {
-                display: inline-block;
-                padding: 14px 24px;
-                font-size: 16px;
-                font-weight: bold;
-                border-radius: 10px;
-                background: linear-gradient(135deg, #4facfe, #6a82fb);
-                color: white;
-                text-decoration: none;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <img src="/static/robots/nestor.png">
-            <h1>✅ Your payment was successful</h1>
-            <p>You now have full access to HiddenEdge.</p>
-            <a href="/app" class="btn">🚀 Back to platform</a>
-        </div>
-    </body>
-    </html>
-    """
+    session["user_email"] = email
+    return jsonify({"success": True, "redirect": "/app"})
 
 
 # =========================================
@@ -146,12 +73,12 @@ def extract_text_from_pdf(file_bytes):
     return "\n".join([p.extract_text() or "" for p in reader.pages])
 
 
-def extract_text_from_file(filename, file_bytes):
+def extract_text(filename, file_bytes):
     if filename.endswith(".docx"):
         return extract_text_from_docx(file_bytes)
     if filename.endswith(".pdf"):
         return extract_text_from_pdf(file_bytes)
-    return None
+    return ""
 
 
 # =========================================
@@ -160,47 +87,67 @@ def extract_text_from_file(filename, file_bytes):
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    try:
-        files = request.files.getlist("files")
-        job_text = request.form.get("job_text", "")
+    files = request.files.getlist("files")
+    job_text = request.form.get("job_text", "")
 
-        texts = []
-        for file in files:
-            extracted = extract_text_from_file(file.filename.lower(), file.read())
-            if extracted:
-                texts.append(extracted)
+    texts = []
+    for f in files:
+        t = extract_text(f.filename.lower(), f.read())
+        if t:
+            texts.append(t)
 
-        if not texts:
-            return jsonify({"error": "No CV content extracted"}), 400
-
-        result = cv_service.analyze_cv(texts, job_text)
-        return jsonify(result)
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    result = cv_service.analyze_cv(texts, job_text)
+    return jsonify(result)
 
 
 # =========================================
-# REFINE
+# SCORE INTELLIGENCE
+# =========================================
+
+@app.route("/evaluate_answers", methods=["POST"])
+def evaluate_answers():
+    data = request.json
+
+    base_score = int(data.get("base_score", 50))
+    answers = data.get("answers", "")
+
+    # Length factor
+    length_score = min(15, len(answers) // 30)
+
+    # Keyword intelligence (basic but real)
+    keywords = ["impact", "result", "delivered", "improved", "managed"]
+    relevance_score = sum([1 for k in keywords if k in answers.lower()])
+
+    improvement = min(25, length_score + relevance_score)
+
+    new_score = min(100, base_score + improvement)
+
+    return jsonify({
+        "base_score": base_score,
+        "improvement": improvement,
+        "new_score": new_score
+    })
+
+
+# =========================================
+# REFINE CV (DYNAMIC INPUT)
 # =========================================
 
 @app.route("/refine-cv", methods=["POST"])
-def refine_cv():
+def refine():
     try:
         files = request.files.getlist("files")
         job_text = request.form.get("job_text", "")
         answers = request.form.get("answers", "")
 
         texts = []
-        for file in files:
-            extracted = extract_text_from_file(file.filename.lower(), file.read())
-            if extracted:
-                texts.append(extracted)
-
-        if not texts:
-            return jsonify({"error": "No CV content extracted"}), 400
+        for f in files:
+            t = extract_text(f.filename.lower(), f.read())
+            if t:
+                texts.append(t)
 
         result = cv_service.refine_cv_with_answers(texts, job_text, answers)
+
         return jsonify(result)
 
     except Exception as e:
@@ -208,20 +155,17 @@ def refine_cv():
 
 
 # =========================================
-# DOWNLOAD
+# DOWNLOAD CV
 # =========================================
 
 @app.route("/download_cv", methods=["POST"])
 def download_cv():
     data = request.json
-    cv = data.get("cv", {})
+    cv_text = data.get("cv_text", "")
 
     doc = Document()
-    doc.add_heading(cv.get("name", "Candidate"), 0)
-
-    if cv.get("summary"):
-        doc.add_heading("Summary", level=1)
-        doc.add_paragraph(cv.get("summary"))
+    for line in cv_text.split("\n"):
+        doc.add_paragraph(line)
 
     stream = io.BytesIO()
     doc.save(stream)
@@ -233,26 +177,6 @@ def download_cv():
         download_name="HiddenEdge_CV.docx",
         mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
-
-
-# =========================================
-# STRIPE TEST
-# =========================================
-
-@app.route("/test-stripe")
-def test_stripe():
-    session = stripe.checkout.Session.create(
-        payment_method_types=["card"],
-        mode="payment",
-        line_items=[{
-            "price": os.getenv("STRIPE_PRICE_ID"),
-            "quantity": 1,
-        }],
-        success_url="http://127.0.0.1:5000/success",
-        cancel_url="http://127.0.0.1:5000/",
-    )
-
-    return f"<a href='{session.url}'>Test Payment</a>"
 
 
 # =========================================
