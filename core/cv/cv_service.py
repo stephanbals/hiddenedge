@@ -1,5 +1,5 @@
 # =========================================
-# HiddenEdge CV Service - ATS + Recruiter + Manager Engine V6
+# HiddenEdge CV Service - ATS + Recruiter + Manager Engine V7
 # SB3PM Advisory & Services Ltd
 # Author: Stephan Bals
 # =========================================
@@ -61,7 +61,7 @@ class CVService:
 
 
     # =========================================
-    # CORE LLM PROMPT
+    # CORE LLM PROMPT (ATS + HUMAN PIPELINE)
     # =========================================
     def _llm_full_analysis(self, cv_text, job_text):
 
@@ -98,7 +98,6 @@ For each requirement:
 Rules:
 - NEVER output "undefined"
 - If no evidence → say: "No direct evidence found in CV"
-- Be specific and realistic
 
 Also calculate:
 - ats_score (0–100)
@@ -109,7 +108,7 @@ STEP 2 — RECRUITER
 --------------------------------
 
 - screening_decision (pass / borderline / reject)
-- reasoning (clear and professional)
+- reasoning
 - red_flags
 - shortlist_probability (0–100)
 
@@ -129,63 +128,13 @@ STEP 4 — QUESTIONS
 Generate 3–5 targeted improvement questions.
 
 --------------------------------
-RETURN STRICT JSON:
+RETURN STRICT JSON
 --------------------------------
-
-{{
- "fit_score": ats_score,
-
- "match_summary": "",
-
- "ats_analysis": {{
-   "domain": "",
-   "role": "",
-   "seniority": "",
-   "score": ats_score,
-   "reasoning": "",
-   "matches": [
-     {{
-       "requirement": "",
-       "match": "",
-       "strength": "",
-       "evidence": "",
-       "gap": ""
-     }}
-   ]
- }},
-
- "decision": {{
-   "action": "",
-   "reasoning": ""
- }},
-
- "recruiter_view": {{
-   "screening_decision": "",
-   "reasoning": "",
-   "red_flags": [],
-   "shortlist_probability": ""
- }},
-
- "hiring_manager_view": {{
-   "execution_readiness": "",
-   "impact_potential": "",
-   "risks": [],
-   "final_decision": ""
- }},
-
- "questions": []
-}}
-
-CV:
-{cv_text}
-
-JOB:
-{job_text}
 """
 
         res = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": prompt + "\n\nCV:\n" + cv_text + "\n\nJOB:\n" + job_text}],
             temperature=0.2
         )
 
@@ -193,7 +142,7 @@ JOB:
 
 
     # =========================================
-    # SANITIZER (FIXES "undefined")
+    # SANITIZER (REMOVES "undefined")
     # =========================================
     def _sanitize_analysis(self, data):
 
@@ -204,13 +153,16 @@ JOB:
                 m["evidence"] = "No direct evidence found in CV"
 
             if not m.get("gap"):
-                m["gap"] = "No major gap identified" if m.get("match") == "yes" else "Gap not clearly specified"
+                if m.get("match") == "yes":
+                    m["gap"] = "No major gap identified"
+                else:
+                    m["gap"] = "Gap not clearly specified"
 
         return data
 
 
     # =========================================
-    # CV IMPROVEMENT ENGINE (FIXES 500 ERROR)
+    # CV IMPROVEMENT ENGINE (CONSULTING-GRADE)
     # =========================================
     def refine_cv_with_answers(self, texts, job_text, answers):
 
@@ -227,30 +179,72 @@ JOB:
 
         try:
             prompt = f"""
-You are an expert CV optimizer.
+You are a top-tier management consulting CV expert (McKinsey / BCG level).
 
-Goal:
-Improve CV alignment with job.
+Your task:
+Rewrite the CV into a HIGH-IMPACT, RESULTS-DRIVEN, EXECUTIVE-LEVEL document.
 
+--------------------------------
 INPUT CV:
 {cv_text}
 
-JOB:
+--------------------------------
+JOB DESCRIPTION:
 {job_text}
 
+--------------------------------
 USER INPUT:
 {answers}
 
-TASK:
-- Rewrite CV to better match role
-- Highlight relevant experience
-- Improve wording (impact, results)
-- DO NOT fabricate experience
+--------------------------------
+RULES (STRICT):
 
-RETURN JSON:
+1. ALL experience must be bullet-based
+2. Each bullet:
+   → Action verb + context + measurable impact
+
+3. Use metrics where possible:
+   € / % / scale / team size
+
+4. Remove:
+   - vague statements
+   - fluff
+   - repetition
+
+5. Add:
+   - job-relevant keywords (ATS optimization)
+   - stronger positioning (but no fabrication)
+
+--------------------------------
+STRUCTURE (MANDATORY):
+
+NAME / TITLE
+
+SUMMARY
+(3–4 lines, sharp positioning)
+
+KEY SKILLS
+- Bullet list aligned to job
+
+PROFESSIONAL EXPERIENCE
+
+Company — Role — Dates
+• Bullet (impact-driven)
+• Bullet
+• Bullet
+
+--------------------------------
+STYLE:
+- concise
+- sharp
+- executive
+- no long paragraphs
+
+--------------------------------
+RETURN JSON ONLY:
 
 {{
- "cv": "FULL IMPROVED CV",
+ "cv": "FULL REWRITTEN CV",
  "fit_score": 85
 }}
 """
@@ -258,7 +252,7 @@ RETURN JSON:
             res = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.3
+                temperature=0.2
             )
 
             parsed = self._safe_json_parse(res.choices[0].message.content)
