@@ -1,0 +1,100 @@
+<!-- =========================================
+HiddenEdge Platform
+SB3PM Advisory & Services Ltd
+-----------------------------------------
+Author: Stephan Bals
+© 2026 SB3PM Advisory & Services Ltd
+All rights reserved.
+========================================= -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Payment Successful</title>
+
+<style>
+body {
+    margin:0;
+    font-family: Arial, sans-serif;
+    background: radial-gradient(circle at top, #0d1b2a, #020617);
+    color:white;
+    text-align:center;
+}
+
+.container {
+    margin-top:80px;
+}
+
+.nestor {
+    width:180px;
+    margin-bottom:20px;
+}
+
+h1 {
+    font-size:28px;
+    margin-bottom:10px;
+}
+
+p {
+    font-size:16px;
+    opacity:0.9;
+}
+
+button {
+    margin-top:25px;
+    padding:14px 22px;
+    border:none;
+    border-radius:10px;
+    background:linear-gradient(135deg,#22c55e,#4ade80);
+    color:black;
+    font-weight:bold;
+    cursor:pointer;
+    font-size:16px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <img src="/static/robots/nestor.png" class="nestor">
+
+    <h1>😊 Payment Successful</h1>
+
+    <p>
+        Your payment was successful.<br>
+        You now have full access to HiddenEdge.
+    </p>
+
+    <button onclick="goBack()">Go back to HiddenEdge</button>
+
+</div>
+
+<script>
+
+// ✅ Persist paid status
+localStorage.setItem("paid", "true");
+
+// Optional: reset usage count so user starts fresh
+localStorage.setItem("usageCount", "0");
+
+// Keep your original unlock call (no removal)
+fetch("/unlock", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+        email: localStorage.getItem("email")
+    })
+}).catch(()=>{});
+
+// Controlled return (not auto redirect)
+function goBack(){
+    window.location.href = "/app";
+}
+
+</script>
+
+</body>
+</html>

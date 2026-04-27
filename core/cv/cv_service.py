@@ -1,15 +1,21 @@
 # =========================================
-# HiddenEdge CV Service - DYNAMIC ENGINE
-# SB3PM Advisory & Services Ltd
+# HiddenEdge CV Service - McKinsey-grade ATS Engine V6
 # =========================================
 
+import os
+import json
 import re
+
+try:
+    from openai import OpenAI
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    AI_ENABLED = True
+except:
+    AI_ENABLED = False
+
 
 class CVService:
 
-    # =========================================
-    # ANALYSIS (unchanged stable version)
-    # =========================================
     def analyze_cv(self, texts, job_text):
 
         if not texts:
@@ -18,185 +24,225 @@ class CVService:
         if not job_text or len(job_text.strip()) < 30:
             return self._empty_response("Job description too vague.")
 
-        return {
-            "fit_score": 78,
-            "match_summary": "Strong leadership profile with partial alignment to role requirements.",
+        cv_text = "\n".join(texts)
 
-            "recruiter_view": {
-                "summary": "Strong delivery-focused candidate with leadership experience.",
-                "strengths": [
-                    "Proven transformation delivery",
-                    "Strong stakeholder management",
-                    "Leadership across complex environments"
-                ],
-                "concerns": [
-                    "Limited domain specialization",
-                    "Missing tooling references"
-                ]
-            },
+        if not AI_ENABLED:
+            return self._empty_response("AI not available.")
 
-            "hiring_manager_view": {
-                "summary": "Strategic thinker with execution capability.",
-                "strengths": [
-                    "Delivers outcomes in complex environments",
-                    "Strong business-IT alignment",
-                    "Leadership maturity"
-                ],
-                "concerns": [
-                    "Needs deeper technical specificity",
-                    "Limited industry examples"
-                ]
-            },
+        analysis = self._safe_llm_full_analysis(cv_text, job_text)
 
-            "strengths": [
-                "Leadership experience",
-                "Transformation delivery",
-                "Stakeholder alignment"
-            ],
+        if not analysis:
+            return self._fallback_basic()
 
-            "key_gaps": [
-                "Domain specificity",
-                "Tooling depth"
-            ],
-
-            "recommended_roles": {
-                "good_fit": [
-                    "Program Manager",
-                    "Transformation Lead"
-                ]
-            },
-
-            "suggested_improvements": [
-                "Add measurable outcomes",
-                "Align keywords with job description",
-                "Highlight governance and delivery impact"
-            ],
-
-            "questions": [
-                "Describe a complex project you led and its outcome.",
-                "How did you manage stakeholders?",
-                "What results did you achieve?",
-                "How did you handle risks?"
-            ]
-        }
+        return analysis
 
 
     # =========================================
-    # 🔥 DYNAMIC CV BUILDER
+    # 🔥 CORE LLM
     # =========================================
-    def refine_cv_with_answers(self, texts=None, job_text="", answers=""):
+    def _safe_llm_full_analysis(self, cv_text, job_text):
+        try:
+            raw = self._llm_full_analysis(cv_text, job_text)
+            return self._safe_json_parse(raw)
+        except Exception as e:
+            print("LLM ERROR:", e)
+            return None
 
-        raw_cv = " ".join(texts) if texts else ""
-        answers = answers or ""
 
-        # --- extract keywords from job description ---
-        keywords = self._extract_keywords(job_text)
+    def _llm_full_analysis(self, cv_text, job_text):
 
-        # --- build sections dynamically ---
-        summary = self._build_summary(raw_cv, keywords, answers)
-        skills = self._build_skills(keywords, raw_cv)
-        experience = self._build_experience(raw_cv, answers)
+        prompt = f"""
+You are a top-tier strategy consultant and senior hiring authority.
 
-        cv_text = f"""
-PROFESSIONAL SUMMARY
-{summary}
+Simulate a REAL hiring pipeline:
+ATS → Recruiter → Hiring Manager
 
-CORE SKILLS
-{skills}
+Be extremely analytical, structured, and evidence-based.
 
-PROFESSIONAL EXPERIENCE
-{experience}
+--------------------------------------------------
+STEP 1 — ATS (DEEP EVALUATION MODEL)
+--------------------------------------------------
+
+Analyze JOB:
+
+- domain
+- role
+- seniority
+- critical_requirements (5–7)
+- optional_requirements
+
+Analyze CV:
+
+- years_of_experience
+- roles
+- achievements
+- skills
+- tools
+- scale_of_projects (budget, team size, geography if possible)
+
+--------------------------------------------------
+MATCH EACH CRITICAL REQUIREMENT:
+
+For each:
+- requirement
+- match (yes / partial / no)
+- strength (strong / medium / weak)
+- evidence (SPECIFIC proof from CV)
+- gap (explicit missing element)
+- impact (high / medium / low)
+
+--------------------------------------------------
+BUILD SCORING MODEL:
+
+Evaluate:
+
+- capability_fit (0–100)
+- experience_fit (0–100)
+- domain_fit (0–100)
+- complexity_fit (0–100)
+- execution_risk (low / medium / high)
+
+FINAL ATS SCORE:
+Weighted combination prioritizing critical requirements.
+
+--------------------------------------------------
+STEP 2 — RECRUITER
+--------------------------------------------------
+
+- screening_decision (pass / borderline / reject)
+- reasoning (clear and structured)
+- red_flags
+- shortlist_probability (0–100)
+
+--------------------------------------------------
+STEP 3 — HIRING MANAGER
+--------------------------------------------------
+
+- execution_readiness
+- impact_potential
+- risks (explicit)
+- final_decision
+
+--------------------------------------------------
+STEP 4 — QUESTIONS
+--------------------------------------------------
+
+Generate 3–5 HIGH VALUE questions:
+- uncover missing experience
+- test weak areas
+- improve candidate positioning
+
+--------------------------------------------------
+RETURN STRICT JSON:
+--------------------------------------------------
+
+{{
+ "fit_score": 0,
+
+ "ats_analysis": {{
+   "domain": "",
+   "role": "",
+   "seniority": "",
+   "score": 0,
+   "reasoning": "",
+
+   "scoring": {{
+     "capability_fit": 0,
+     "experience_fit": 0,
+     "domain_fit": 0,
+     "complexity_fit": 0,
+     "execution_risk": ""
+   }},
+
+   "matches": [
+     {{
+       "requirement": "",
+       "match": "",
+       "strength": "",
+       "evidence": "",
+       "gap": "",
+       "impact": ""
+     }}
+   ]
+ }},
+
+ "recruiter_view": {{
+   "screening_decision": "",
+   "reasoning": "",
+   "red_flags": [],
+   "shortlist_probability": ""
+ }},
+
+ "hiring_manager_view": {{
+   "execution_readiness": "",
+   "impact_potential": "",
+   "risks": [],
+   "final_decision": ""
+ }},
+
+ "questions": []
+}}
+
+CV:
+{cv_text}
+
+JOB:
+{job_text}
 """
 
-        delta = self._build_delta(answers, keywords)
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2
+        )
 
+        return res.choices[0].message.content
+
+
+    # =========================================
+    # SAFE JSON
+    # =========================================
+    def _safe_json_parse(self, text):
+        try:
+            return json.loads(text)
+        except:
+            try:
+                match = re.search(r'\{.*\}', text, re.DOTALL)
+                if match:
+                    return json.loads(match.group())
+            except:
+                pass
+
+        print("JSON FAILED:", text)
+        return None
+
+
+    # =========================================
+    # FALLBACK
+    # =========================================
+    def _fallback_basic(self):
         return {
-            "cv_text": cv_text.strip(),
-            "delta": delta.strip()
+            "fit_score": 30,
+            "ats_analysis": {
+                "domain": "Unknown",
+                "role": "Unknown",
+                "seniority": "Unknown",
+                "score": 30,
+                "reasoning": "Fallback mode",
+                "scoring": {},
+                "matches": []
+            },
+            "recruiter_view": {},
+            "hiring_manager_view": {},
+            "questions": []
         }
 
 
-    # =========================================
-    # HELPERS
-    # =========================================
-
-    def _extract_keywords(self, job_text):
-        words = re.findall(r'\b\w+\b', job_text.lower())
-        keywords = list(set([w for w in words if len(w) > 5]))
-        return keywords[:10]
-
-
-    def _build_summary(self, cv, keywords, answers):
-
-        base = "Experienced professional with a strong background in complex environments."
-
-        if keywords:
-            base += " Relevant expertise includes " + ", ".join(keywords[:5]) + "."
-
-        if answers:
-            base += " Demonstrated ability through hands-on experience and proven delivery outcomes."
-
-        return base
-
-
-    def _build_skills(self, keywords, cv):
-
-        base_skills = [
-            "Stakeholder Management",
-            "Project / Program Delivery",
-            "Risk Management"
-        ]
-
-        combined = base_skills + keywords[:5]
-
-        return "\n".join([f"- {s}" for s in combined])
-
-
-    def _build_experience(self, cv, answers):
-
-        bullets = []
-
-        if answers:
-            sentences = answers.split(".")
-            for s in sentences:
-                s = s.strip()
-                if len(s) > 20:
-                    bullets.append(f"- {s}")
-
-        if not bullets:
-            bullets = [
-                "- Delivered projects in complex environments",
-                "- Coordinated stakeholders and teams",
-                "- Managed risks and ensured delivery"
-            ]
-
-        return "\n".join(bullets[:6])
-
-
-    def _build_delta(self, answers, keywords):
-
-        changes = []
-
-        if answers:
-            changes.append("Incorporated user-provided experience and examples")
-
-        if keywords:
-            changes.append("Aligned CV with job description keywords")
-
-        changes.append("Improved structure and readability")
-
-        return "\n".join([f"- {c}" for c in changes])
-
-
-    def _empty_response(self, message):
+    def _empty_response(self, msg):
         return {
             "fit_score": 0,
-            "match_summary": message,
-            "recruiter_view": {"summary": "", "strengths": [], "concerns": []},
-            "hiring_manager_view": {"summary": "", "strengths": [], "concerns": []},
-            "strengths": [],
-            "key_gaps": [],
-            "recommended_roles": {"good_fit": []},
-            "suggested_improvements": [],
+            "ats_analysis": {},
+            "recruiter_view": {},
+            "hiring_manager_view": {},
             "questions": []
         }

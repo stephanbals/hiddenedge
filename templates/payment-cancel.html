@@ -1,0 +1,105 @@
+<!-- =========================================
+HiddenEdge Platform
+SB3PM Advisory & Services Ltd
+-----------------------------------------
+Author: Stephan Bals
+© 2026 SB3PM Advisory & Services Ltd
+All rights reserved.
+========================================= -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Payment Failed</title>
+
+<style>
+body {
+    margin:0;
+    font-family: Arial, sans-serif;
+    background: radial-gradient(circle at top, #0d1b2a, #020617);
+    color:white;
+    text-align:center;
+}
+
+.container {
+    margin-top:80px;
+}
+
+.nestor {
+    width:180px;
+    margin-bottom:20px;
+    filter: grayscale(100%);
+}
+
+h1 {
+    font-size:28px;
+    margin-bottom:10px;
+}
+
+p {
+    font-size:16px;
+    opacity:0.9;
+}
+
+button {
+    margin-top:20px;
+    padding:12px 20px;
+    border:none;
+    border-radius:10px;
+    font-weight:bold;
+    cursor:pointer;
+    font-size:15px;
+}
+
+.btn-primary {
+    background:linear-gradient(135deg,#6366f1,#3b82f6);
+    color:white;
+    margin-right:10px;
+}
+
+.btn-secondary {
+    background:#374151;
+    color:white;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <img src="/static/robots/nestor.png" class="nestor">
+
+    <h1>😢 Payment Failed</h1>
+
+    <p>
+        Your payment could not be completed.<br>
+        Would you like to try again?
+    </p>
+
+    <button class="btn-primary" onclick="retry()">Yes, try again</button>
+    <button class="btn-secondary" onclick="exit()">No, maybe later</button>
+
+</div>
+
+<script>
+
+async function retry(){
+    try {
+        let res = await fetch("/create-checkout-session",{method:"POST"});
+        let data = await res.json();
+        window.location.href = data.url;
+    } catch(e){
+        alert("Something went wrong. Please try again.");
+    }
+}
+
+function exit(){
+    window.location.href = "https://www.google.com";
+}
+
+</script>
+
+</body>
+</html>
