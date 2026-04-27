@@ -16,7 +16,7 @@ from docx import Document
 import PyPDF2
 import stripe
 
-print("HiddenEdge Engine v1.1 | SB3PM")
+print("HiddenEdge Engine v1.2 | SB3PM")
 
 # =========================================
 # APP INIT
@@ -43,15 +43,24 @@ STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
 BASE_URL = os.getenv("BASE_URL") or "http://127.0.0.1:5000"
 
 # =========================================
-# AUTH HELPERS
+# SESSION VALIDATION
 # =========================================
 
-def require_user():
-    return session.get("user_email") is not None
+def is_valid_session():
+    return (
+        session.get("user_email") and
+        "usage" in session and
+        "paid" in session
+    )
 
+def require_valid_session():
+    if not is_valid_session():
+        session.clear()
+        return False
+    return True
 
 def require_paid_or_free():
-    if not require_user():
+    if not require_valid_session():
         return jsonify({"error": "unauthorized"}), 401
 
     usage = session.get("usage", 0)
@@ -62,10 +71,8 @@ def require_paid_or_free():
 
     return None
 
-
 def increment_usage():
     session["usage"] = session.get("usage", 0) + 1
-
 
 # =========================================
 # ROUTES
@@ -75,26 +82,25 @@ def increment_usage():
 def index():
     return render_template("index.html")
 
-
 @app.route("/app")
 def app_page():
-    if not require_user():
-        return redirect("/")
-    return render_template("app.html")
 
+    if not require_valid_session():
+        return redirect("/")
+
+    return render_template("app.html")
 
 @app.route("/eula")
 def eula():
     return render_template("eula.html")
 
-
 @app.route("/email")
 def email():
     return render_template("email.html")
 
-
 @app.route("/submit-email", methods=["POST"])
 def submit_email():
+
     data = request.get_json()
     email = data.get("email")
 
@@ -108,7 +114,6 @@ def submit_email():
 
     return jsonify({"success": True, "redirect": "/app"})
 
-
 # =========================================
 # STRIPE CHECKOUT
 # =========================================
@@ -116,7 +121,7 @@ def submit_email():
 @app.route("/create-checkout-session", methods=["POST"])
 def create_checkout_session():
 
-    if not require_user():
+    if not require_valid_session():
         return jsonify({"error": "unauthorized"}), 401
 
     try:
@@ -136,15 +141,14 @@ def create_checkout_session():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 # =========================================
-# 🔒 SECURE PAYMENT SUCCESS (NO BYPASS)
+# SECURE PAYMENT SUCCESS
 # =========================================
 
 @app.route("/payment-success")
 def payment_success():
 
-    if not require_user():
+    if not require_valid_session():
         return redirect("/")
 
     session_id = request.args.get("session_id")
@@ -155,7 +159,6 @@ def payment_success():
     try:
         checkout_session = stripe.checkout.Session.retrieve(session_id)
 
-        # 🔥 VERIFY PAYMENT STATUS
         if checkout_session.payment_status == "paid":
             session["paid"] = True
         else:
@@ -167,11 +170,9 @@ def payment_success():
 
     return render_template("success.html")
 
-
 @app.route("/payment-cancel")
 def payment_cancel():
     return render_template("payment-cancel.html")
-
 
 # =========================================
 # FILE EXTRACTION
@@ -181,11 +182,9 @@ def extract_text_from_docx(file_bytes):
     doc = Document(io.BytesIO(file_bytes))
     return "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
 
-
 def extract_text_from_pdf(file_bytes):
     reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
     return "\n".join([p.extract_text() or "" for p in reader.pages])
-
 
 def extract_text(filename, file_bytes):
     if filename.endswith(".docx"):
@@ -194,18 +193,16 @@ def extract_text(filename, file_bytes):
         return extract_text_from_pdf(file_bytes)
     return ""
 
-
 # =========================================
-# 🔒 ANALYZE (PAYWALL ENFORCED)
+# ANALYZE (PAYWALL ENFORCED)
 # =========================================
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
 
-    if not require_user():
+    if not require_valid_session():
         return jsonify({"error": "unauthorized"}), 401
 
-    # 🔥 HARD PAYWALL CHECK
     auth = require_paid_or_free()
     if auth:
         return auth
@@ -219,7 +216,6 @@ def analyze():
         if t:
             texts.append(t)
 
-    # 🔥 COUNT USAGE
     increment_usage()
 
     result = cv_service.analyze_cv(texts, job_text)
@@ -227,15 +223,14 @@ def analyze():
 
     return jsonify(result)
 
-
 # =========================================
-# SCORE INTELLIGENCE
+# ANSWER EVALUATION (FREE)
 # =========================================
 
 @app.route("/evaluate_answers", methods=["POST"])
 def evaluate_answers():
 
-    if not require_user():
+    if not require_valid_session():
         return jsonify({"error": "unauthorized"}), 401
 
     data = request.json
@@ -256,15 +251,14 @@ def evaluate_answers():
         "new_score": new_score
     })
 
-
 # =========================================
-# 🔒 IMPROVE CV (PAYWALL)
+# IMPROVE CV (PAID ONLY)
 # =========================================
 
 @app.route("/improve_cv", methods=["POST"])
 def improve_cv():
 
-    if not require_user():
+    if not require_valid_session():
         return jsonify({"error": "unauthorized"}), 401
 
     auth = require_paid_or_free()
@@ -306,7 +300,6 @@ def improve_cv():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 # =========================================
 # DOWNLOAD CV
 # =========================================
@@ -314,7 +307,7 @@ def improve_cv():
 @app.route("/download_cv", methods=["POST"])
 def download_cv():
 
-    if not require_user():
+    if not require_valid_session():
         return jsonify({"error": "unauthorized"}), 401
 
     data = request.json
@@ -334,29 +327,6 @@ def download_cv():
         download_name="HiddenEdge_CV.docx",
         mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
-
-
-# =========================================
-# OUTCOME LAYER
-# =========================================
-
-@app.route("/track_application", methods=["POST"])
-def track_application():
-    return jsonify(outcome_service.track_application(request.json))
-
-
-@app.route("/update_result", methods=["POST"])
-def update_result():
-    data = request.json
-    return jsonify(
-        outcome_service.update_result(data.get("index"), data.get("result"))
-    )
-
-
-@app.route("/analyze_outcomes", methods=["GET"])
-def analyze_outcomes():
-    return jsonify(outcome_service.analyze())
-
 
 # =========================================
 # RUN
