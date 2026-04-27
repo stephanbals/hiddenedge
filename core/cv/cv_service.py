@@ -1,5 +1,7 @@
 # =========================================
-# HiddenEdge CV Service - McKinsey-grade ATS Engine V6
+# HiddenEdge CV Service - ATS + Recruiter + Manager Engine V6
+# SB3PM Advisory & Services Ltd
+# Author: Stephan Bals
 # =========================================
 
 import os
@@ -16,6 +18,9 @@ except:
 
 class CVService:
 
+    # =========================================
+    # MAIN ENTRY
+    # =========================================
     def analyze_cv(self, texts, job_text):
 
         if not texts:
@@ -32,138 +37,126 @@ class CVService:
         analysis = self._safe_llm_full_analysis(cv_text, job_text)
 
         if not analysis:
-            return self._fallback_basic()
+            return self._fallback_basic(cv_text, job_text)
 
         return analysis
 
 
     # =========================================
-    # 🔥 CORE LLM
+    # SAFE FULL ANALYSIS
     # =========================================
     def _safe_llm_full_analysis(self, cv_text, job_text):
         try:
             raw = self._llm_full_analysis(cv_text, job_text)
-            return self._safe_json_parse(raw)
+            parsed = self._safe_json_parse(raw)
+
+            if parsed:
+                self._sanitize_analysis(parsed)
+
+            return parsed
+
         except Exception as e:
-            print("LLM ERROR:", e)
+            print("Full analysis error:", e)
             return None
 
 
+    # =========================================
+    # CORE LLM PROMPT
+    # =========================================
     def _llm_full_analysis(self, cv_text, job_text):
 
         prompt = f"""
-You are a top-tier strategy consultant and senior hiring authority.
-
-Simulate a REAL hiring pipeline:
+You simulate a REAL hiring pipeline:
 ATS → Recruiter → Hiring Manager
 
-Be extremely analytical, structured, and evidence-based.
+Be analytical, evidence-based, and concrete.
 
---------------------------------------------------
-STEP 1 — ATS (DEEP EVALUATION MODEL)
---------------------------------------------------
+--------------------------------
+STEP 1 — ATS ANALYSIS
+--------------------------------
 
-Analyze JOB:
-
+Extract JOB:
 - domain
-- role
+- role_title
 - seniority
 - critical_requirements (5–7)
-- optional_requirements
 
-Analyze CV:
-
-- years_of_experience
-- roles
-- achievements
+Extract CV:
+- experience
 - skills
-- tools
-- scale_of_projects (budget, team size, geography if possible)
+- roles
 
---------------------------------------------------
-MATCH EACH CRITICAL REQUIREMENT:
+Build MATCH TABLE:
 
-For each:
+For each requirement:
 - requirement
 - match (yes / partial / no)
 - strength (strong / medium / weak)
-- evidence (SPECIFIC proof from CV)
-- gap (explicit missing element)
-- impact (high / medium / low)
+- evidence (MUST be concrete sentence or fact from CV)
+- gap
 
---------------------------------------------------
-BUILD SCORING MODEL:
+Rules:
+- NEVER output "undefined"
+- If no evidence → say: "No direct evidence found in CV"
+- Be specific and realistic
 
-Evaluate:
+Also calculate:
+- ats_score (0–100)
+- reasoning
 
-- capability_fit (0–100)
-- experience_fit (0–100)
-- domain_fit (0–100)
-- complexity_fit (0–100)
-- execution_risk (low / medium / high)
-
-FINAL ATS SCORE:
-Weighted combination prioritizing critical requirements.
-
---------------------------------------------------
+--------------------------------
 STEP 2 — RECRUITER
---------------------------------------------------
+--------------------------------
 
 - screening_decision (pass / borderline / reject)
-- reasoning (clear and structured)
+- reasoning (clear and professional)
 - red_flags
 - shortlist_probability (0–100)
 
---------------------------------------------------
+--------------------------------
 STEP 3 — HIRING MANAGER
---------------------------------------------------
+--------------------------------
 
 - execution_readiness
 - impact_potential
-- risks (explicit)
+- risks
 - final_decision
 
---------------------------------------------------
+--------------------------------
 STEP 4 — QUESTIONS
---------------------------------------------------
+--------------------------------
 
-Generate 3–5 HIGH VALUE questions:
-- uncover missing experience
-- test weak areas
-- improve candidate positioning
+Generate 3–5 targeted improvement questions.
 
---------------------------------------------------
+--------------------------------
 RETURN STRICT JSON:
---------------------------------------------------
+--------------------------------
 
 {{
- "fit_score": 0,
+ "fit_score": ats_score,
+
+ "match_summary": "",
 
  "ats_analysis": {{
    "domain": "",
    "role": "",
    "seniority": "",
-   "score": 0,
+   "score": ats_score,
    "reasoning": "",
-
-   "scoring": {{
-     "capability_fit": 0,
-     "experience_fit": 0,
-     "domain_fit": 0,
-     "complexity_fit": 0,
-     "execution_risk": ""
-   }},
-
    "matches": [
      {{
        "requirement": "",
        "match": "",
        "strength": "",
        "evidence": "",
-       "gap": "",
-       "impact": ""
+       "gap": ""
      }}
    ]
+ }},
+
+ "decision": {{
+   "action": "",
+   "reasoning": ""
  }},
 
  "recruiter_view": {{
@@ -200,9 +193,98 @@ JOB:
 
 
     # =========================================
-    # SAFE JSON
+    # SANITIZER (FIXES "undefined")
+    # =========================================
+    def _sanitize_analysis(self, data):
+
+        ats = data.get("ats_analysis", {})
+
+        for m in ats.get("matches", []):
+            if not m.get("evidence") or m["evidence"].lower() == "undefined":
+                m["evidence"] = "No direct evidence found in CV"
+
+            if not m.get("gap"):
+                m["gap"] = "No major gap identified" if m.get("match") == "yes" else "Gap not clearly specified"
+
+        return data
+
+
+    # =========================================
+    # CV IMPROVEMENT ENGINE (FIXES 500 ERROR)
+    # =========================================
+    def refine_cv_with_answers(self, texts, job_text, answers):
+
+        if not texts:
+            return {"cv": "", "fit_score": 0}
+
+        cv_text = "\n".join(texts)
+
+        if not AI_ENABLED:
+            return {
+                "cv": cv_text,
+                "fit_score": 60
+            }
+
+        try:
+            prompt = f"""
+You are an expert CV optimizer.
+
+Goal:
+Improve CV alignment with job.
+
+INPUT CV:
+{cv_text}
+
+JOB:
+{job_text}
+
+USER INPUT:
+{answers}
+
+TASK:
+- Rewrite CV to better match role
+- Highlight relevant experience
+- Improve wording (impact, results)
+- DO NOT fabricate experience
+
+RETURN JSON:
+
+{{
+ "cv": "FULL IMPROVED CV",
+ "fit_score": 85
+}}
+"""
+
+            res = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3
+            )
+
+            parsed = self._safe_json_parse(res.choices[0].message.content)
+
+            if not parsed:
+                return {
+                    "cv": cv_text,
+                    "fit_score": 65
+                }
+
+            return parsed
+
+        except Exception as e:
+            print("CV improvement error:", e)
+
+            return {
+                "cv": cv_text,
+                "fit_score": 60
+            }
+
+
+    # =========================================
+    # SAFE JSON PARSER
     # =========================================
     def _safe_json_parse(self, text):
+
         try:
             return json.loads(text)
         except:
@@ -213,35 +295,55 @@ JOB:
             except:
                 pass
 
-        print("JSON FAILED:", text)
+        print("JSON PARSE FAILED:", text)
         return None
 
 
     # =========================================
     # FALLBACK
     # =========================================
-    def _fallback_basic(self):
+    def _fallback_basic(self, cv, job):
+
         return {
-            "fit_score": 30,
+            "fit_score": 20,
+            "match_summary": "Fallback analysis used.",
             "ats_analysis": {
                 "domain": "Unknown",
                 "role": "Unknown",
                 "seniority": "Unknown",
-                "score": 30,
-                "reasoning": "Fallback mode",
-                "scoring": {},
+                "score": 20,
+                "reasoning": "AI fallback used.",
                 "matches": []
             },
-            "recruiter_view": {},
-            "hiring_manager_view": {},
+            "decision": {
+                "action": "Unknown",
+                "reasoning": "AI processing failed."
+            },
+            "recruiter_view": {
+                "screening_decision": "Unknown",
+                "reasoning": "",
+                "red_flags": [],
+                "shortlist_probability": "Low"
+            },
+            "hiring_manager_view": {
+                "execution_readiness": "",
+                "impact_potential": "",
+                "risks": [],
+                "final_decision": ""
+            },
             "questions": []
         }
 
 
+    # =========================================
+    # EMPTY
+    # =========================================
     def _empty_response(self, msg):
         return {
             "fit_score": 0,
+            "match_summary": msg,
             "ats_analysis": {},
+            "decision": {},
             "recruiter_view": {},
             "hiring_manager_view": {},
             "questions": []
