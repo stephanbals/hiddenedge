@@ -161,11 +161,8 @@ Tailor
 <h3>Improved CV</h3>
 <pre id="cvOutput"></pre>
 
-<div>
-Original: <span id="origScore"></span><br>
-Improvement: <span id="improveScore"></span><br>
-New: <span id="newScore"></span>
-</div>
+<div id="scoreBlock" style="margin-top:15px;"></div>
+
 </div>
 
 </div>
@@ -208,7 +205,7 @@ async function analyze(){
     let res=await fetch("/analyze",{method:"POST",body:form});
 
     if(res.status===402){
-        alert("Free limit reached. Upgrade required.");
+        alert("You have reached your free limit. Please upgrade.");
         return;
     }
 
@@ -229,11 +226,6 @@ async function analyze(){
 }
 
 function renderATS(ats){
-
-    if(!ats){
-        atsBlock.innerHTML = "<i>No ATS data</i>";
-        return;
-    }
 
     let html = `
     <b>Score:</b> ${ats.score || "N/A"}%<br><br>
@@ -319,23 +311,68 @@ async function submitAnswers(){
     ${(data.improvement_factors || []).map(f => "• " + f).join("<br>")}
     `;
 
+    scoreBlock.innerHTML = `
+    <b>Original:</b> ${data.base_score}%<br>
+    <b>Improvement:</b> +${data.improvement}%<br>
+    <b>New:</b> ${data.new_score}%
+    `;
+
     improveCTA.classList.remove("hidden");
 }
 
 function generateCV(){
 
-    setProgress("tailorBar",100);
+    setProgress("tailorBar", 100);
 
-    let preview = storedTexts.join("\n").substring(0,500);
+    let preview = storedTexts.join("\n").substring(0,800);
 
     cvBlock.classList.remove("hidden");
 
     cvOutput.innerHTML = `
-    <div style="filter:blur(4px);">
-    ${preview.replace(/\n/g,"<br>")}
+    <div style="filter:blur(5px); opacity:0.6;">
+        ${preview.replace(/\n/g,"<br>")}
     </div>
-    <br><b>🔒 Unlock full CV after upgrade</b>
+
+    <br>
+
+    <div style="background:#020617;padding:15px;border-radius:10px;border:1px solid #334155;">
+        <b style="font-size:16px;">🔒 Unlock your optimized CV</b><br><br>
+
+        <div style="opacity:0.8;font-size:14px;">
+        ✔ ATS-optimized bullet points<br>
+        ✔ Stronger positioning vs other candidates<br>
+        ✔ Higher interview probability<br>
+        ✔ Ready-to-send professional format
+        </div>
+
+        <br>
+
+        <button onclick="goToCheckout()" style="width:100%;font-size:16px;">
+            🚀 Unlock Full CV — €9/month
+        </button>
+
+        <div style="margin-top:8px;font-size:12px;opacity:0.6;">
+        Instant access • Cancel anytime
+        </div>
+    </div>
     `;
+}
+
+async function goToCheckout(){
+
+    try{
+        let res = await fetch("/create-checkout-session", { method:"POST" });
+        let data = await res.json();
+
+        if(data.url){
+            window.location.href = data.url;
+        }else{
+            alert("Payment system error.");
+        }
+
+    }catch(e){
+        alert("Stripe connection error.");
+    }
 }
 
 function decline(){
