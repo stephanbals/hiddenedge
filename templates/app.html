@@ -1,4 +1,8 @@
-<!-- HiddenEdge — FULL VERSION WITH PERFORMANCE UX -->
+<!--
+SB3PM Advisory & Services Ltd
+Author: Stephan Bals
+HiddenEdge — FINAL FULL VERSION
+-->
 
 <!DOCTYPE html>
 <html>
@@ -56,7 +60,6 @@ textarea {
     transition: width 0.4s ease;
 }
 
-/* 🔥 Thinking animation */
 .thinking {
     font-size:14px;
     opacity:0.8;
@@ -69,10 +72,6 @@ textarea {
     50% { opacity:1; }
     100% { opacity:0.3; }
 }
-
-.green { color:#22c55e; }
-.yellow { color:#f59e0b; }
-.red { color:#ef4444; }
 
 .badge {
     display:inline-block;
@@ -182,24 +181,21 @@ Tailor
 
 <script>
 
-// 🔥 Thinking UX
+// ===== UX =====
 let thinkingMessages = [
-    "Analyzing your CV against job requirements...",
-    "Simulating recruiter screening...",
-    "Evaluating hiring manager decision..."
+    "Analyzing your CV...",
+    "Simulating recruiter...",
+    "Evaluating hiring manager..."
 ];
 
-let thinkingInterval;
-let progressInterval;
+let thinkingInterval, progressInterval;
 
 function startThinking(){
-    let i = 0;
+    let i=0;
     thinkingBox.classList.remove("hidden");
-
-    thinkingInterval = setInterval(()=>{
-        thinkingBox.innerText = thinkingMessages[i % thinkingMessages.length];
-        i++;
-    }, 1500);
+    thinkingInterval=setInterval(()=>{
+        thinkingBox.innerText=thinkingMessages[i++%thinkingMessages.length];
+    },1500);
 }
 
 function stopThinking(){
@@ -208,80 +204,134 @@ function stopThinking(){
 }
 
 function smoothProgress(){
-    let val = 0;
-
-    progressInterval = setInterval(()=>{
-        val += Math.random() * 8;
-
-        if(val >= 90){
-            clearInterval(progressInterval);
-        }
-
-        analyzeBar.style.width = val + "%";
-
-    }, 400);
+    let v=0;
+    progressInterval=setInterval(()=>{
+        v+=Math.random()*8;
+        if(v>=90) clearInterval(progressInterval);
+        analyzeBar.style.width=v+"%";
+    },400);
 }
 
 function finishProgress(){
     clearInterval(progressInterval);
-    analyzeBar.style.width = "100%";
+    analyzeBar.style.width="100%";
 }
 
-// EXISTING LOGIC (UNCHANGED)
-let baseScore = 0;
-let questionsData = [];
-let storedTexts = [];
+// ===== STATE =====
+let baseScore=0, questionsData=[], storedTexts=[];
 
-function setProgress(id,val){
-    document.getElementById(id).style.width = val+"%";
-}
-
+// ===== ANALYZE =====
 async function analyze(){
 
+    let file=files.files[0];
+    if(!file){ alert("Upload CV"); return; }
+
+    uploadBar.style.width="100%";
+    startThinking(); smoothProgress();
+
     let form=new FormData();
-    let file=document.getElementById("files").files[0];
-
-    if(!file){
-        alert("Upload CV");
-        return;
-    }
-
-    setProgress("uploadBar",100);
-
-    startThinking();
-    smoothProgress();
-
     form.append("files",file);
     form.append("job_text",job_text.value);
 
     let res=await fetch("/analyze",{method:"POST",body:form});
 
     if(res.status===402){
-        stopThinking();
-        finishProgress();
-        alert("You have reached your free limit. Please upgrade.");
+        stopThinking(); finishProgress();
+        alert("Upgrade required");
         return;
     }
 
     let data=await res.json();
 
-    stopThinking();
-    finishProgress();
+    stopThinking(); finishProgress();
 
-    baseScore = data.fit_score || 0;
-    storedTexts = data.texts || [];
+    baseScore=data.fit_score||0;
+    storedTexts=data.texts||[];
 
-    renderATS(data.ats_analysis || {});
-    renderRecruiter(data.recruiter_view || {});
-    renderManager(data.hiring_manager_view || {});
+    renderATS(data.ats_analysis||{});
+    renderRecruiter(data.recruiter_view||{});
+    renderManager(data.hiring_manager_view||{});
 
-    questionsData = data.questions || [];
-
+    questionsData=data.questions||[];
     helperCTA.classList.remove("hidden");
 }
 
-// KEEP ALL YOUR EXISTING FUNCTIONS BELOW UNCHANGED
-// (renderATS, renderRecruiter, renderManager, etc.)
+// ===== RENDER =====
+function getBadge(d){
+    if(!d) return "";
+    d=d.toLowerCase();
+    if(d.includes("pass")) return '<span class="badge pass">PASS</span>';
+    if(d.includes("reject")) return '<span class="badge reject">REJECT</span>';
+    return '<span class="badge borderline">BORDERLINE</span>';
+}
+
+function renderATS(a){
+    atsBlock.innerHTML=`<b>Score:</b> ${a.score||"N/A"}%`;
+}
+
+function renderRecruiter(r){
+    recruiterText.innerHTML=`${getBadge(r.screening_decision)}<br>${r.reasoning||""}`;
+}
+
+function renderManager(h){
+    managerText.innerHTML=`${h.final_decision||""}`;
+}
+
+// ===== QUESTIONS =====
+function showQuestions(){
+    helperCTA.classList.add("hidden");
+    questionsBlock.classList.remove("hidden");
+
+    questionsContainer.innerHTML=questionsData.map((q,i)=>
+        `<div>${q}<textarea id="q_${i}"></textarea></div>`
+    ).join("");
+}
+
+async function submitAnswers(){
+
+    let answers=questionsData.map((_,i)=>document.getElementById("q_"+i).value);
+
+    let res=await fetch("/evaluate_answers",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({base_score:baseScore,answers:answers.join(" ")})
+    });
+
+    let data=await res.json();
+
+    evaluationBlock.classList.remove("hidden");
+
+    evaluationContent.innerHTML=`
+    Original: ${data.base_score}%<br>
+    New: ${data.new_score}%
+    `;
+
+    improveCTA.classList.remove("hidden");
+}
+
+// ===== CV =====
+function generateCV(){
+
+    tailorBar.style.width="100%";
+
+    cvBlock.classList.remove("hidden");
+
+    cvOutput.innerHTML=`
+    <div style="filter:blur(5px);opacity:0.6;">
+    ${storedTexts.join("<br>").substring(0,800)}
+    </div>
+
+    <br><button onclick="goToCheckout()">Unlock Full CV</button>
+    `;
+}
+
+async function goToCheckout(){
+    let res=await fetch("/create-checkout-session",{method:"POST"});
+    let data=await res.json();
+    window.location.href=data.url;
+}
+
+function decline(){ location.reload(); }
 
 </script>
 
