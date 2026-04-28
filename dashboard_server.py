@@ -1,7 +1,6 @@
 # =========================================
 # HiddenEdge Platform
 # SB3PM Advisory & Services Ltd
-# Author: Stephan Bals
 # =========================================
 
 from flask import Flask, request, jsonify, render_template, send_file, session, redirect
@@ -40,7 +39,7 @@ cv_service = CVService()
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
-BASE_URL = os.getenv("BASE_URL") or "http://127.0.0.1:5000"
+BASE_URL = os.getenv("BASE_URL") or "https://hiddenedge-live.onrender.com"
 
 # =========================================
 # SESSION VALIDATION
@@ -79,6 +78,27 @@ def app_page():
     if not require_valid_session():
         return redirect("/")
     return render_template("app.html")
+
+# 🔥 FIX: RESTORE MISSING ROUTES
+@app.route("/eula")
+def eula():
+    return render_template("eula.html")
+
+@app.route("/email")
+def email():
+    return render_template("email.html")
+
+@app.route("/payment-cancel")
+def payment_cancel():
+    return render_template("payment-cancel.html")
+
+@app.route("/success")
+def success():
+    return render_template("success.html")
+
+# =========================================
+# EMAIL SUBMIT
+# =========================================
 
 @app.route("/submit-email", methods=["POST"])
 def submit_email():
@@ -154,7 +174,7 @@ def extract_text(filename, file_bytes):
     return ""
 
 # =========================================
-# ANALYZE (FREE → PAY AFTER 3)
+# ANALYZE
 # =========================================
 
 @app.route("/analyze", methods=["POST"])
@@ -183,7 +203,7 @@ def analyze():
     return jsonify(result)
 
 # =========================================
-# EVALUATION (FREE VALUE DRIVER)
+# EVALUATION
 # =========================================
 
 @app.route("/evaluate_answers", methods=["POST"])
@@ -209,11 +229,7 @@ Answers:
 Return JSON:
 {{
  "improvement": 15,
- "improvement_factors": [
-   "Factor 1",
-   "Factor 2",
-   "Factor 3"
- ]
+ "improvement_factors": ["Factor 1","Factor 2","Factor 3"]
 }}
 """
             res = client.chat.completions.create(
@@ -248,7 +264,7 @@ Return JSON:
     })
 
 # =========================================
-# CV IMPROVEMENT (PAID ONLY)
+# CV IMPROVEMENT
 # =========================================
 
 @app.route("/improve_cv", methods=["POST"])
