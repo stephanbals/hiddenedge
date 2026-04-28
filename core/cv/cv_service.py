@@ -1,7 +1,5 @@
 # =========================================
-# HiddenEdge CV Service - ATS + Recruiter + Manager Engine V7
-# SB3PM Advisory & Services Ltd
-# Author: Stephan Bals
+# HiddenEdge CV Service — STABLE + FULL VERSION
 # =========================================
 
 import os
@@ -19,263 +17,96 @@ except:
 class CVService:
 
     # =========================================
-    # MAIN ENTRY
+    # ANALYZE CV (MAIN ENGINE)
     # =========================================
     def analyze_cv(self, texts, job_text):
 
         if not texts:
-            return self._empty_response("No CV content provided.")
+            return self._safe_default("No CV content provided.")
 
-        if not job_text or len(job_text.strip()) < 30:
-            return self._empty_response("Job description too vague.")
+        if not job_text or len(job_text.strip()) < 20:
+            return self._safe_default("Job description too short.")
 
         cv_text = "\n".join(texts)
 
         if not AI_ENABLED:
-            return self._empty_response("AI not available.")
+            return self._safe_default("AI not available.")
 
-        analysis = self._safe_llm_full_analysis(cv_text, job_text)
-
-        if not analysis:
-            return self._fallback_basic(cv_text, job_text)
-
-        return analysis
-
-
-    # =========================================
-    # SAFE FULL ANALYSIS
-    # =========================================
-    def _safe_llm_full_analysis(self, cv_text, job_text):
         try:
-            raw = self._llm_full_analysis(cv_text, job_text)
+            raw = self._llm_analysis(cv_text, job_text)
             parsed = self._safe_json_parse(raw)
 
-            if parsed:
-                self._sanitize_analysis(parsed)
+            if not parsed:
+                return self._safe_default("AI returned invalid JSON")
 
-            return parsed
+            return self._normalize(parsed)
 
         except Exception as e:
-            print("Full analysis error:", e)
-            return None
-
+            print("ANALYSIS ERROR:", e)
+            return self._safe_default("Analysis failed")
 
     # =========================================
-    # CORE LLM PROMPT (ATS + HUMAN PIPELINE)
+    # LLM ANALYSIS CALL
     # =========================================
-    def _llm_full_analysis(self, cv_text, job_text):
+    def _llm_analysis(self, cv_text, job_text):
 
         prompt = f"""
-You simulate a REAL hiring pipeline:
-ATS → Recruiter → Hiring Manager
+You are a senior recruiter + hiring manager + ATS system.
 
-Be analytical, evidence-based, and concrete.
+Analyze this CV against the job.
 
---------------------------------
-STEP 1 — ATS ANALYSIS
---------------------------------
+Return STRICT JSON ONLY.
 
-Extract JOB:
-- domain
-- role_title
-- seniority
-- critical_requirements (5–7)
+{{
+ "fit_score": number,
+ "ats_analysis": {{
+   "score": number,
+   "domain": "string",
+   "role": "string",
+   "seniority": "string",
+   "reasoning": "string",
+   "matches": [
+     {{
+       "requirement": "string",
+       "match": "yes/partial/no",
+       "strength": "strong/medium/weak",
+       "evidence": "specific CV evidence",
+       "gap": "gap explanation"
+     }}
+   ]
+ }},
+ "recruiter_view": {{
+   "screening_decision": "pass/reject/borderline",
+   "reasoning": "string",
+   "red_flags": ["string"],
+   "shortlist_probability": "number%"
+ }},
+ "hiring_manager_view": {{
+   "execution_readiness": "low/medium/high",
+   "impact_potential": "low/medium/high",
+   "risks": ["string"],
+   "final_decision": "string"
+ }},
+ "questions": ["string"]
+}}
 
-Extract CV:
-- experience
-- skills
-- roles
+CV:
+{cv_text}
 
-Build MATCH TABLE:
-
-For each requirement:
-- requirement
-- match (yes / partial / no)
-- strength (strong / medium / weak)
-- evidence (MUST be concrete sentence or fact from CV)
-- gap
-
-Rules:
-- NEVER output "undefined"
-- If no evidence → say: "No direct evidence found in CV"
-
-Also calculate:
-- ats_score (0–100)
-- reasoning
-
---------------------------------
-STEP 2 — RECRUITER
---------------------------------
-
-- screening_decision (pass / borderline / reject)
-- reasoning
-- red_flags
-- shortlist_probability (0–100)
-
---------------------------------
-STEP 3 — HIRING MANAGER
---------------------------------
-
-- execution_readiness
-- impact_potential
-- risks
-- final_decision
-
---------------------------------
-STEP 4 — QUESTIONS
---------------------------------
-
-Generate 3–5 targeted improvement questions.
-
---------------------------------
-RETURN STRICT JSON
---------------------------------
+JOB:
+{job_text}
 """
 
         res = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt + "\n\nCV:\n" + cv_text + "\n\nJOB:\n" + job_text}],
+            messages=[{"role": "user", "content": prompt}],
             temperature=0.2
         )
 
         return res.choices[0].message.content
 
-
     # =========================================
-    # SANITIZER (REMOVES "undefined")
-    # =========================================
-    def _sanitize_analysis(self, data):
-
-        ats = data.get("ats_analysis", {})
-
-        for m in ats.get("matches", []):
-            if not m.get("evidence") or m["evidence"].lower() == "undefined":
-                m["evidence"] = "No direct evidence found in CV"
-
-            if not m.get("gap"):
-                if m.get("match") == "yes":
-                    m["gap"] = "No major gap identified"
-                else:
-                    m["gap"] = "Gap not clearly specified"
-
-        return data
-
-
-    # =========================================
-    # CV IMPROVEMENT ENGINE (CONSULTING-GRADE)
-    # =========================================
-    def refine_cv_with_answers(self, texts, job_text, answers):
-
-        if not texts:
-            return {"cv": "", "fit_score": 0}
-
-        cv_text = "\n".join(texts)
-
-        if not AI_ENABLED:
-            return {
-                "cv": cv_text,
-                "fit_score": 60
-            }
-
-        try:
-            prompt = f"""
-You are a top-tier management consulting CV expert (McKinsey / BCG level).
-
-Your task:
-Rewrite the CV into a HIGH-IMPACT, RESULTS-DRIVEN, EXECUTIVE-LEVEL document.
-
---------------------------------
-INPUT CV:
-{cv_text}
-
---------------------------------
-JOB DESCRIPTION:
-{job_text}
-
---------------------------------
-USER INPUT:
-{answers}
-
---------------------------------
-RULES (STRICT):
-
-1. ALL experience must be bullet-based
-2. Each bullet:
-   → Action verb + context + measurable impact
-
-3. Use metrics where possible:
-   € / % / scale / team size
-
-4. Remove:
-   - vague statements
-   - fluff
-   - repetition
-
-5. Add:
-   - job-relevant keywords (ATS optimization)
-   - stronger positioning (but no fabrication)
-
---------------------------------
-STRUCTURE (MANDATORY):
-
-NAME / TITLE
-
-SUMMARY
-(3–4 lines, sharp positioning)
-
-KEY SKILLS
-- Bullet list aligned to job
-
-PROFESSIONAL EXPERIENCE
-
-Company — Role — Dates
-• Bullet (impact-driven)
-• Bullet
-• Bullet
-
---------------------------------
-STYLE:
-- concise
-- sharp
-- executive
-- no long paragraphs
-
---------------------------------
-RETURN JSON ONLY:
-
-{{
- "cv": "FULL REWRITTEN CV",
- "fit_score": 85
-}}
-"""
-
-            res = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.2
-            )
-
-            parsed = self._safe_json_parse(res.choices[0].message.content)
-
-            if not parsed:
-                return {
-                    "cv": cv_text,
-                    "fit_score": 65
-                }
-
-            return parsed
-
-        except Exception as e:
-            print("CV improvement error:", e)
-
-            return {
-                "cv": cv_text,
-                "fit_score": 60
-            }
-
-
-    # =========================================
-    # SAFE JSON PARSER
+    # SAFE JSON PARSE
     # =========================================
     def _safe_json_parse(self, text):
 
@@ -292,53 +123,130 @@ RETURN JSON ONLY:
         print("JSON PARSE FAILED:", text)
         return None
 
-
     # =========================================
-    # FALLBACK
+    # NORMALIZE OUTPUT (CRITICAL FIX)
     # =========================================
-    def _fallback_basic(self, cv, job):
+    def _normalize(self, data):
 
         return {
-            "fit_score": 20,
-            "match_summary": "Fallback analysis used.",
+            "fit_score": data.get("fit_score", 60),
+
             "ats_analysis": {
+                "score": data.get("ats_analysis", {}).get("score", 60),
+                "domain": data.get("ats_analysis", {}).get("domain", "Unknown"),
+                "role": data.get("ats_analysis", {}).get("role", "Unknown"),
+                "seniority": data.get("ats_analysis", {}).get("seniority", "Unknown"),
+                "reasoning": data.get("ats_analysis", {}).get("reasoning", ""),
+                "matches": data.get("ats_analysis", {}).get("matches", [])
+            },
+
+            "recruiter_view": {
+                "screening_decision": data.get("recruiter_view", {}).get("screening_decision", "borderline"),
+                "reasoning": data.get("recruiter_view", {}).get("reasoning", ""),
+                "red_flags": data.get("recruiter_view", {}).get("red_flags", []),
+                "shortlist_probability": data.get("recruiter_view", {}).get("shortlist_probability", "N/A")
+            },
+
+            "hiring_manager_view": {
+                "execution_readiness": data.get("hiring_manager_view", {}).get("execution_readiness", "N/A"),
+                "impact_potential": data.get("hiring_manager_view", {}).get("impact_potential", "N/A"),
+                "risks": data.get("hiring_manager_view", {}).get("risks", []),
+                "final_decision": data.get("hiring_manager_view", {}).get("final_decision", "N/A")
+            },
+
+            "questions": data.get("questions", [])
+        }
+
+    # =========================================
+    # SAFE DEFAULT (FALLBACK)
+    # =========================================
+    def _safe_default(self, msg):
+
+        return {
+            "fit_score": 50,
+
+            "ats_analysis": {
+                "score": 50,
                 "domain": "Unknown",
                 "role": "Unknown",
                 "seniority": "Unknown",
-                "score": 20,
-                "reasoning": "AI fallback used.",
+                "reasoning": msg,
                 "matches": []
             },
-            "decision": {
-                "action": "Unknown",
-                "reasoning": "AI processing failed."
-            },
+
             "recruiter_view": {
-                "screening_decision": "Unknown",
-                "reasoning": "",
+                "screening_decision": "borderline",
+                "reasoning": msg,
                 "red_flags": [],
-                "shortlist_probability": "Low"
+                "shortlist_probability": "N/A"
             },
+
             "hiring_manager_view": {
-                "execution_readiness": "",
-                "impact_potential": "",
+                "execution_readiness": "N/A",
+                "impact_potential": "N/A",
                 "risks": [],
-                "final_decision": ""
+                "final_decision": "N/A"
             },
+
             "questions": []
         }
 
+    # =========================================
+    # CV IMPROVEMENT (REAL — NOT REMOVED)
+    # =========================================
+    def refine_cv_with_answers(self, texts, job_text, answers):
 
-    # =========================================
-    # EMPTY
-    # =========================================
-    def _empty_response(self, msg):
-        return {
-            "fit_score": 0,
-            "match_summary": msg,
-            "ats_analysis": {},
-            "decision": {},
-            "recruiter_view": {},
-            "hiring_manager_view": {},
-            "questions": []
-        }
+        if not AI_ENABLED:
+            return {
+                "cv": "\n".join(texts),
+                "fit_score": 60
+            }
+
+        cv_text = "\n".join(texts)
+
+        prompt = f"""
+Rewrite this CV into a high-end consulting CV (McKinsey-level).
+
+Focus on:
+- impact-driven bullet points
+- quantified achievements
+- strong action verbs
+- alignment with job
+
+CV:
+{cv_text}
+
+JOB:
+{job_text}
+
+EXTRA INFO:
+{answers}
+
+Return JSON:
+{{
+ "cv": "full rewritten CV",
+ "fit_score": number
+}}
+"""
+
+        try:
+            res = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3
+            )
+
+            parsed = self._safe_json_parse(res.choices[0].message.content)
+
+            if not parsed:
+                raise Exception("Invalid CV JSON")
+
+            return parsed
+
+        except Exception as e:
+            print("CV IMPROVE ERROR:", e)
+
+            return {
+                "cv": cv_text,
+                "fit_score": 65
+            }
