@@ -20,7 +20,7 @@ try:
 except:
     AI_ENABLED = False
 
-print("HiddenEdge Engine v1.5 | FULL STABLE")
+print("HiddenEdge Engine v1.6 | FULL ROUTING FIX")
 
 # =========================================
 # APP INIT
@@ -94,7 +94,7 @@ def submit_email():
     return jsonify({"success": True, "redirect": "/app"})
 
 # =========================================
-# ROUTES — STATIC PAGES (FIXED)
+# ROUTES — STATIC PAGES (ALL FIXED)
 # =========================================
 
 @app.route("/eula")
@@ -108,6 +108,10 @@ def payment_cancel():
 @app.route("/success")
 def success():
     return render_template("success.html")
+
+@app.route("/email")
+def email_page():
+    return render_template("email.html")
 
 # =========================================
 # STRIPE
