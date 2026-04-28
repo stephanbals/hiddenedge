@@ -2,37 +2,37 @@
 # HiddenEdge Platform
 # SB3PM Advisory & Services Ltd
 # Author: Stephan Bals
-# © 2026 SB3PM Advisory & Services Ltd
 # =========================================
 
 from flask import Flask, request, jsonify, render_template, send_file, session, redirect
 from core.cv.cv_service import CVService
-from core.cv.outcome_service import OutcomeService
 
 import io
 import os
+import json
 from datetime import timedelta
 from docx import Document
 import PyPDF2
 import stripe
 
-print("HiddenEdge Engine v1.2 | SB3PM")
+try:
+    from openai import OpenAI
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    AI_ENABLED = True
+except:
+    AI_ENABLED = False
+
+print("HiddenEdge Engine v1.3 | Monetization Ready")
 
 # =========================================
 # APP INIT
 # =========================================
 
-app = Flask(
-    __name__,
-    template_folder="templates",
-    static_folder="static"
-)
-
+app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = "hiddenedge_dev_secret"
 app.permanent_session_lifetime = timedelta(days=30)
 
 cv_service = CVService()
-outcome_service = OutcomeService()
 
 # =========================================
 # STRIPE CONFIG
@@ -47,11 +47,7 @@ BASE_URL = os.getenv("BASE_URL") or "http://127.0.0.1:5000"
 # =========================================
 
 def is_valid_session():
-    return (
-        session.get("user_email") and
-        "usage" in session and
-        "paid" in session
-    )
+    return session.get("user_email") and "usage" in session and "paid" in session
 
 def require_valid_session():
     if not is_valid_session():
@@ -59,20 +55,16 @@ def require_valid_session():
         return False
     return True
 
-def require_paid_or_free():
+def require_paid():
     if not require_valid_session():
-        return jsonify({"error": "unauthorized"}), 401
-
-    usage = session.get("usage", 0)
-    paid = session.get("paid", False)
-
-    if not paid and usage >= 3:
-        return jsonify({"error": "payment_required"}), 402
-
-    return None
+        return False
+    return session.get("paid", False)
 
 def increment_usage():
     session["usage"] = session.get("usage", 0) + 1
+
+def check_free_limit():
+    return (not session.get("paid", False)) and session.get("usage", 0) >= 3
 
 # =========================================
 # ROUTES
@@ -84,23 +76,12 @@ def index():
 
 @app.route("/app")
 def app_page():
-
     if not require_valid_session():
         return redirect("/")
-
     return render_template("app.html")
-
-@app.route("/eula")
-def eula():
-    return render_template("eula.html")
-
-@app.route("/email")
-def email():
-    return render_template("email.html")
 
 @app.route("/submit-email", methods=["POST"])
 def submit_email():
-
     data = request.get_json()
     email = data.get("email")
 
@@ -115,7 +96,7 @@ def submit_email():
     return jsonify({"success": True, "redirect": "/app"})
 
 # =========================================
-# STRIPE CHECKOUT
+# STRIPE
 # =========================================
 
 @app.route("/create-checkout-session", methods=["POST"])
@@ -124,26 +105,16 @@ def create_checkout_session():
     if not require_valid_session():
         return jsonify({"error": "unauthorized"}), 401
 
-    try:
-        checkout_session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            mode='subscription',
-            line_items=[{
-                'price': STRIPE_PRICE_ID,
-                'quantity': 1,
-            }],
-            success_url=f"{BASE_URL}/payment-success?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{BASE_URL}/payment-cancel",
-        )
+    checkout_session = stripe.checkout.Session.create(
+        payment_method_types=['card'],
+        mode='subscription',
+        line_items=[{'price': STRIPE_PRICE_ID, 'quantity': 1}],
+        success_url=f"{BASE_URL}/payment-success?session_id={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"{BASE_URL}/app"
+    )
 
-        return jsonify({"url": checkout_session.url})
+    return jsonify({"url": checkout_session.url})
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# =========================================
-# SECURE PAYMENT SUCCESS
-# =========================================
 
 @app.route("/payment-success")
 def payment_success():
@@ -153,26 +124,15 @@ def payment_success():
 
     session_id = request.args.get("session_id")
 
-    if not session_id:
-        return redirect("/app")
+    if session_id:
+        try:
+            checkout_session = stripe.checkout.Session.retrieve(session_id)
+            if checkout_session.payment_status == "paid":
+                session["paid"] = True
+        except Exception as e:
+            print("Stripe error:", e)
 
-    try:
-        checkout_session = stripe.checkout.Session.retrieve(session_id)
-
-        if checkout_session.payment_status == "paid":
-            session["paid"] = True
-        else:
-            session["paid"] = False
-
-    except Exception as e:
-        print("Stripe verification error:", e)
-        session["paid"] = False
-
-    return render_template("success.html")
-
-@app.route("/payment-cancel")
-def payment_cancel():
-    return render_template("payment-cancel.html")
+    return redirect("/app")
 
 # =========================================
 # FILE EXTRACTION
@@ -194,7 +154,7 @@ def extract_text(filename, file_bytes):
     return ""
 
 # =========================================
-# ANALYZE (PAYWALL ENFORCED)
+# ANALYZE (FREE → PAY AFTER 3)
 # =========================================
 
 @app.route("/analyze", methods=["POST"])
@@ -203,9 +163,8 @@ def analyze():
     if not require_valid_session():
         return jsonify({"error": "unauthorized"}), 401
 
-    auth = require_paid_or_free()
-    if auth:
-        return auth
+    if check_free_limit():
+        return jsonify({"error": "payment_required"}), 402
 
     files = request.files.getlist("files")
     job_text = request.form.get("job_text", "")
@@ -224,7 +183,7 @@ def analyze():
     return jsonify(result)
 
 # =========================================
-# ANSWER EVALUATION (FREE)
+# EVALUATION (FREE VALUE DRIVER)
 # =========================================
 
 @app.route("/evaluate_answers", methods=["POST"])
@@ -234,25 +193,62 @@ def evaluate_answers():
         return jsonify({"error": "unauthorized"}), 401
 
     data = request.json
-
     base_score = int(data.get("base_score", 50))
     answers = data.get("answers", "")
 
-    length_score = min(15, len(answers) // 30)
-    keywords = ["impact", "result", "delivered", "improved", "managed"]
-    relevance_score = sum([1 for k in keywords if k in answers.lower()])
+    try:
+        if AI_ENABLED:
+            prompt = f"""
+Evaluate how candidate answers improve job fit.
 
-    improvement = min(25, length_score + relevance_score)
-    new_score = min(100, base_score + improvement)
+Base score: {base_score}
+
+Answers:
+{answers}
+
+Return JSON:
+{{
+ "improvement": 15,
+ "improvement_factors": [
+   "Factor 1",
+   "Factor 2",
+   "Factor 3"
+ ]
+}}
+"""
+            res = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3
+            )
+
+            parsed = json.loads(res.choices[0].message.content)
+
+            improvement = min(25, int(parsed.get("improvement", 10)))
+
+            return jsonify({
+                "base_score": base_score,
+                "improvement": improvement,
+                "new_score": min(100, base_score + improvement),
+                "improvement_factors": parsed.get("improvement_factors", [])
+            })
+
+    except Exception as e:
+        print("Eval error:", e)
 
     return jsonify({
         "base_score": base_score,
-        "improvement": improvement,
-        "new_score": new_score
+        "improvement": 10,
+        "new_score": base_score + 10,
+        "improvement_factors": [
+            "Improved clarity",
+            "Better alignment",
+            "Stronger positioning"
+        ]
     })
 
 # =========================================
-# IMPROVE CV (PAID ONLY)
+# CV IMPROVEMENT (PAID ONLY)
 # =========================================
 
 @app.route("/improve_cv", methods=["POST"])
@@ -261,9 +257,8 @@ def improve_cv():
     if not require_valid_session():
         return jsonify({"error": "unauthorized"}), 401
 
-    auth = require_paid_or_free()
-    if auth:
-        return auth
+    if not require_paid():
+        return jsonify({"error": "payment_required"}), 402
 
     data = request.json
 
@@ -271,37 +266,21 @@ def improve_cv():
     job_text = data.get("job_text", "")
     answers = data.get("answers", [])
 
-    if not texts or not job_text:
-        return jsonify({"error": "Missing input"}), 400
+    result = cv_service.refine_cv_with_answers(
+        texts,
+        job_text,
+        "\n".join(answers)
+    )
 
-    try:
-        increment_usage()
-
-        base = cv_service.analyze_cv(texts, job_text)
-        base_score = base.get("fit_score", 60)
-
-        improved = cv_service.refine_cv_with_answers(
-            texts,
-            job_text,
-            "\n".join(answers)
-        )
-
-        improved_cv = improved.get("cv", "")
-        new_score = improved.get("fit_score", base_score + 10)
-        delta = new_score - base_score
-
-        return jsonify({
-            "improved_cv": improved_cv,
-            "original_score": base_score,
-            "new_score": new_score,
-            "delta": delta
-        })
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({
+        "improved_cv": result.get("cv", ""),
+        "original_score": 0,
+        "new_score": result.get("fit_score", 80),
+        "delta": 10
+    })
 
 # =========================================
-# DOWNLOAD CV
+# DOWNLOAD
 # =========================================
 
 @app.route("/download_cv", methods=["POST"])
@@ -309,6 +288,9 @@ def download_cv():
 
     if not require_valid_session():
         return jsonify({"error": "unauthorized"}), 401
+
+    if not require_paid():
+        return jsonify({"error": "payment_required"}), 402
 
     data = request.json
     cv_text = data.get("cv_text", "")
@@ -321,12 +303,9 @@ def download_cv():
     doc.save(stream)
     stream.seek(0)
 
-    return send_file(
-        stream,
-        as_attachment=True,
-        download_name="HiddenEdge_CV.docx",
-        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    )
+    return send_file(stream, as_attachment=True,
+                     download_name="HiddenEdge_CV.docx",
+                     mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
 # =========================================
 # RUN

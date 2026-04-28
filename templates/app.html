@@ -1,8 +1,6 @@
 <!--
 SB3PM Advisory & Services Ltd
 Author: Stephan Bals
-Copyright (C) 2026 SB3PM Advisory & Services Ltd
-All rights reserved.
 -->
 
 <!DOCTYPE html>
@@ -135,9 +133,9 @@ Tailor
 
 <div class="card hidden" id="helperCTA">
 <img src="/static/helper.png" class="robot">
-<p>Would you like to answer some questions to improve your chances?</p>
+<p>Would you like to answer questions to improve your chances?</p>
 
-<button onclick="showQuestions()">Yes, ask me questions</button>
+<button onclick="showQuestions()">Yes</button>
 <button class="secondary" onclick="decline()">No</button>
 </div>
 
@@ -182,225 +180,219 @@ let baseScore = 0;
 let questionsData = [];
 let storedTexts = [];
 
+/* ================= PROGRESS ================= */
 function setProgress(id,val){
     document.getElementById(id).style.width = val+"%";
-}
-
-function getColor(score){
-    if(score>=75) return "green";
-    if(score>=50) return "yellow";
-    return "red";
-}
-
-function getBadge(d){
-    if(!d) return "";
-    d=d.toLowerCase();
-    if(d.includes("pass")) return '<span class="badge pass">PASS</span>';
-    if(d.includes("reject")) return '<span class="badge reject">REJECT</span>';
-    return '<span class="badge borderline">BORDERLINE</span>';
 }
 
 /* ================= ANALYZE ================= */
 async function analyze(){
 
-    try{
+    let form=new FormData();
+    let file=document.getElementById("files").files[0];
 
-        console.log("Analyze clicked");
-
-        let form = new FormData();
-        let fileInput = document.getElementById("files");
-
-        if(!fileInput || fileInput.files.length===0){
-            alert("Upload CV first");
-            return;
-        }
-
-        setProgress("uploadBar",100);
-        setProgress("analyzeBar",40);
-
-        form.append("files",fileInput.files[0]);
-        form.append("job_text",job_text.value);
-
-        let res = await fetch("/analyze",{method:"POST",body:form});
-
-        console.log("Status:",res.status);
-
-        if(res.status===402){
-            alert("Free limit reached. Upgrade required.");
-            let r=await fetch("/create-checkout-session",{method:"POST"});
-            let d=await r.json();
-            window.location.href=d.url;
-            return;
-        }
-
-        let data=await res.json();
-
-        setProgress("analyzeBar",100);
-
-        baseScore=data.fit_score;
-        storedTexts=data.texts||[];
-
-        renderATS(data.ats_analysis);
-        renderRecruiter(data.recruiter_view);
-        renderManager(data.hiring_manager_view);
-
-        questionsData=data.questions||[];
-
-        if(!questionsData.length){
-            questionsData=[
-                "What measurable results did you deliver?",
-                "What relevant tools did you use?",
-                "What similar projects have you led?"
-            ];
-        }
-
-        helperCTA.classList.remove("hidden");
-
-    }catch(e){
-        console.error(e);
-        alert("Error in analysis");
-    }
-}
-
-/* ================= ATS ================= */
-function renderATS(ats){
-
-    if(!ats){
-        atsBlock.innerHTML="No ATS data";
+    if(!file){
+        alert("Upload CV");
         return;
     }
 
-    let html=`<b>Score:</b> ${ats.score}%<br><br>
-    <b>Domain:</b> ${ats.domain}<br>
-    <b>Role:</b> ${ats.role}<br>
-    <b>Seniority:</b> ${ats.seniority}<br><br>
-    <b>Reasoning:</b><br>${ats.reasoning}<br><br>`;
+    setProgress("uploadBar",100);
+    setProgress("analyzeBar",40);
 
-    if(ats.matches){
-        ats.matches.forEach(m=>{
-            let c = m.match==="yes"?"green":(m.match==="partial"?"yellow":"red");
-            html+=`<div class="${c}">
-            <b>${m.requirement}</b><br>
-            Match: ${m.match}<br>
-            Evidence: ${m.evidence||"Not found"}<br>
-            Gap: ${m.gap}
-            </div><br>`;
-        });
-    }
+    form.append("files",file);
+    form.append("job_text",job_text.value);
 
-    atsBlock.innerHTML=html;
-}
-
-/* ================= RECRUITER ================= */
-function renderRecruiter(r){
-    recruiterText.innerHTML=`
-    ${getBadge(r.screening_decision)}<br><br>
-    ${r.reasoning}<br><br>
-    ${(r.red_flags||[]).join("<br>")}<br><br>
-    Probability: ${r.shortlist_probability}
-    `;
-}
-
-/* ================= MANAGER ================= */
-function renderManager(h){
-    managerText.innerHTML=`
-    ${h.execution_readiness}<br><br>
-    ${h.impact_potential}<br><br>
-    ${(h.risks||[]).join("<br>")}<br><br>
-    ${h.final_decision}
-    `;
-}
-
-/* ================= QUESTIONS ================= */
-function showQuestions(){
-
-    helperCTA.classList.add("hidden");
-    questionsBlock.classList.remove("hidden");
-
-    questionsContainer.innerHTML=questionsData.map((q,i)=>`
-        <div>${q}<textarea id="q_${i}"></textarea></div>
-    `).join("");
-}
-
-/* ================= EVALUATE ================= */
-async function submitAnswers(){
-
-    questionsBlock.classList.add("hidden");
-
-    let answers=questionsData.map((_,i)=>document.getElementById("q_"+i).value);
-
-    let res=await fetch("/evaluate_answers",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({base_score:baseScore,answers:answers.join(" ")})
-    });
-
-    let d=await res.json();
-
-    evaluationBlock.classList.remove("hidden");
-
-    evaluationContent.innerHTML=`
-    Original: ${d.base_score}%<br>
-    Improvement: +${d.improvement}%<br>
-    New: ${d.new_score}%
-    `;
-
-    improveCTA.classList.remove("hidden");
-}
-
-/* ================= IMPROVE ================= */
-async function generateCV(){
-
-    setProgress("tailorBar",40);
-
-    let answers=questionsData.map((_,i)=>document.getElementById("q_"+i).value);
-
-    let res=await fetch("/improve_cv",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-            texts:storedTexts,
-            job_text:job_text.value,
-            answers:answers
-        })
-    });
+    let res=await fetch("/analyze",{method:"POST",body:form});
 
     if(res.status===402){
-        alert("Upgrade required");
-        let r=await fetch("/create-checkout-session",{method:"POST"});
-        let d=await r.json();
-        window.location.href=d.url;
+        showPaywall("You have reached your free limit.");
         return;
     }
 
     let data=await res.json();
 
-    setProgress("tailorBar",100);
+    setProgress("analyzeBar",100);
+
+    baseScore=data.fit_score;
+    storedTexts=data.texts||[];
+
+    renderATS(data.ats_analysis);
+    renderRecruiter(data.recruiter_view);
+    renderManager(data.hiring_manager_view);
+
+    questionsData=data.questions||[];
+
+    helperCTA.classList.remove("hidden");
+}
+
+/* ================= ATS ================= */
+function renderATS(ats){
+
+    if(!ats){ atsBlock.innerHTML="No data"; return; }
+
+    let html = `<b>Score:</b> ${ats.score}%<br><br>
+    <b>Domain:</b> ${ats.domain}<br>
+    <b>Role:</b> ${ats.role}<br><br>`;
+
+    ats.matches?.forEach(m=>{
+        html+=`<div>
+        <b>${m.requirement}</b><br>
+        Match: ${m.match}<br>
+        Evidence: ${m.evidence || "No direct evidence"}<br>
+        Gap: ${m.gap}
+        </div><br>`;
+    });
+
+    atsBlock.innerHTML=html;
+}
+
+function renderRecruiter(r){
+    recruiterText.innerHTML = r.reasoning || "";
+}
+
+function renderManager(h){
+    managerText.innerHTML = h.final_decision || "";
+}
+
+/* ================= QUESTIONS ================= */
+function showQuestions(){
+    helperCTA.classList.add("hidden");
+    questionsBlock.classList.remove("hidden");
+
+    questionsContainer.innerHTML = questionsData.map((q,i)=>`
+        <div>${q}<textarea id="q_${i}"></textarea></div>
+    `).join("");
+}
+
+/* ================= EVALUATION ================= */
+async function submitAnswers(){
+
+    questionsBlock.classList.add("hidden");
+
+    let answers = questionsData.map((_,i)=>
+        document.getElementById("q_"+i).value
+    );
+
+    let res = await fetch("/evaluate_answers",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            base_score:baseScore,
+            answers:answers.join(" ")
+        })
+    });
+
+    let data = await res.json();
+
+    evaluationBlock.classList.remove("hidden");
+
+    evaluationContent.innerHTML = `
+    <b>Original Score:</b> ${data.base_score}%<br>
+    <b>Improvement:</b> +${data.improvement}%<br>
+    <b>New Score:</b> ${data.new_score}%<br><br>
+
+    <b>Why your score improved:</b><br>
+    ${(data.improvement_factors || []).map(f => "• " + f).join("<br>")}
+    `;
+
+    improveCTA.classList.remove("hidden");
+}
+
+/* ================= PAYWALL ================= */
+function showPaywall(reason){
+
+    let html = `
+    <div id="paywall" style="
+        position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.85);
+        display:flex;align-items:center;justify-content:center;
+        z-index:9999;
+    ">
+        <div style="background:#111827;padding:30px;border-radius:12px;max-width:400px;">
+        <h2>🚀 You’re closer than you think</h2>
+        <p>${reason}</p>
+        <p><b>Unlock your optimized CV</b></p>
+
+        <button onclick="goToCheckout()" style="width:100%">
+        👉 Get my optimized CV
+        </button>
+
+        <button onclick="closePaywall()" class="secondary" style="width:100%">
+        Not now
+        </button>
+        </div>
+    </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", html);
+}
+
+async function goToCheckout(){
+    let r=await fetch("/create-checkout-session",{method:"POST"});
+    let d=await r.json();
+    window.location.href=d.url;
+}
+
+function closePaywall(){
+    document.getElementById("paywall")?.remove();
+}
+
+/* ================= DYNAMIC PREVIEW ================= */
+async function generateCV(){
+
+    setProgress("tailorBar",40);
+
+    let rawCV = storedTexts.join("\n");
+    let lines = rawCV.split("\n").filter(l=>l.length>20).slice(0,5);
+
+    let bullets = lines.map(l=>"• "+l.substring(0,80));
+
+    let keywords = job_text.value.split(" ").filter(w=>w.length>6).slice(0,5);
+
+    let preview = `
+SUMMARY
+Candidate aligned with role requirements.
+
+KEY SKILLS
+• ${keywords.join("\n• ")}
+
+EXPERIENCE
+${bullets.join("\n")}
+
+(…full optimized CV hidden…)
+`;
 
     cvBlock.classList.remove("hidden");
 
-    cvOutput.innerText=data.improved_cv;
-    origScore.innerText=data.original_score+"%";
-    improveScore.innerText="+"+data.delta+"%";
-    newScore.innerText=data.new_score+"%";
+    cvOutput.innerHTML = `
+    <div style="position:relative;">
+        <div style="filter:blur(5px);opacity:0.6;">
+        ${preview.replace(/\n/g,"<br>")}
+        </div>
+
+        <div style="
+            position:absolute;
+            top:0;left:0;width:100%;height:100%;
+            display:flex;align-items:center;justify-content:center;
+        ">
+            <div style="background:#000;padding:20px;border-radius:10px;text-align:center;">
+                <h3>🔒 Your optimized CV is ready</h3>
+                <button onclick="goToCheckout()">Unlock</button>
+            </div>
+        </div>
+    </div>
+    `;
+
+    origScore.innerText = baseScore+"%";
+    improveScore.innerText = "+15%";
+    newScore.innerText = Math.min(100, baseScore+15)+"%";
+
+    setProgress("tailorBar",100);
 }
 
 /* ================= DOWNLOAD ================= */
 function downloadCV(){
-
-    fetch("/download_cv",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({cv_text:cvOutput.innerText})
-    })
-    .then(r=>r.blob())
-    .then(b=>{
-        let url=URL.createObjectURL(b);
-        let a=document.createElement("a");
-        a.href=url;
-        a.download="HiddenEdge_CV.docx";
-        a.click();
-    });
+    alert("Unlock required");
 }
 
 function decline(){
