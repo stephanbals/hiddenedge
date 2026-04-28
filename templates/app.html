@@ -1,7 +1,7 @@
 <!--
 SB3PM Advisory & Services Ltd
 Author: Stephan Bals
-HiddenEdge — FINAL FULL VERSION
+HiddenEdge — FINAL FULL VERSION (ATS FIXED)
 -->
 
 <!DOCTYPE html>
@@ -265,8 +265,26 @@ function getBadge(d){
     return '<span class="badge borderline">BORDERLINE</span>';
 }
 
-function renderATS(a){
-    atsBlock.innerHTML=`<b>Score:</b> ${a.score||"N/A"}%`;
+// ✅ FULL ATS DETAIL RESTORED
+function renderATS(ats){
+
+    let html = `
+    <b>Score:</b> ${ats.score || "N/A"}%<br><br>
+    <b>Domain:</b> ${ats.domain || ""}<br>
+    <b>Role:</b> ${ats.role || ""}<br><br>
+    `;
+
+    (ats.matches || []).forEach(m=>{
+        html+=`
+        <div style="margin-bottom:12px;">
+        <b>${m.requirement || ""}</b><br>
+        Match: ${m.match || ""}<br>
+        Evidence: ${m.evidence || "No evidence"}<br>
+        Gap: ${m.gap || ""}
+        </div>`;
+    });
+
+    atsBlock.innerHTML = html;
 }
 
 function renderRecruiter(r){
