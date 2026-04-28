@@ -1,5 +1,5 @@
 # =========================================
-# HiddenEdge Platform — FIXED PAYMENT PERSISTENCE
+# HiddenEdge Platform — FULL STABLE VERSION
 # =========================================
 
 from flask import Flask, request, jsonify, render_template, send_file, session, redirect
@@ -20,13 +20,21 @@ try:
 except:
     AI_ENABLED = False
 
-print("HiddenEdge Engine v1.4 | Payment Persistence Fix")
+print("HiddenEdge Engine v1.5 | FULL STABLE")
+
+# =========================================
+# APP INIT
+# =========================================
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = "hiddenedge_dev_secret"
 app.permanent_session_lifetime = timedelta(days=30)
 
 cv_service = CVService()
+
+# =========================================
+# STRIPE CONFIG
+# =========================================
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
@@ -55,7 +63,7 @@ def check_free_limit():
     return (not session.get("paid", False)) and session.get("usage", 0) >= 3
 
 # =========================================
-# ROUTES
+# ROUTES — CORE
 # =========================================
 
 @app.route("/")
@@ -80,11 +88,26 @@ def submit_email():
     session["user_email"] = email
     session["usage"] = 0
 
-    # 🔥 IMPORTANT: do NOT reset paid if already true
     if "paid" not in session:
         session["paid"] = False
 
     return jsonify({"success": True, "redirect": "/app"})
+
+# =========================================
+# ROUTES — STATIC PAGES (FIXED)
+# =========================================
+
+@app.route("/eula")
+def eula():
+    return render_template("eula.html")
+
+@app.route("/payment-cancel")
+def payment_cancel():
+    return render_template("payment-cancel.html")
+
+@app.route("/success")
+def success():
+    return render_template("success.html")
 
 # =========================================
 # STRIPE
@@ -101,7 +124,7 @@ def create_checkout_session():
         mode='subscription',
         line_items=[{'price': STRIPE_PRICE_ID, 'quantity': 1}],
         success_url=f"{BASE_URL}/payment-success?session_id={{CHECKOUT_SESSION_ID}}",
-        cancel_url=f"{BASE_URL}/app"
+        cancel_url=f"{BASE_URL}/payment-cancel"
     )
 
     return jsonify({"url": checkout_session.url})
@@ -119,18 +142,15 @@ def payment_success():
         if session_id:
             checkout = stripe.checkout.Session.retrieve(session_id)
 
-            # 🔥 STRONG VALIDATION
             if checkout and checkout.payment_status == "paid":
                 session["paid"] = True
                 session.modified = True
-
                 print("USER MARKED AS PAID")
 
     except Exception as e:
         print("Stripe verify error:", e)
 
     return redirect("/app")
-
 
 # =========================================
 # FILE EXTRACTION
@@ -192,7 +212,6 @@ def evaluate_answers():
 
     data = request.json
     base_score = int(data.get("base_score", 50))
-    answers = data.get("answers", "")
 
     return jsonify({
         "base_score": base_score,
@@ -206,7 +225,7 @@ def evaluate_answers():
     })
 
 # =========================================
-# IMPROVE CV (PAID ONLY)
+# IMPROVE CV (PAID)
 # =========================================
 
 @app.route("/improve_cv", methods=["POST"])
@@ -261,9 +280,12 @@ def download_cv():
     doc.save(stream)
     stream.seek(0)
 
-    return send_file(stream, as_attachment=True,
-                     download_name="HiddenEdge_CV.docx",
-                     mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    return send_file(
+        stream,
+        as_attachment=True,
+        download_name="HiddenEdge_CV.docx",
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
 
 # =========================================
 # RUN
