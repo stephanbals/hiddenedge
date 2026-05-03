@@ -1,179 +1,108 @@
-<!--
-SB3PM Advisory & Services Ltd
-Author: Stephan Bals
-HiddenEdge — FINAL FULL VERSION (ATS FIXED)
--->
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>HiddenEdge</title>
 
 <style>
-body { margin:0; font-family:Arial; background:#020617; color:white; }
-.wrapper { display:flex; height:100vh; }
-.left { width:300px; padding:20px; background:#0b1220; }
-.right { flex:1; padding:20px; overflow:auto; }
+body { margin:0; font-family: Arial; background:#0b1220; color:white; }
+.layout { display:flex; }
+.sidebar { width:260px; background:#0a1a33; padding:20px; min-height:100vh; }
+.main { flex:1; padding:20px; }
 
-.card { background:#111827; padding:18px; border-radius:12px; margin-bottom:15px; }
-.grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; }
-
-.robot { width:60px; }
+textarea { width:100%; height:150px; margin-top:10px; }
 
 button {
-    padding:10px;
+    width:100%;
+    padding:12px;
     margin-top:10px;
-    background:#3b82f6;
     border:none;
     border-radius:8px;
+    background: linear-gradient(90deg,#5f6cff,#7b4dff);
     color:white;
     cursor:pointer;
 }
 
-.secondary { background:#1e293b; }
+.card {
+    background:#0f1f3d;
+    padding:20px;
+    border-radius:12px;
+    margin-bottom:20px;
+}
 
-textarea {
+input.answer {
     width:100%;
-    margin-top:8px;
-    background:#020617;
-    color:white;
-    border:1px solid #334155;
-    border-radius:6px;
+    margin-top:5px;
     padding:8px;
+    border-radius:6px;
+    border:none;
 }
 
-.hidden { display:none; }
-
-.progress-bar {
-    height:6px;
-    background:#1e293b;
-    border-radius:5px;
-    margin-top:6px;
-}
-
-.progress-fill {
-    height:100%;
-    width:0%;
-    background:#22c55e;
-    border-radius:5px;
-    transition: width 0.4s ease;
-}
-
-.thinking {
-    font-size:14px;
-    opacity:0.8;
-    margin-top:10px;
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-    0% { opacity:0.3; }
-    50% { opacity:1; }
-    100% { opacity:0.3; }
-}
-
-.badge {
-    display:inline-block;
-    padding:4px 10px;
+pre {
+    white-space: pre-wrap;
+    background:#081020;
+    padding:15px;
     border-radius:10px;
-    font-size:12px;
-    font-weight:bold;
+    max-height:400px;
+    overflow:auto;
 }
-
-.pass { background:#065f46; color:#22c55e; }
-.reject { background:#7f1d1d; color:#ef4444; }
-.borderline { background:#78350f; color:#f59e0b; }
 </style>
 </head>
 
 <body>
 
-<div class="wrapper">
+<div class="layout">
 
-<div class="left">
-
+<div class="sidebar">
 <h2>HiddenEdge</h2>
-<img src="/static/helper.png" class="robot">
 
-<p style="font-size:13px;opacity:0.8;">
-1. Upload your CV<br>
-2. Paste job description<br>
-3. Click Analyze
-</p>
+<input type="file" id="cvFiles" multiple>
+<textarea id="jobText" placeholder="Paste job description"></textarea>
 
-<input type="file" id="files"><br><br>
-<textarea id="job_text" placeholder="Paste job description..."></textarea>
+<button id="analyzeBtn" onclick="analyze()">Analyze CV Fit</button>
+<button onclick="findJobs()">Find Jobs</button>
 
-<button onclick="analyze()">Analyze My Fit</button>
-
-<div class="card">
-
-Upload
-<div class="progress-bar"><div id="uploadBar" class="progress-fill"></div></div>
-
-Analyze
-<div class="progress-bar"><div id="analyzeBar" class="progress-fill"></div></div>
-
-Tailor
-<div class="progress-bar"><div id="tailorBar" class="progress-fill"></div></div>
-
-<div id="thinkingBox" class="thinking hidden"></div>
-
+<button onclick="handleSubscription()">
+🔓 Get Full Access — €9/month
+</button>
 </div>
 
-</div>
-
-<div class="right">
+<div class="main">
 
 <div class="card">
-<h3>ATS Evaluation</h3>
-<div id="atsBlock"></div>
-</div>
-
-<div class="grid">
-
-<div class="card">
-<img src="/static/nestor.png" class="robot">
-<h3>Recruiter Evaluation</h3>
-<div id="recruiterText"></div>
+<h2>Overall Match Score CV to Job Description (Now)</h2>
+<div id="score">--%</div>
 </div>
 
 <div class="card">
-<img src="/static/alec.png" class="robot">
-<h3>Hiring Manager Evaluation</h3>
-<div id="managerText"></div>
+<h2>ATS Evaluation</h2>
+<div id="ats"></div>
 </div>
 
+<div class="card">
+<h2>Recruiter</h2>
+<div id="recruiter"></div>
 </div>
 
-<div class="card hidden" id="helperCTA">
-<p>Answer questions to improve your match?</p>
-<button onclick="showQuestions()">Yes</button>
-<button class="secondary" onclick="decline()">No</button>
+<div class="card">
+<h2>Hiring Manager</h2>
+<div id="manager"></div>
 </div>
 
-<div class="card hidden" id="questionsBlock">
-<h3>Questions</h3>
-<div id="questionsContainer"></div>
-<button onclick="submitAnswers()">Submit</button>
+<div class="card">
+<h2>Improve Your Chances</h2>
+<div id="improvement"></div>
 </div>
 
-<div class="card hidden" id="evaluationBlock">
-<h3>Re-evaluation</h3>
-<div id="evaluationContent"></div>
+<div class="card">
+<h2>Improved CV Preview</h2>
+<div id="cvPreview"></div>
+<button id="downloadBtn" style="display:none;" onclick="downloadCV()">Download CV</button>
 </div>
 
-<div class="card hidden" id="improveCTA">
-<p>Improve your CV?</p>
-<button onclick="generateCV()">Yes</button>
-<button class="secondary" onclick="decline()">No</button>
-</div>
-
-<div class="card hidden" id="cvBlock">
-<h3>Improved CV</h3>
-<pre id="cvOutput"></pre>
-<div id="scoreBlock" style="margin-top:15px;"></div>
+<div class="card">
+<h2>Jobs</h2>
+<div id="jobs"></div>
 </div>
 
 </div>
@@ -181,175 +110,242 @@ Tailor
 
 <script>
 
-// ===== UX =====
-let thinkingMessages = [
-    "Analyzing your CV...",
-    "Simulating recruiter...",
-    "Evaluating hiring manager..."
-];
+let lastQuestions = [];
+let lastCVFiles = null;
+let lastJobText = "";
 
-let thinkingInterval, progressInterval;
+// ==========================
+// ANALYZE
+// ==========================
+function analyze(){
 
-function startThinking(){
-    let i=0;
-    thinkingBox.classList.remove("hidden");
-    thinkingInterval=setInterval(()=>{
-        thinkingBox.innerText=thinkingMessages[i++%thinkingMessages.length];
-    },1500);
-}
+    const files = document.getElementById("cvFiles").files;
+    const jobText = document.getElementById("jobText").value;
 
-function stopThinking(){
-    clearInterval(thinkingInterval);
-    thinkingBox.classList.add("hidden");
-}
-
-function smoothProgress(){
-    let v=0;
-    progressInterval=setInterval(()=>{
-        v+=Math.random()*8;
-        if(v>=90) clearInterval(progressInterval);
-        analyzeBar.style.width=v+"%";
-    },400);
-}
-
-function finishProgress(){
-    clearInterval(progressInterval);
-    analyzeBar.style.width="100%";
-}
-
-// ===== STATE =====
-let baseScore=0, questionsData=[], storedTexts=[];
-
-// ===== ANALYZE =====
-async function analyze(){
-
-    let file=files.files[0];
-    if(!file){ alert("Upload CV"); return; }
-
-    uploadBar.style.width="100%";
-    startThinking(); smoothProgress();
-
-    let form=new FormData();
-    form.append("files",file);
-    form.append("job_text",job_text.value);
-
-    let res=await fetch("/analyze",{method:"POST",body:form});
-
-    if(res.status===402){
-        stopThinking(); finishProgress();
-        alert("Upgrade required");
+    if(files.length === 0){
+        alert("Upload CV first");
         return;
     }
 
-    let data=await res.json();
+    lastCVFiles = files;
+    lastJobText = jobText;
 
-    stopThinking(); finishProgress();
+    const fd = new FormData();
+    for(let f of files){ fd.append("files", f); }
+    fd.append("job_text", jobText);
 
-    baseScore=data.fit_score||0;
-    storedTexts=data.texts||[];
+    const btn = document.getElementById("analyzeBtn");
+    btn.innerText = "Working...";
+    btn.disabled = true;
 
-    renderATS(data.ats_analysis||{});
-    renderRecruiter(data.recruiter_view||{});
-    renderManager(data.hiring_manager_view||{});
+    setTimeout(()=>{
+        if(btn.disabled){
+            btn.innerText = "May take up to 60 seconds...";
+        }
+    }, 5000);
 
-    questionsData=data.questions||[];
-    helperCTA.classList.remove("hidden");
+    fetch("/analyze", {
+        method:"POST",
+        body: fd
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        document.getElementById("score").innerText =
+            (data.fit_score ?? "--") + "%";
+
+        renderATS(data.ats_analysis);
+        renderRecruiter(data.recruiter_view);
+        renderManager(data.hiring_manager_view);
+        renderImprovement(data.improvement_summary, data.questions);
+
+    })
+    .finally(()=>{
+        btn.innerText = "Analyze CV Fit";
+        btn.disabled = false;
+    });
 }
 
-// ===== RENDER =====
-function getBadge(d){
-    if(!d) return "";
-    d=d.toLowerCase();
-    if(d.includes("pass")) return '<span class="badge pass">PASS</span>';
-    if(d.includes("reject")) return '<span class="badge reject">REJECT</span>';
-    return '<span class="badge borderline">BORDERLINE</span>';
-}
+// ==========================
+// ATS
+// ==========================
+function renderATS(data){
+    if(!data || !data.matches) return;
 
-// ✅ FULL ATS DETAIL RESTORED
-function renderATS(ats){
+    document.getElementById("ats").innerHTML = `
+        <ul>
+        ${data.matches.map(m=>{
 
-    let html = `
-    <b>Score:</b> ${ats.score || "N/A"}%<br><br>
-    <b>Domain:</b> ${ats.domain || ""}<br>
-    <b>Role:</b> ${ats.role || ""}<br><br>
+            let color = m.match==='yes'?'lightgreen':
+                        m.match==='partial'?'orange':'salmon';
+
+            let label = m.match==='yes'
+                ? "Found in CV:"
+                : m.match==='partial'
+                ? "Partially Present In CV:"
+                : "Not Found In CV:";
+
+            return `
+                <li style="color:${color}">
+                    <b>${label}</b> ${m.requirement}<br>
+                    <small>${m.evidence || m.gap || ""}</small>
+                </li>
+            `;
+        }).join("")}
+        </ul>
     `;
+}
 
-    (ats.matches || []).forEach(m=>{
-        html+=`
-        <div style="margin-bottom:12px;">
-        <b>${m.requirement || ""}</b><br>
-        Match: ${m.match || ""}<br>
-        Evidence: ${m.evidence || "No evidence"}<br>
-        Gap: ${m.gap || ""}
-        </div>`;
+// ==========================
+// RECRUITER
+// ==========================
+function renderRecruiter(data){
+    if(!data){
+        document.getElementById("recruiter").innerText = "No data";
+        return;
+    }
+
+    document.getElementById("recruiter").innerHTML = `
+        <b>${data.screening_decision}</b>
+        <p>${data.overall_impression || ""}</p>
+        <p>${data.decision_rationale}</p>
+    `;
+}
+
+// ==========================
+// MANAGER
+// ==========================
+function renderManager(data){
+    if(!data){
+        document.getElementById("manager").innerText = "No data";
+        return;
+    }
+
+    document.getElementById("manager").innerHTML = `
+        <b>${data.final_decision}</b>
+        <p>${data.execution_readiness || ""}</p>
+        <p>${data.decision_rationale}</p>
+    `;
+}
+
+// ==========================
+// IMPROVEMENT + QUESTIONS
+// ==========================
+function renderImprovement(text, questions){
+
+    lastQuestions = questions || [];
+
+    let html = `<p>${text || ""}</p>`;
+
+    if(lastQuestions.length > 0){
+
+        html += `<h4>Answer these to improve your CV:</h4>`;
+
+        lastQuestions.forEach((q, i)=>{
+            html += `
+                <div>
+                    <p>${q}</p>
+                    <input class="answer" id="q_${i}" placeholder="Your answer...">
+                </div>
+            `;
+        });
+
+        html += `<button onclick="submitAnswers()">Improve CV</button>`;
+    }
+
+    document.getElementById("improvement").innerHTML = html;
+}
+
+// ==========================
+// SUBMIT ANSWERS → REFINE CV
+// ==========================
+function submitAnswers(){
+
+    const answers = [];
+
+    lastQuestions.forEach((q, i)=>{
+        const val = document.getElementById(`q_${i}`).value;
+        if(val) answers.push(val);
     });
 
-    atsBlock.innerHTML = html;
+    if(answers.length === 0){
+        alert("Please answer at least one question");
+        return;
+    }
+
+    const fd = new FormData();
+
+    for(let f of lastCVFiles){ fd.append("files", f); }
+    fd.append("job_text", lastJobText);
+
+    answers.forEach(a => fd.append("answers", a));
+
+    fetch("/refine", {
+        method:"POST",
+        body: fd
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        document.getElementById("cvPreview").innerHTML =
+            `<pre>${data.cv}</pre>`;
+
+        document.getElementById("downloadBtn").style.display = "block";
+
+        window.latestCV = data.cv;
+
+    });
 }
 
-function renderRecruiter(r){
-    recruiterText.innerHTML=`${getBadge(r.screening_decision)}<br>${r.reasoning||""}`;
+// ==========================
+// DOWNLOAD CV
+// ==========================
+function downloadCV(){
+
+    const blob = new Blob([window.latestCV], {type: "text/plain"});
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "improved_cv.txt";
+    a.click();
+
+    URL.revokeObjectURL(url);
 }
 
-function renderManager(h){
-    managerText.innerHTML=`${h.final_decision||""}`;
-}
+// ==========================
+// JOBS
+// ==========================
+function findJobs(){
 
-// ===== QUESTIONS =====
-function showQuestions(){
-    helperCTA.classList.add("hidden");
-    questionsBlock.classList.remove("hidden");
-
-    questionsContainer.innerHTML=questionsData.map((q,i)=>
-        `<div>${q}<textarea id="q_${i}"></textarea></div>`
-    ).join("");
-}
-
-async function submitAnswers(){
-
-    let answers=questionsData.map((_,i)=>document.getElementById("q_"+i).value);
-
-    let res=await fetch("/evaluate_answers",{
+    fetch("/find_jobs", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({base_score:baseScore,answers:answers.join(" ")})
+        body: JSON.stringify({role:"project manager"})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+
+        const jobs = data.jobs || [];
+
+        document.getElementById("jobs").innerHTML = jobs.map(j=>`
+            <div>
+                <b>${j.title}</b> — ${j.company}<br>
+                <a href="${j.url}" target="_blank">Open</a>
+                <hr>
+            </div>
+        `).join("");
     });
-
-    let data=await res.json();
-
-    evaluationBlock.classList.remove("hidden");
-
-    evaluationContent.innerHTML=`
-    Original: ${data.base_score}%<br>
-    New: ${data.new_score}%
-    `;
-
-    improveCTA.classList.remove("hidden");
 }
 
-// ===== CV =====
-function generateCV(){
-
-    tailorBar.style.width="100%";
-
-    cvBlock.classList.remove("hidden");
-
-    cvOutput.innerHTML=`
-    <div style="filter:blur(5px);opacity:0.6;">
-    ${storedTexts.join("<br>").substring(0,800)}
-    </div>
-
-    <br><button onclick="goToCheckout()">Unlock Full CV</button>
-    `;
+// ==========================
+// STRIPE
+// ==========================
+function handleSubscription(){
+    fetch("/create-checkout-session",{method:"POST"})
+    .then(r=>r.json())
+    .then(d=>window.location.href = d.url);
 }
-
-async function goToCheckout(){
-    let res=await fetch("/create-checkout-session",{method:"POST"});
-    let data=await res.json();
-    window.location.href=data.url;
-}
-
-function decline(){ location.reload(); }
 
 </script>
 

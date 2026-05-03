@@ -1,93 +1,93 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>HiddenEdge – Email</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HiddenEdge Login</title>
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial;
-            background: linear-gradient(135deg, #0b1220, #132a4a);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-        }
+<style>
+body {
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+    background:#f8fafc;
+    display:flex;
+    height:100vh;
+    align-items:center;
+    justify-content:center;
+}
 
-        .card {
-            background: #121826;
-            padding: 30px;
-            border-radius: 14px;
-            width: 420px;
-            text-align: center;
-            box-shadow: 0 0 25px rgba(0,0,0,0.4);
-        }
+.box {
+    background:white;
+    padding:30px;
+    border-radius:12px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.05);
+    text-align:center;
+}
 
-        input {
-            width: 100%;
-            padding: 14px;
-            margin-top: 20px;
-            border-radius: 10px;
-            border: none;
-            background: #0b1220;
-            color: white;
-        }
+input {
+    padding:10px;
+    width:250px;
+    margin-top:10px;
+}
 
-        button {
-            margin-top: 20px;
-            width: 100%;
-            padding: 14px;
-            border-radius: 10px;
-            border: none;
-            font-weight: bold;
-            background: linear-gradient(135deg, #4facfe, #6a82fb);
-            color: white;
-            cursor: pointer;
-        }
-
-        img {
-            width: 80px;
-            margin-bottom: 10px;
-        }
-    </style>
-
-    <script>
-        async function submitEmail() {
-            const email = document.getElementById("email").value;
-
-            const res = await fetch("/submit-email", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ email })
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-                window.location.href = data.redirect;
-            } else {
-                alert("Something went wrong");
-            }
-        }
-    </script>
-
+button {
+    margin-top:15px;
+    padding:10px 15px;
+    background:#6366f1;
+    color:white;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+}
+</style>
 </head>
 
 <body>
 
-<div class="card">
-    <img src="/static/robots/nestor.png">
-    <h2>Enter your email</h2>
-    <p>We’ll use this to personalize your experience.</p>
+<div class="box">
+    <h2>HiddenEdge</h2>
 
-    <input id="email" type="email" placeholder="your@email.com">
+    <input id="email" placeholder="you@example.com">
 
-    <button onclick="submitEmail()">Continue</button>
+    <br>
+
+    <button onclick="login()">Continue</button>
+
+    <div id="error" style="color:red;margin-top:10px;"></div>
 </div>
+
+<script>
+async function login(){
+
+    const email = document.getElementById("email").value;
+
+    if (!email){
+        document.getElementById("error").innerText = "Please enter email";
+        return;
+    }
+
+    try {
+
+        const res = await fetch("/submit-email", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ email })
+        });
+
+        // 🔥 KEY FIX: DO NOT PARSE JSON
+        // Instead check redirect
+
+        if (res.redirected) {
+            window.location.href = res.url;
+            return;
+        }
+
+        // fallback (just in case)
+        window.location.href = "/app";
+
+    } catch (e){
+        document.getElementById("error").innerText = "Login failed";
+    }
+}
+</script>
 
 </body>
 </html>
