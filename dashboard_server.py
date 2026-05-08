@@ -40,6 +40,15 @@ from docx.shared import Pt
 load_dotenv()
 
 # =========================================
+# BASE URL
+# =========================================
+
+BASE_URL = os.getenv(
+    "BASE_URL",
+    "http://127.0.0.1:5000"
+)
+
+# =========================================
 # APP INIT
 # =========================================
 
@@ -404,10 +413,6 @@ def extract_cv_text(file):
 
     filename = file.filename.lower()
 
-    # =========================================
-    # ALLOWED FILE TYPES
-    # =========================================
-
     allowed_extensions = (
         ".pdf",
         ".docx",
@@ -423,10 +428,6 @@ def extract_cv_text(file):
 
     try:
 
-        # =========================================
-        # DOCX
-        # =========================================
-
         if filename.endswith(".docx"):
 
             doc = Document(file)
@@ -436,10 +437,6 @@ def extract_cv_text(file):
             ])
 
             return text.strip()
-
-        # =========================================
-        # PDF
-        # =========================================
 
         elif filename.endswith(".pdf"):
 
@@ -471,20 +468,12 @@ def extract_cv_text(file):
                     "Unable to read PDF file."
                 )
 
-        # =========================================
-        # TXT
-        # =========================================
-
         elif filename.endswith(".txt"):
 
             return file.read().decode(
                 "utf-8",
                 errors="ignore"
             ).strip()
-
-        # =========================================
-        # SAFETY FALLBACK
-        # =========================================
 
         else:
 
@@ -730,7 +719,7 @@ def create_customer_portal():
 
             customer=stripe_customer_id,
 
-            return_url="http://127.0.0.1:5000/app"
+            return_url=f"{BASE_URL}/app"
         )
 
         return jsonify({
@@ -1580,15 +1569,13 @@ def create_checkout():
 
                 success_url=(
 
-                    "http://127.0.0.1:5000/"
-                    "success"
+                    f"{BASE_URL}/success"
                     "?session_id={CHECKOUT_SESSION_ID}"
                 ),
 
                 cancel_url=(
 
-                    "http://127.0.0.1:5000/"
-                    "payment-cancel"
+                    f"{BASE_URL}/payment-cancel"
                 )
             )
         )
@@ -1638,8 +1625,13 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 5000))
 
+    debug_mode = (
+        os.getenv("MODE", "prod").lower()
+        == "dev"
+    )
+
     app.run(
         host="0.0.0.0",
         port=port,
-        debug=True
+        debug=debug_mode
     )
