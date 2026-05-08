@@ -1,11 +1,3 @@
-REM =========================================
-REM HiddenEdge / SB3PM Advisory 
-REM Author: Stephan Bals
-REM © 2026 SB3PM Advisory 
-REM This code is proprietary and confidential.
-REM Unauthorized use, distribution, or replication is prohibited.
-REM =========================================
-
 flask
 flask-cors
 openai>=1.0.0
@@ -18,3 +10,4 @@ pypdf2
 psycopg2-binary
 requests
 beautifulsoup4
+pypdf
