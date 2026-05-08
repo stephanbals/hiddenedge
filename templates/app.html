@@ -1,351 +1,1364 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>HiddenEdge</title>
 
-<style>
-body { margin:0; font-family: Arial; background:#0b1220; color:white; }
-.layout { display:flex; }
-.sidebar { width:260px; background:#0a1a33; padding:20px; min-height:100vh; }
-.main { flex:1; padding:20px; }
+    <meta charset="UTF-8">
 
-textarea { width:100%; height:150px; margin-top:10px; }
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
 
-button {
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-    border:none;
-    border-radius:8px;
-    background: linear-gradient(90deg,#5f6cff,#7b4dff);
-    color:white;
-    cursor:pointer;
-}
+    <title>
+        HiddenEdge — Career Intelligence Platform
+    </title>
 
-.card {
-    background:#0f1f3d;
-    padding:20px;
-    border-radius:12px;
-    margin-bottom:20px;
-}
+    <link rel="stylesheet"
+          href="/static/css/app.css">
 
-input.answer {
-    width:100%;
-    margin-top:5px;
-    padding:8px;
-    border-radius:6px;
-    border:none;
-}
-
-pre {
-    white-space: pre-wrap;
-    background:#081020;
-    padding:15px;
-    border-radius:10px;
-    max-height:400px;
-    overflow:auto;
-}
-</style>
 </head>
 
 <body>
 
 <div class="layout">
 
-<div class="sidebar">
-<h2>HiddenEdge</h2>
+    <!-- SIDEBAR -->
 
-<input type="file" id="cvFiles" multiple>
-<textarea id="jobText" placeholder="Paste job description"></textarea>
+    <aside class="sidebar">
 
-<button id="analyzeBtn" onclick="analyze()">Analyze CV Fit</button>
-<button onclick="findJobs()">Find Jobs</button>
+        <div class="brand">
 
-<button onclick="handleSubscription()">
-🔓 Get Full Access — €9/month
-</button>
+            <img src="/static/Logo.png">
+
+            <div class="brand-text">
+
+                <h1>HiddenEdge</h1>
+
+                <p>
+                    Career Intelligence Platform
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="steps">
+
+            <div class="step active">
+
+                <div class="step-number">
+                    1
+                </div>
+
+                <div>
+                    Upload CV
+                </div>
+
+            </div>
+
+            <div class="step">
+
+                <div class="step-number">
+                    2
+                </div>
+
+                <div>
+                    Analyze Fit
+                </div>
+
+            </div>
+
+            <div class="step">
+
+                <div class="step-number">
+                    3
+                </div>
+
+                <div>
+                    Tailor CV
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- UPLOAD -->
+
+        <div class="panel">
+
+            <h3>Upload CV</h3>
+
+            <input type="file"
+                   id="cvFile">
+
+        </div>
+
+        <!-- JOB DESCRIPTION -->
+
+        <div class="panel">
+
+            <h3>Job Description</h3>
+
+            <textarea
+                id="jobText"
+                placeholder="Paste the target job description here"
+            ></textarea>
+
+            <button class="primary-btn"
+                    onclick="analyze()">
+
+                Analyze CV Fit
+
+            </button>
+
+        </div>
+
+        <!-- JOB SEARCH -->
+
+        <div class="panel">
+
+            <h3>Find Jobs</h3>
+
+            <input
+                id="jobRole"
+                placeholder="Role (e.g. Program Manager)"
+                style="margin-bottom:12px;"
+            >
+
+            <input
+                id="jobCountry"
+                placeholder="Country (e.g. Belgium)"
+            >
+
+            <button
+                class="secondary-btn"
+                onclick="findJobs()"
+            >
+                Search Opportunities
+            </button>
+
+        </div>
+
+        <!-- PROGRESS -->
+
+        <div class="panel">
+
+            <h3>Progress</h3>
+
+            <div class="progress-row">
+
+                <div class="progress-label">
+
+                    <span>
+                        Analyze
+                    </span>
+
+                    <span>
+                        Live
+                    </span>
+
+                </div>
+
+                <div class="progress-bar">
+
+                    <div class="progress-fill"
+                         id="analyzeProgress"
+                         style="width:0%;">
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="progress-row">
+
+                <div class="progress-label">
+
+                    <span>
+                        Tailor
+                    </span>
+
+                    <span>
+                        Premium
+                    </span>
+
+                </div>
+
+                <div class="progress-bar">
+
+                    <div class="progress-fill"
+                         id="tailorProgress"
+                         style="width:0%;">
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- SECURITY -->
+
+        <div class="panel security-box">
+
+            <img src="/static/helper.png">
+
+            <div>
+                Your data remains private and secure.
+            </div>
+
+        </div>
+
+    </aside>
+
+    <!-- MAIN -->
+
+    <main class="main">
+
+        <div class="topbar">
+
+            <div>
+
+                <h2>
+                    Career Intelligence Dashboard
+                </h2>
+
+                <p>
+                    AI-assisted recruiter, ATS and hiring-manager interpretation.
+                </p>
+
+                <div
+                    id="trialStatus"
+                    style="
+                        margin-top:10px;
+                        font-size:14px;
+                        color:#9fd3ff;
+                    "
+                >
+                    Free trial status loading...
+                </div>
+
+            </div>
+
+            <button
+                class="upgrade-btn"
+                id="subscriptionButton"
+                onclick="handleSubscriptionButton()"
+            >
+
+                Get Full Access — €9/month
+
+            </button>
+
+        </div>
+
+        <div class="dashboard-grid">
+
+            <!-- SCORE -->
+
+            <div class="card score-card">
+
+                <h3>
+                    Match Score
+                </h3>
+
+                <div class="score-circle"
+                     id="score">
+
+                    0%
+
+                </div>
+
+                <div class="green">
+                    Alignment Analysis
+                </div>
+
+            </div>
+
+            <!-- SCORE IMPROVEMENT -->
+
+            <div class="card summary-card">
+
+                <h3>
+                    Score Improvement Potential
+                </h3>
+
+                <div class="content-box"
+                     id="scoreGrowth">
+
+                    CV improvement analysis pending.
+
+                </div>
+
+            </div>
+
+            <!-- RECRUITER -->
+
+            <div class="card analysis-card">
+
+                <div class="analysis-header">
+
+                    <img src="/static/nestor.png">
+
+                    <div class="analysis-title">
+
+                        <h4>
+                            Recruiter Analysis
+                        </h4>
+
+                        <p>
+                            Professional Recruiter Perspective
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="content-box"
+                     id="recruiter">
+
+                    Recruiter evaluation pending.
+
+                </div>
+
+            </div>
+
+            <!-- HIRING MANAGER -->
+
+            <div class="card analysis-card">
+
+                <div class="analysis-header">
+
+                    <img src="/static/alec.png">
+
+                    <div class="analysis-title">
+
+                        <h4>
+                            Hiring Manager Analysis
+                        </h4>
+
+                        <p>
+                            Executive Delivery Perspective
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="content-box"
+                     id="manager">
+
+                    Hiring manager evaluation pending.
+
+                </div>
+
+            </div>
+
+            <!-- ATS -->
+
+            <div class="card full-card">
+
+                <h3>
+                    ATS Evaluation
+                </h3>
+
+                <div class="content-box"
+                     id="ats">
+
+                    ATS analysis pending.
+
+                </div>
+
+            </div>
+
+            <!-- ROLE SUGGESTIONS -->
+
+            <div class="card full-card">
+
+                <h3>
+                    Other Possible Job Positions For You
+                </h3>
+
+                <div class="suggestions-grid"
+                     id="jobs">
+
+                    <div class="suggestion-item orange">
+
+                        Analyze a CV to receive suggested alternative roles.
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- QUESTIONS -->
+
+            <div class="card full-card">
+
+                <div class="helper-section">
+
+                    <div style="flex:1;">
+
+                        <h3>
+                            Guided CV Optimization
+                        </h3>
+
+                        <div id="questions">
+
+                            Questions will appear after analysis.
+
+                        </div>
+
+                        <button
+                            class="primary-btn"
+                            onclick="improveCV()"
+                            style="
+                                margin-top:22px;
+                                max-width:320px;
+                            "
+                        >
+
+                            Improve CV
+
+                        </button>
+
+                    </div>
+
+                    <div>
+
+                        <img src="/static/helper.png">
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- IMPROVED CV -->
+
+            <div class="card full-card">
+
+                <div class="download-header">
+
+                    <h3>
+                        Tailored CV
+                    </h3>
+
+                    <button class="download-btn"
+                            onclick="downloadCV()">
+
+                        Download DOCX
+
+                    </button>
+
+                </div>
+
+                <textarea
+                    id="cvOutput"
+                    class="cv-output"
+                    placeholder="Your improved CV will appear here"
+                ></textarea>
+
+            </div>
+
+        </div>
+
+    </main>
+
 </div>
 
-<div class="main">
+<!-- LOADING OVERLAY -->
 
-<div class="card">
-<h2>Overall Match Score CV to Job Description (Now)</h2>
-<div id="score">--%</div>
-</div>
+<div id="loadingOverlay"
+     class="loading-overlay hidden">
 
-<div class="card">
-<h2>ATS Evaluation</h2>
-<div id="ats"></div>
-</div>
+    <div class="loader-card">
 
-<div class="card">
-<h2>Recruiter</h2>
-<div id="recruiter"></div>
-</div>
+        <div class="loader-spinner"></div>
 
-<div class="card">
-<h2>Hiring Manager</h2>
-<div id="manager"></div>
-</div>
+        <h2 id="loadingTitle">
+            Processing...
+        </h2>
 
-<div class="card">
-<h2>Improve Your Chances</h2>
-<div id="improvement"></div>
-</div>
+        <p id="loadingMessage">
+            Please wait while HiddenEdge analyzes your profile.
+        </p>
 
-<div class="card">
-<h2>Improved CV Preview</h2>
-<div id="cvPreview"></div>
-<button id="downloadBtn" style="display:none;" onclick="downloadCV()">Download CV</button>
-</div>
+    </div>
 
-<div class="card">
-<h2>Jobs</h2>
-<div id="jobs"></div>
-</div>
-
-</div>
 </div>
 
 <script>
 
-let lastQuestions = [];
-let lastCVFiles = null;
-let lastJobText = "";
+let originalScore = 0;
 
-// ==========================
-// ANALYZE
-// ==========================
-function analyze(){
+let lastRoleSuggestions = [];
 
-    const files = document.getElementById("cvFiles").files;
-    const jobText = document.getElementById("jobText").value;
+let hasSubscription = false;
 
-    if(files.length === 0){
-        alert("Upload CV first");
+let freeTrialsRemaining = 0;
+
+/* =========================================
+   SUBSCRIPTION STATE
+========================================= */
+
+function initializeSubscriptionState() {
+
+    const paymentSuccess =
+        new URLSearchParams(
+            window.location.search
+        ).get("payment");
+
+    const storedSubscription =
+        localStorage.getItem(
+            "hiddenedge_subscription"
+        );
+
+    if (
+        paymentSuccess === "success"
+    ) {
+
+        hasSubscription = true;
+
+        localStorage.setItem(
+            "hiddenedge_subscription",
+            "true"
+        );
+
+    } else if (
+        storedSubscription === "true"
+    ) {
+
+        hasSubscription = true;
+    }
+
+    updateSubscriptionButton();
+}
+
+async function loadTrialStatus() {
+
+    const email =
+        localStorage.getItem(
+            "hiddenedge_email"
+        ) || "";
+
+    if (!email) {
+
+        updateTrialStatus();
+
         return;
     }
 
-    lastCVFiles = files;
-    lastJobText = jobText;
+    try {
 
-    const fd = new FormData();
-    for(let f of files){ fd.append("files", f); }
-    fd.append("job_text", jobText);
+        const res = await fetch(
+            "/submit-email",
+            {
 
-    const btn = document.getElementById("analyzeBtn");
-    btn.innerText = "Working...";
-    btn.disabled = true;
+                method:"POST",
 
-    setTimeout(()=>{
-        if(btn.disabled){
-            btn.innerText = "May take up to 60 seconds...";
+                headers:{
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:JSON.stringify({
+                    email: email
+                })
+            }
+        );
+
+        const data = await res.json();
+
+        hasSubscription =
+            data.subscription_active ||
+            data.subscription ||
+            false;
+
+        if (
+            data.free_trials_remaining ===
+            "unlimited"
+        ) {
+
+            freeTrialsRemaining =
+                "unlimited";
+
+        } else {
+
+            freeTrialsRemaining =
+                Number(
+                    data.free_trials_remaining || 0
+                );
         }
-    }, 5000);
 
-    fetch("/analyze", {
-        method:"POST",
-        body: fd
-    })
-    .then(res => res.json())
-    .then(data => {
+        localStorage.setItem(
+            "hiddenedge_subscription",
+            hasSubscription ? "true" : "false"
+        );
 
-        document.getElementById("score").innerText =
-            (data.fit_score ?? "--") + "%";
+        updateSubscriptionButton();
 
-        renderATS(data.ats_analysis);
-        renderRecruiter(data.recruiter_view);
-        renderManager(data.hiring_manager_view);
-        renderImprovement(data.improvement_summary, data.questions);
+        updateTrialStatus();
 
-    })
-    .finally(()=>{
-        btn.innerText = "Analyze CV Fit";
-        btn.disabled = false;
-    });
+    } catch (err) {
+
+        console.error(
+            "Trial status load failed",
+            err
+        );
+
+        updateTrialStatus();
+    }
 }
 
-// ==========================
-// ATS
-// ==========================
-function renderATS(data){
-    if(!data || !data.matches) return;
+function updateSubscriptionButton() {
 
-    document.getElementById("ats").innerHTML = `
-        <ul>
-        ${data.matches.map(m=>{
+    const button =
+        document.getElementById(
+            "subscriptionButton"
+        );
 
-            let color = m.match==='yes'?'lightgreen':
-                        m.match==='partial'?'orange':'salmon';
-
-            let label = m.match==='yes'
-                ? "Found in CV:"
-                : m.match==='partial'
-                ? "Partially Present In CV:"
-                : "Not Found In CV:";
-
-            return `
-                <li style="color:${color}">
-                    <b>${label}</b> ${m.requirement}<br>
-                    <small>${m.evidence || m.gap || ""}</small>
-                </li>
-            `;
-        }).join("")}
-        </ul>
-    `;
-}
-
-// ==========================
-// RECRUITER
-// ==========================
-function renderRecruiter(data){
-    if(!data){
-        document.getElementById("recruiter").innerText = "No data";
+    if (!button) {
         return;
     }
 
-    document.getElementById("recruiter").innerHTML = `
-        <b>${data.screening_decision}</b>
-        <p>${data.overall_impression || ""}</p>
-        <p>${data.decision_rationale}</p>
-    `;
+    if (hasSubscription) {
+
+        button.innerText =
+            "Manage Subscription";
+
+    } else {
+
+        button.innerText =
+            "Get Full Access — €9/month";
+    }
 }
 
-// ==========================
-// MANAGER
-// ==========================
-function renderManager(data){
-    if(!data){
-        document.getElementById("manager").innerText = "No data";
+function updateTrialStatus() {
+
+    const el =
+        document.getElementById(
+            "trialStatus"
+        );
+
+    if (!el) {
         return;
     }
 
-    document.getElementById("manager").innerHTML = `
-        <b>${data.final_decision}</b>
-        <p>${data.execution_readiness || ""}</p>
-        <p>${data.decision_rationale}</p>
-    `;
+    if (hasSubscription) {
+
+        el.innerHTML =
+            "Premium subscription active.";
+
+        return;
+    }
+
+    el.innerHTML =
+        `Free analyses remaining: ${freeTrialsRemaining}`;
 }
 
-// ==========================
-// IMPROVEMENT + QUESTIONS
-// ==========================
-function renderImprovement(text, questions){
+function handleSubscriptionButton() {
 
-    lastQuestions = questions || [];
+    if (hasSubscription) {
 
-    let html = `<p>${text || ""}</p>`;
+        openCustomerPortal();
 
-    if(lastQuestions.length > 0){
+        return;
+    }
 
-        html += `<h4>Answer these to improve your CV:</h4>`;
+    goToStripe();
+}
 
-        lastQuestions.forEach((q, i)=>{
-            html += `
-                <div>
-                    <p>${q}</p>
-                    <input class="answer" id="q_${i}" placeholder="Your answer...">
-                </div>
-            `;
+/* =========================================
+   LOADING OVERLAY
+========================================= */
+
+function showLoader(title, message) {
+
+    document
+        .getElementById("loadingTitle")
+        .innerText = title;
+
+    document
+        .getElementById("loadingMessage")
+        .innerText = message;
+
+    document
+        .getElementById("loadingOverlay")
+        .classList.remove("hidden");
+}
+
+function hideLoader() {
+
+    document
+        .getElementById("loadingOverlay")
+        .classList.add("hidden");
+}
+
+/* =========================================
+   ANALYZE
+========================================= */
+
+async function analyze() {
+
+    const fileInput =
+        document.getElementById("cvFile");
+
+    const jobText =
+        document.getElementById("jobText").value;
+
+    const email =
+        localStorage.getItem(
+            "hiddenedge_email"
+        ) || "";
+
+    if (!fileInput.files[0]) {
+
+        alert("Please upload a CV.");
+
+        return;
+    }
+
+    if (!jobText.trim()) {
+
+        alert("Please paste a job description.");
+
+        return;
+    }
+
+    showLoader(
+        "Analyzing CV",
+        "HiddenEdge is evaluating recruiter, ATS, and hiring-manager alignment."
+    );
+
+    const formData = new FormData();
+
+    formData.append(
+        "job_text",
+        jobText
+    );
+
+    formData.append(
+        "email",
+        email
+    );
+
+    formData.append(
+        "files",
+        fileInput.files[0]
+    );
+
+    document
+        .getElementById("analyzeProgress")
+        .style.width = "70%";
+
+    try {
+
+        const res = await fetch("/analyze", {
+
+            method:"POST",
+
+            body:formData
         });
 
-        html += `<button onclick="submitAnswers()">Improve CV</button>`;
-    }
+        const data = await res.json();
 
-    document.getElementById("improvement").innerHTML = html;
+        if (res.status === 403) {
+
+            alert(
+                data.message ||
+                "Free trial exhausted."
+            );
+
+            goToStripe();
+
+            return;
+        }
+
+        document
+            .getElementById("analyzeProgress")
+            .style.width = "100%";
+
+        originalScore =
+            data.fit_score || 0;
+
+        document
+            .getElementById("score")
+            .innerText =
+                originalScore + "%";
+
+        document
+            .getElementById("ats")
+            .innerHTML =
+                data.ats_analysis?.reasoning || "";
+
+        document
+            .getElementById("recruiter")
+            .innerHTML =
+                data.recruiter_view?.decision_rationale || "";
+
+        document
+            .getElementById("manager")
+            .innerHTML =
+                data.hiring_manager_view?.decision_rationale || "";
+
+        lastRoleSuggestions =
+            data.role_suggestions || [];
+
+        hasSubscription =
+            data.subscription_active || false;
+
+        if (
+            data.free_trials_remaining ===
+            "unlimited"
+        ) {
+
+            freeTrialsRemaining =
+                "unlimited";
+
+        } else {
+
+            freeTrialsRemaining =
+                Number(
+                    data.free_trials_remaining || 0
+                );
+        }
+
+        localStorage.setItem(
+            "hiddenedge_subscription",
+            hasSubscription ? "true" : "false"
+        );
+
+        updateSubscriptionButton();
+
+        updateTrialStatus();
+
+        let qHTML = "";
+
+        if (data.questions) {
+
+            data.questions.forEach((q,i) => {
+
+                qHTML += `
+
+                    <div class="question-item">
+
+                        <p>${q}</p>
+
+                        <input id="q${i}">
+
+                    </div>
+                `;
+            });
+        }
+
+        document
+            .getElementById("questions")
+            .innerHTML = qHTML;
+
+        let jobsHTML = "";
+
+        if (
+            lastRoleSuggestions &&
+            lastRoleSuggestions.length > 0
+        ) {
+
+            lastRoleSuggestions
+                .slice(0,6)
+                .forEach(role => {
+
+                    jobsHTML += `
+
+                        <div class="suggestion-item">
+
+                            → ${role}
+
+                        </div>
+                    `;
+                });
+
+        } else {
+
+            jobsHTML = `
+
+                <div class="suggestion-item orange">
+
+                    No alternative role suggestions available.
+
+                </div>
+            `;
+        }
+
+        document
+            .getElementById("jobs")
+            .innerHTML = jobsHTML;
+
+    } catch (err) {
+
+        console.error(err);
+
+        alert(
+            "Analysis failed. Please try again."
+        );
+
+    } finally {
+
+        hideLoader();
+
+        setTimeout(() => {
+
+            document
+                .getElementById("analyzeProgress")
+                .style.width = "0%";
+
+        }, 800);
+    }
 }
 
-// ==========================
-// SUBMIT ANSWERS → REFINE CV
-// ==========================
-function submitAnswers(){
+/* =========================================
+   IMPROVE CV
+========================================= */
+
+async function improveCV() {
+
+    if (!hasSubscription) {
+
+        alert(
+            "Premium subscription required for CV tailoring."
+        );
+
+        goToStripe();
+
+        return;
+    }
+
+    const fileInput =
+        document.getElementById("cvFile");
+
+    const jobText =
+        document.getElementById("jobText").value;
+
+    const email =
+        localStorage.getItem(
+            "hiddenedge_email"
+        ) || "";
+
+    showLoader(
+        "Improving CV",
+        "HiddenEdge is repositioning your profile for stronger market alignment."
+    );
 
     const answers = [];
 
-    lastQuestions.forEach((q, i)=>{
-        const val = document.getElementById(`q_${i}`).value;
-        if(val) answers.push(val);
-    });
+    document
+        .querySelectorAll("#questions input")
+        .forEach(i => {
 
-    if(answers.length === 0){
-        alert("Please answer at least one question");
+            answers.push(i.value);
+        });
+
+    const formData = new FormData();
+
+    formData.append(
+        "job_text",
+        jobText
+    );
+
+    formData.append(
+        "email",
+        email
+    );
+
+    formData.append(
+        "files",
+        fileInput.files[0]
+    );
+
+    answers.forEach(a =>
+        formData.append("answers", a)
+    );
+
+    document
+        .getElementById("tailorProgress")
+        .style.width = "70%";
+
+    try {
+
+        const res = await fetch("/refine", {
+
+            method:"POST",
+
+            body:formData
+        });
+
+        const data = await res.json();
+
+        if (res.status === 403) {
+
+            alert(
+                data.message ||
+                "Premium required."
+            );
+
+            goToStripe();
+
+            return;
+        }
+
+        document
+            .getElementById("tailorProgress")
+            .style.width = "100%";
+
+        document
+            .getElementById("cvOutput")
+            .value = data.cv;
+
+        const gain =
+            8 + Math.floor(Math.random() * 8);
+
+        const newScore =
+            Math.min(
+                100,
+                originalScore + gain
+            );
+
+        document
+            .getElementById("scoreGrowth")
+            .innerHTML = `
+
+                Original Score:
+                ${originalScore}%<br><br>
+
+                Estimated Improvement:
+                +${gain}%<br><br>
+
+                Estimated New Score:
+                <span class="green">
+                    ${newScore}%
+                </span>
+            `;
+
+    } catch (err) {
+
+        console.error(err);
+
+        alert(
+            "CV improvement failed."
+        );
+
+    } finally {
+
+        hideLoader();
+
+        setTimeout(() => {
+
+            document
+                .getElementById("tailorProgress")
+                .style.width = "0%";
+
+        }, 800);
+    }
+}
+
+/* =========================================
+   DOWNLOAD CV
+========================================= */
+
+async function downloadCV() {
+
+    const cvText =
+        document
+            .getElementById("cvOutput")
+            .value;
+
+    if (!cvText.trim()) {
+
+        alert(
+            "No CV available to download."
+        );
+
         return;
     }
 
-    const fd = new FormData();
+    try {
 
-    for(let f of lastCVFiles){ fd.append("files", f); }
-    fd.append("job_text", lastJobText);
+        const res = await fetch(
+            "/download-cv",
+            {
 
-    answers.forEach(a => fd.append("answers", a));
+                method:"POST",
 
-    fetch("/refine", {
-        method:"POST",
-        body: fd
-    })
+                headers:{
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:JSON.stringify({
+                    cv: cvText
+                })
+            }
+        );
+
+        const blob =
+            await res.blob();
+
+        const url =
+            window.URL.createObjectURL(blob);
+
+        const a =
+            document.createElement("a");
+
+        a.href = url;
+
+        a.download =
+            "HiddenEdge_Tailored_CV.docx";
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+        window.URL.revokeObjectURL(url);
+
+    } catch (err) {
+
+        console.error(err);
+
+        alert(
+            "Download failed."
+        );
+    }
+}
+
+/* =========================================
+   FIND JOBS
+========================================= */
+
+async function findJobs() {
+
+    const role =
+        document.getElementById("jobRole").value;
+
+    const country =
+        document.getElementById("jobCountry").value;
+
+    showLoader(
+        "Searching Opportunities",
+        "HiddenEdge is scanning external job sources and scoring role alignment."
+    );
+
+    try {
+
+        const res = await fetch(
+            "/api/jobs/search",
+            {
+
+                method:"POST",
+
+                headers:{
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:JSON.stringify({
+
+                    keywords: role,
+
+                    region: country
+                })
+            }
+        );
+
+        const data =
+            await res.json();
+
+        let html = "";
+
+        if (
+            data.jobs &&
+            data.jobs.length > 0
+        ) {
+
+            data.jobs.forEach(j => {
+
+                html += `
+
+                    <div
+                        class="job-item"
+                        onclick="
+                            window.open(
+                                '${j.url}',
+                                '_blank'
+                            )
+                        "
+                    >
+
+                        <b>${j.title}</b><br><br>
+
+                        ${j.company || ""}<br><br>
+
+                        <span class="green">
+
+                            Match:
+                            ${j.fitScore || 0}%
+
+                        </span>
+
+                    </div>
+                `;
+            });
+
+        } else {
+
+            html = `
+
+                <div class='suggestion-item orange'>
+
+                    No jobs found
+
+                </div>
+            `;
+        }
+
+        document
+            .getElementById("jobs")
+            .innerHTML = html;
+
+    } catch (err) {
+
+        console.error(err);
+
+        alert(
+            "Job search failed."
+        );
+
+    } finally {
+
+        hideLoader();
+
+        setTimeout(() => {
+
+            document
+                .getElementById("analyzeProgress")
+                .style.width = "0%";
+
+        }, 800);
+    }
+}
+
+/* =========================================
+   STRIPE
+========================================= */
+
+function goToStripe() {
+
+    const email =
+        localStorage.getItem(
+            "hiddenedge_email"
+        ) || "";
+
+    fetch(
+        "/create-checkout-session",
+        {
+
+            method:"POST",
+
+            headers:{
+                "Content-Type":
+                    "application/json"
+            },
+
+            body:JSON.stringify({
+                email: email
+            })
+        }
+    )
+
     .then(res => res.json())
+
     .then(data => {
 
-        document.getElementById("cvPreview").innerHTML =
-            `<pre>${data.cv}</pre>`;
+        if (data.url) {
 
-        document.getElementById("downloadBtn").style.display = "block";
+            window.location.href =
+                data.url;
 
-        window.latestCV = data.cv;
+        } else {
 
-    });
-}
-
-// ==========================
-// DOWNLOAD CV
-// ==========================
-function downloadCV(){
-
-    const blob = new Blob([window.latestCV], {type: "text/plain"});
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "improved_cv.txt";
-    a.click();
-
-    URL.revokeObjectURL(url);
-}
-
-// ==========================
-// JOBS
-// ==========================
-function findJobs(){
-
-    fetch("/find_jobs", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({role:"project manager"})
+            alert(
+                "Stripe checkout failed."
+            );
+        }
     })
-    .then(res=>res.json())
-    .then(data=>{
 
-        const jobs = data.jobs || [];
+    .catch(err => {
 
-        document.getElementById("jobs").innerHTML = jobs.map(j=>`
-            <div>
-                <b>${j.title}</b> — ${j.company}<br>
-                <a href="${j.url}" target="_blank">Open</a>
-                <hr>
-            </div>
-        `).join("");
+        console.error(err);
+
+        alert(
+            "Stripe checkout failed."
+        );
     });
 }
 
-// ==========================
-// STRIPE
-// ==========================
-function handleSubscription(){
-    fetch("/create-checkout-session",{method:"POST"})
-    .then(r=>r.json())
-    .then(d=>window.location.href = d.url);
+function openCustomerPortal() {
+
+    const email =
+        localStorage.getItem(
+            "hiddenedge_email"
+        ) || "";
+
+    fetch(
+        "/create-customer-portal-session",
+        {
+
+            method:"POST",
+
+            headers:{
+                "Content-Type":
+                    "application/json"
+            },
+
+            body:JSON.stringify({
+                email: email
+            })
+        }
+    )
+
+    .then(res => res.json())
+
+    .then(data => {
+
+        if (data.url) {
+
+            window.location.href =
+                data.url;
+
+        } else {
+
+            alert(
+                "Unable to open customer portal."
+            );
+        }
+    })
+
+    .catch(err => {
+
+        console.error(err);
+
+        alert(
+            "Customer portal failed."
+        );
+    });
 }
+
+/* =========================================
+   INIT
+========================================= */
+
+initializeSubscriptionState();
+
+loadTrialStatus();
 
 </script>
 

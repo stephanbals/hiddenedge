@@ -1,312 +1,330 @@
 # =========================================
-# HiddenEdge — CV SERVICE (SAFE PATCH v5)
-# ADDED: DYNAMIC QUESTIONS + RICH REASONING
-# NO REGRESSIONS
+# HiddenEdge / SB3PM Advisory & Services Ltd
 # =========================================
 
-import os
+from core.cv.cv_improver import improve_cv_with_answers
+from core.cv.cv_repositioner import reposition_cv
+from core.llm.llm_client import call_llm
+
 import json
-import re
-from openai import OpenAI
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-SYSTEM_PROMPT = """
-You are a senior hiring panel: ATS + recruiter + hiring manager.
-
-STRICT RULES:
-- NO generic phrases
-- NO repetition
-- NO empty statements
-- ONLY use evidence from CV
-- If missing → "not evidenced"
-- Transferable experience = "partial", NEVER "yes"
-- "yes" ONLY if explicitly proven in CV
-
-CRITICAL LOGIC:
-- Some requirements are CRITICAL (domain, tools, mandatory experience)
-- If a CRITICAL requirement is "no", candidate is NOT shortlisted / NOT selected
-
-STYLE:
-- Concrete
-- Direct
-- Insightful
-- Real hiring language
-
-RECRUITER:
-- Think like a real recruiter screening CVs
-- Evaluate domain, seniority, clarity, positioning
-- Explain WHY candidate is / is not shortlisted
-
-HIRING MANAGER:
-- Think like delivery owner / exec
-- Evaluate execution capability, scale, risk
-- Provide clear decision with reasoning
-
-QUESTIONS:
-- Generate questions ONLY based on missing or weak evidence
-- Questions must help strengthen CV
-- Be specific to role + domain
-- Max 5 questions
-
-OUTPUT MUST:
-- Reflect real hiring decisions
-- Be internally consistent across ATS / recruiter / manager
-"""
-
-# =========================================
-# HELPERS
-# =========================================
-
-def extract_json(text):
-    try:
-        return json.loads(text)
-    except:
-        pass
-
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    if match:
-        try:
-            return json.loads(match.group())
-        except:
-            pass
-
-    return None
-
-
-def validate(data):
-    return isinstance(data, dict) and "ats_analysis" in data
-
-
-def dedupe(lst):
-    seen = set()
-    out = []
-    for x in lst or []:
-        if x and x not in seen:
-            out.append(x)
-            seen.add(x)
-    return out
-
-
-# =========================================
-# VALIDATION HELPERS
-# =========================================
-
-def has_placeholders(text):
-    if not text:
-        return True
-    t = text.lower()
-    return any(p in t for p in [
-        "[your", "[year", "[company", "[job title"
-    ])
-
-
-def dropped_experience(original, generated):
-    if not original or not generated:
-        return True
-
-    if len(generated) < 0.95 * len(original):
-        return True
-
-    return False
-
-
-# =========================================
-# CORE SERVICE
-# =========================================
 
 class CVService:
 
-    def analyze_cv(self, cv_texts, job_text):
+    # =========================================
+    # SAFE JSON RECOVERY
+    # =========================================
 
-        cv = "\n\n".join(cv_texts)
+    def _safe_json_load(self, raw):
 
-        prompt = f"""
-Return JSON:
+        try:
+            return json.loads(raw)
+        except:
+            return None
 
-{{
- "fit_score": number,
+    # =========================================
+    # ENSURE STRUCTURE
+    # =========================================
 
- "ats_analysis": {{
-   "reasoning": "...",
-   "matches":[
-     {{
-       "requirement":"",
-       "match":"yes | partial | no",
-       "evidence":"",
-       "gap":"",
-       "critical": true | false
-     }}
-   ]
- }},
+    def _normalize_response(self, data):
 
- "recruiter_view": {{
-   "screening_decision":"",
-   "overall_impression":"",
-   "strengths":[],
-   "concerns":[],
-   "decision_rationale":"",
-   "shortlist_probability":""
- }},
-
- "hiring_manager_view": {{
-   "final_decision":"",
-   "execution_readiness":"",
-   "impact_potential":"",
-   "strengths":[],
-   "risks":[],
-   "decision_rationale":""
- }},
-
- "questions":[ "..."],
-
- "improvement_summary":""
-}}
-
-CV:
-{cv}
-
-JOB:
-{job_text}
-"""
-
-        data = self._call(prompt)
-
-        if not validate(data):
-            data = self._fallback()
-
-        # =========================================
-        # HARD CONSTRAINT PROPAGATION (UNCHANGED)
-        # =========================================
+        if not isinstance(data, dict):
+            data = {}
 
         ats = data.get("ats_analysis", {})
-        matches = ats.get("matches", [])
-
-        critical_fail = any(
-            m.get("critical") and m.get("match") == "no"
-            for m in matches
-        )
-
         recruiter = data.get("recruiter_view", {})
         manager = data.get("hiring_manager_view", {})
 
-        if critical_fail:
-            recruiter["screening_decision"] = "Not shortlisted"
-            recruiter["decision_rationale"] = "Critical domain or capability gap detected."
+        return {
+            "fit_score": data.get("fit_score", 35),
 
-            manager["final_decision"] = "Not selected"
-            manager["decision_rationale"] = "Candidate lacks mandatory domain/tool experience."
+            "ats_analysis": {
+                "summary": ats.get(
+                    "summary",
+                    "The CV could not be fully evaluated against the job requirements."
+                ),
+                "strengths": ats.get("strengths", []),
+                "gaps": ats.get("gaps", []),
+                "detailed_evaluation": ats.get(
+                    "detailed_evaluation",
+                    "Additional ATS-level evaluation could not be generated."
+                )
+            },
 
-        # =========================================
-        # SCORE NORMALIZATION
-        # =========================================
+            "recruiter_view": {
+                "reasoning": recruiter.get(
+                    "reasoning",
+                    "The profile requires further evaluation against the role expectations."
+                ),
+                "detailed_assessment": recruiter.get(
+                    "detailed_assessment",
+                    "A more detailed recruiter assessment could not be generated."
+                )
+            },
 
-        score = data.get("fit_score", 60)
+            "hiring_manager_view": {
+                "decision_rationale": manager.get(
+                    "decision_rationale",
+                    "Additional assessment is required to determine alignment with the role."
+                ),
+                "detailed_assessment": manager.get(
+                    "detailed_assessment",
+                    "A more detailed hiring manager assessment could not be generated."
+                )
+            },
 
-        if critical_fail:
-            score = min(score, 60)
+            "questions": data.get("questions", [
+                "Can you provide more detail about your most relevant experience for this role?"
+            ]),
 
-        if score > 95:
-            score = 95
+            "suggested_roles": data.get("suggested_roles", []),
 
-        data["fit_score"] = score
-
-        # CLEANUP
-        recruiter["strengths"] = dedupe(recruiter.get("strengths"))
-        recruiter["concerns"] = dedupe(recruiter.get("concerns"))
-
-        manager["strengths"] = dedupe(manager.get("strengths"))
-        manager["risks"] = dedupe(manager.get("risks"))
-
-        # =========================================
-        # 🔥 SAFE QUESTIONS (NO BREAK)
-        # =========================================
-
-        questions = data.get("questions")
-
-        if not questions or not isinstance(questions, list):
-            questions = [
-                "Can you clarify your role in similar projects?",
-                "Can you provide measurable impact from your work?",
-                "Which tools or systems have you used in similar contexts?"
-            ]
-
-        data["questions"] = questions[:5]
-
-        data["recruiter_view"] = recruiter
-        data["hiring_manager_view"] = manager
-
-        return data
+            "suggestion_reason": data.get(
+                "suggestion_reason",
+                "Additional adjacent roles may provide stronger alignment."
+            )
+        }
 
     # =========================================
-    # REFINE (UNCHANGED)
+    # ANALYZE CV
     # =========================================
-    def refine_cv_with_answers(self, cv_texts, job_text, answers):
 
-        cv = "\n\n".join(cv_texts)
-        ans = "\n".join(answers)
+    def analyze_cv(self, cv_texts, job_text):
+
+        combined_cv = "\n".join(cv_texts)
+
+        # =========================================
+        # PRIMARY PROMPT
+        # =========================================
 
         prompt = f"""
-Improve CV WITHOUT losing any content.
+You are a senior recruiter, ATS evaluator, and hiring manager.
 
-RULES:
-- DO NOT remove anything
-- DO NOT shorten
-- ONLY expand/improve
-- Keep all roles and bullets
+Evaluate the CV against the target role as if making a real hiring decision.
+
+CRITICAL:
+- Return ONLY valid JSON
+- No markdown
+- No explanations outside JSON
+- ALWAYS include ALL required fields
+- NEVER omit sections
+- Be domain agnostic
+- Adapt dynamically to industry and seniority
+- ATS analysis, recruiter analysis, and hiring manager analysis MUST be detailed and substantial
+- Each major analysis block should contain approximately 8–15 lines of meaningful professional evaluation
+- Explain strengths, concerns, positioning, credibility, transferability, and hiring implications
+- Avoid generic or superficial statements
+- Provide realistic hiring reasoning similar to real enterprise recruitment discussions
+
+Required JSON structure:
+
+{{
+  "fit_score": number,
+
+  "ats_analysis": {{
+    "summary": string,
+    "strengths": [string],
+    "gaps": [string],
+    "detailed_evaluation": string
+  }},
+
+  "recruiter_view": {{
+    "decision": string,
+    "reasoning": string,
+    "detailed_assessment": string
+  }},
+
+  "hiring_manager_view": {{
+    "decision_rationale": string,
+    "detailed_assessment": string
+  }},
+
+  "questions": [string],
+
+  "suggested_roles": [string],
+
+  "suggestion_reason": string
+}}
 
 CV:
-{cv}
+{combined_cv}
 
 JOB:
 {job_text}
-
-ANSWERS:
-{ans}
-
-Return JSON:
-{{"cv":"...", "fit_score": number}}
 """
 
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0.2,
-            messages=[
-                {"role": "system", "content": "Enhance CV without removing content."},
-                {"role": "user", "content": prompt}
-            ]
+        # =========================================
+        # FIRST CALL
+        # =========================================
+
+        raw = call_llm(prompt)
+
+        data = self._safe_json_load(raw)
+
+        # =========================================
+        # RECOVERY MODE
+        # =========================================
+
+        if not data:
+
+            print("PRIMARY JSON FAILED — ENTERING RECOVERY MODE")
+
+            compressed_cv = combined_cv[:4000]
+            compressed_job = job_text[:2500]
+
+            recovery_prompt = f"""
+Return ONLY valid JSON.
+
+NO markdown.
+NO code fences.
+NO explanations.
+
+Keep answers concise but detailed.
+
+ATS, recruiter, and hiring manager evaluations must still be substantial and meaningful.
+
+Required structure:
+
+{{
+  "fit_score": number,
+
+  "ats_analysis": {{
+    "summary": string,
+    "strengths": [string],
+    "gaps": [string],
+    "detailed_evaluation": string
+  }},
+
+  "recruiter_view": {{
+    "reasoning": string,
+    "detailed_assessment": string
+  }},
+
+  "hiring_manager_view": {{
+    "decision_rationale": string,
+    "detailed_assessment": string
+  }},
+
+  "questions": [string],
+
+  "suggested_roles": [string],
+
+  "suggestion_reason": string
+}}
+
+Analyze this CV against this role.
+
+CV:
+{compressed_cv}
+
+JOB:
+{compressed_job}
+"""
+
+            raw = call_llm(recovery_prompt)
+
+            data = self._safe_json_load(raw)
+
+        # =========================================
+        # FINAL FAILURE
+        # =========================================
+
+        if not data:
+
+            print("RECOVERY MODE FAILED")
+
+            data = {}
+
+        # =========================================
+        # NORMALIZE STRUCTURE
+        # =========================================
+
+        data = self._normalize_response(data)
+
+        ats = data["ats_analysis"]
+
+        ats_reasoning = (
+            ats["summary"] +
+            "<br><br><b>Strengths:</b><br>" +
+            "<br>".join(ats["strengths"]) +
+            "<br><br><b>Gaps:</b><br>" +
+            "<br>".join(ats["gaps"]) +
+            "<br><br><b>Detailed ATS Evaluation:</b><br>" +
+            ats["detailed_evaluation"]
         )
 
-        raw = res.choices[0].message.content
-        parsed = extract_json(raw)
-
-        if not parsed:
-            parsed = {"cv": raw, "fit_score": 75}
-
-        return parsed
-
-    def _call(self, prompt):
-
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0.2,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt}
-            ]
+        recruiter_reasoning = (
+            data["recruiter_view"]["reasoning"] +
+            "<br><br>" +
+            data["recruiter_view"]["detailed_assessment"]
         )
 
-        raw = res.choices[0].message.content
-        parsed = extract_json(raw)
+        hiring_manager_reasoning = (
+            data["hiring_manager_view"]["decision_rationale"] +
+            "<br><br>" +
+            data["hiring_manager_view"]["detailed_assessment"]
+        )
 
-        return parsed if parsed else {}
-
-    def _fallback(self):
         return {
-            "fit_score": 60,
-            "ats_analysis": {"reasoning": "Fallback", "matches": []},
-            "recruiter_view": {"screening_decision": "consider"},
-            "hiring_manager_view": {"final_decision": "interview"},
-            "questions": [],
-            "improvement_summary": "Limited analysis."
+            "fit_score": data["fit_score"],
+
+            "ats_analysis": {
+                "reasoning": ats_reasoning
+            },
+
+            "recruiter_view": {
+                "decision_rationale":
+                    recruiter_reasoning
+            },
+
+            "hiring_manager_view": {
+                "decision_rationale":
+                    hiring_manager_reasoning
+            },
+
+            "questions": data["questions"],
+
+            "role_suggestions":
+                data["suggested_roles"],
+
+            "suggestion_reason":
+                data["suggestion_reason"]
+        }
+
+    # =========================================
+    # REFINE CV
+    # =========================================
+
+    def refine_cv_with_answers(
+        self,
+        cv_texts,
+        job_text,
+        answers
+    ):
+
+        combined_cv = "\n".join(cv_texts)
+        answers_text = "\n".join(answers)
+
+        # =========================================
+        # SMART REFINE LOGIC
+        # =========================================
+
+        if len(answers_text) > 200:
+
+            improved_cv = reposition_cv(
+                combined_cv,
+                job_text,
+                answers_text
+            )
+
+        else:
+
+            improved_cv = improve_cv_with_answers(
+                combined_cv,
+                answers_text
+            )
+
+        return {
+            "cv": improved_cv,
+            "fit_score": 75
         }

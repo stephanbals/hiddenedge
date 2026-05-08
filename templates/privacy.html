@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HiddenEdge - Privacy Policy</title>
+    <style>
+        body {
+            font-family: Arial;
+            background:#0f172a;
+            color:white;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+        }
+
+        .card {
+            background:#1e293b;
+            padding:30px;
+            border-radius:10px;
+            width:800px;
+            max-height:85vh;
+            overflow-y:auto;
+        }
+
+        h3 { margin-top:20px; }
+
+        button {
+            width:100%;
+            padding:14px;
+            margin-top:20px;
+            border:none;
+            border-radius:8px;
+            background:linear-gradient(45deg,#6366f1,#9333ea);
+            color:white;
+        }
+
+        .text {
+            font-size:14px;
+            line-height:1.6;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>Privacy Policy</h2>
+
+<div class="text">
+
+<h3>1. Data Controller</h3>
+<p>
+SB3PM Advisory & Services Ltd<br>
+Registered in the Republic of Bulgaria<br>
+<br><br>
+Contact: HiddenEdgeInfo@proton.me
+</p>
+
+<h3>2. Data We Collect</h3>
+<ul>
+<li>Email address</li>
+<li>CV content</li>
+<li>Job descriptions</li>
+<li>User inputs</li>
+<li>System interaction data (logs)</li>
+</ul>
+
+<h3>3. Purpose of Processing</h3>
+<p>
+Your data is used to:
+</p>
+<ul>
+<li>Provide CV analysis and platform functionality</li>
+<li>Generate AI-assisted outputs</li>
+<li>Improve system performance and reliability</li>
+<li>Debug and monitor system behavior</li>
+</ul>
+
+<h3>4. Legal Basis (GDPR)</h3>
+<p>
+We process your data based on:
+</p>
+<ul>
+<li><strong>Consent</strong> (Article 6(1)(a) GDPR)</li>
+<li><strong>Contractual necessity</strong> (Article 6(1)(b) GDPR)</li>
+</ul>
+
+<h3>5. Data Retention</h3>
+<p>
+Your data is retained only as long as necessary to operate the Platform or until you request deletion.
+</p>
+
+<h3>6. Third-Party Processing</h3>
+<p>
+We may use third-party providers for:
+</p>
+<ul>
+<li>AI processing</li>
+<li>Hosting infrastructure</li>
+<li>Payment services (e.g., Stripe)</li>
+</ul>
+
+<p>
+These providers may process data outside your country under appropriate safeguards in accordance with GDPR.
+</p>
+
+<p>
+We do not sell or commercially distribute your data.
+</p>
+
+<h3>7. User Rights</h3>
+<p>
+Under GDPR, you have the right to:
+</p>
+<ul>
+<li>Access your data</li>
+<li>Correct inaccurate data</li>
+<li>Request deletion</li>
+<li>Restrict processing</li>
+<li>Object to processing</li>
+<li>Request data portability</li>
+</ul>
+
+<p>
+To exercise these rights, contact:
+<br><br>
+<strong>HiddenEdgeInfo@proton.me</strong>
+</p>
+
+<h3>8. Cookies</h3>
+<p>
+The Platform may use cookies or similar technologies to:
+</p>
+<ul>
+<li>Maintain session functionality</li>
+<li>Improve user experience</li>
+<li>Analyze usage patterns</li>
+</ul>
+
+<h3>9. Data Security</h3>
+<p>
+We implement reasonable technical and organizational measures to protect your data against unauthorized access, loss, or misuse.
+</p>
+
+<h3>10. Contact</h3>
+<p>
+HiddenEdgeInfo@proton.me
+</p>
+
+</div>
+
+<button onclick="acceptPrivacy()">Accept & Continue</button>
+
+</div>
+
+<script>
+function acceptPrivacy() {
+    fetch("/accept-privacy", { method: "POST" })
+        .then(res => res.json())
+        .then(data => window.location.href = data.redirect);
+}
+</script>
+
+</body>
+</html>

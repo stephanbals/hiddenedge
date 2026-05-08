@@ -2,201 +2,223 @@
 <html>
 <head>
     <title>HiddenEdge - End User License Agreement</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
     <style>
         body {
-            margin: 0;
             font-family: Arial;
-            background: #0b0f1a;
-            color: white;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: auto;
-            padding: 30px 20px;
+            background:#0f172a;
+            color:white;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
         }
 
         .card {
-            background: #121826;
-            padding: 25px;
-            border-radius: 12px;
+            background:#1e293b;
+            padding:30px;
+            border-radius:10px;
+            width:800px;
+            max-height:85vh;
+            overflow-y:auto;
         }
 
-        h1 { color: white; }
-        h2 { color: #9fb3d9; margin-top: 25px; }
-        p { line-height: 1.6; opacity: 0.9; }
+        h2 { margin-bottom:15px; }
+        h3 { margin-top:20px; }
 
-        ul {
-            line-height: 1.6;
-            opacity: 0.9;
+        button {
+            width:100%;
+            padding:14px;
+            margin-top:20px;
+            border:none;
+            border-radius:8px;
+            background:linear-gradient(45deg,#6366f1,#9333ea);
+            color:white;
+            cursor:pointer;
+            font-size:16px;
         }
 
-        .actions {
-            margin-top: 30px;
-            text-align: center;
-        }
-
-        .btn {
-            padding: 14px 22px;
-            font-size: 15px;
-            font-weight: bold;
-            border-radius: 10px;
-            border: none;
-            cursor: pointer;
-            margin: 10px;
-        }
-
-        .accept {
-            background: linear-gradient(135deg, #4facfe, #6a82fb);
-            color: white;
-        }
-
-        .decline {
-            background: #333;
-            color: #aaa;
-        }
-
-        .checkbox {
-            margin-top: 25px;
-            text-align: center;
+        .eula-text {
+            font-size:14px;
+            line-height:1.6;
         }
     </style>
-
-    <script>
-        function proceed() {
-            const cb = document.getElementById("acceptBox");
-
-            if (!cb.checked) {
-                alert("You must accept the terms to continue.");
-                return;
-            }
-
-            window.location.href = "/email";
-        }
-    </script>
-
 </head>
 
 <body>
 
-<div class="container">
-    <div class="card">
+<div class="card">
 
-        <h1>HiddenEdge – End User License Agreement (EULA)</h1>
+<h2>End User License Agreement (EULA)</h2>
 
-        <p>
-            This agreement governs your use of the HiddenEdge platform,
-            operated by <strong>SB3PM Advisory & Services Ltd</strong>.
-        </p>
+<div class="eula-text">
 
-        <h2>1. Nature of the Service</h2>
-        <p>
-            HiddenEdge is an AI-assisted advisory platform designed to analyze CVs,
-            provide improvement recommendations, and support job application processes.
-        </p>
-        <ul>
-            <li>The platform provides guidance, not guarantees</li>
-            <li>No employment or interview outcome is guaranteed</li>
-            <li>You remain fully responsible for your decisions and applications</li>
-        </ul>
+<h3>1. Legal Identity</h3>
+<p>
+SB3PM Advisory & Services Ltd<br>
+Registered in the Republic of Bulgaria<br>
+[Insert registered address]<br>
+[Insert company registration number]<br><br>
+Contact: HiddenEdgeInfo@proton.me
+</p>
 
-        <h2>2. AI Transparency (EU AI Act Alignment)</h2>
-        <ul>
-            <li>Outputs are probabilistic and may contain inaccuracies</li>
-            <li>The system does not make automated decisions on your behalf</li>
-            <li>You must review all outputs before using them</li>
-            <li>This tool is advisory in nature, not decision-making</li>
-        </ul>
+<h3>2. Acceptance of Terms</h3>
+<p>
+By accessing or using HiddenEdge (“Platform”), you agree to be bound by this Agreement.
+If you do not agree, you must not use the Platform.
+</p>
 
-        <h2>3. Data Processing (GDPR Compliance)</h2>
-        <ul>
-            <li>Your CV and inputs are processed solely to generate analysis results</li>
-            <li>Your data is not sold to third parties</li>
-            <li>You are responsible for the data you upload</li>
-            <li>You may request deletion of your data at any time</li>
-        </ul>
+<h3>3. Nature and Purpose of the Platform</h3>
+<p>
+HiddenEdge provides AI-assisted analysis and advisory insights related to CVs, job descriptions, and application positioning.
+The Platform supports users in improving presentation but does not provide recruitment or hiring services.
+</p>
 
-        <h2>4. Payments & Billing</h2>
-        <ul>
-            <li>Payments are processed securely via third-party providers such as Stripe</li>
-            <li>All pricing is clearly communicated before purchase</li>
-            <li>Payments are non-refundable unless required by law</li>
-            <li>Abuse or misuse may result in suspension without refund</li>
-        </ul>
+<h3>4. AI-Assisted Functionality</h3>
+<p>
+The Platform uses AI-based systems, including probabilistic and pattern-based models.
+Outputs are automatically generated and may contain inaccuracies, approximations, or incomplete interpretations.
+</p>
 
-        <p>
-            In the case of subscription-based services, users may request termination of their subscription
-            by contacting <strong>HiddenEdgeInfo@proton.me</strong>.
-        </p>
+<p>
+The Platform does not perform automated decision-making with legal or similarly significant effects.
+</p>
 
-        <p>
-            Subscription termination requests are processed within a reasonable administrative timeframe,
-            which may take up to <strong>30 days</strong>. During this period, the subscription may remain active,
-            and there is a possibility that one final billing cycle may occur before full termination is completed.
-        </p>
+<h3>5. No Guarantee of Outcomes</h3>
+<p>
+HiddenEdge provides advisory insights only and does not guarantee interviews, job offers, or employment outcomes.
+</p>
 
-        <p>
-            By subscribing to HiddenEdge services, you acknowledge and accept these billing and termination conditions.
-        </p>
+<h3>6. Language Support</h3>
+<p>
+The Platform accepts input in multiple European languages.
+Outputs are currently provided in English only due to the international nature of many job markets.
+Expanded language support may be introduced but is not guaranteed.
+</p>
 
-        <h2>5. Acceptable Use</h2>
-        <ul>
-            <li>No unlawful or fraudulent use</li>
-            <li>No reverse engineering or exploitation of the system</li>
-            <li>No submission of misleading or false information</li>
-        </ul>
+<h3>7. User Responsibilities</h3>
+<p>
+Users must provide lawful and accurate data and have the right to submit all content.
+Users are responsible for how outputs are used.
+</p>
 
-        <h2>6. Limitation of Liability</h2>
-        <ul>
-            <li>SB3PM is not liable for job outcomes or hiring decisions</li>
-            <li>No liability for financial loss or missed opportunities</li>
-            <li>No liability for AI inaccuracies</li>
-        </ul>
+<p>
+The Platform is a decision-support tool, not a decision-maker.
+</p>
 
-        <h2>7. Intellectual Property</h2>
-        <p>
-            All code, systems, methodologies, and outputs of the HiddenEdge platform
-            are the exclusive property of SB3PM Advisory & Services Ltd and are protected
-            under applicable copyright laws.
-        </p>
-        <ul>
-            <li>All rights are reserved</li>
-            <li>Unauthorized use, copying, or distribution is strictly prohibited</li>
-        </ul>
+<h3>8. Data Processing (GDPR)</h3>
+<p><strong>Data processed may include:</strong></p>
+<ul>
+<li>Email address</li>
+<li>CV content</li>
+<li>Job descriptions</li>
+<li>User inputs</li>
+<li>System logs</li>
+</ul>
 
-        <h2>8. Changes to Terms</h2>
-        <p>
-            These terms may be updated over time. Continued use of HiddenEdge
-            constitutes acceptance of the latest version.
-        </p>
+<p>
+Processing is based on consent and contractual necessity.
+</p>
 
-        <h2>9. Contact</h2>
-        <p>
-            For any questions, requests, or support inquiries, please contact:
-        </p>
-        <p><strong>HiddenEdgeInfo@proton.me</strong></p>
+<p>
+Data is used for service delivery, analysis, system improvement, and debugging.
+</p>
 
-        <div class="checkbox">
-            <label>
-                <input type="checkbox" id="acceptBox">
-                I accept the terms and conditions
-            </label>
-        </div>
+<p>
+Data is retained only as necessary or until deletion is requested.
+</p>
 
-        <div class="actions">
-            <button class="btn accept" onclick="proceed()">
-                Accept & Continue
-            </button>
+<p>
+Users may request access, correction, deletion, restriction, or portability via:<br>
+<strong>HiddenEdgeInfo@proton.me</strong>
+</p>
 
-            <button class="btn decline" onclick="window.location.href='/'">
-                Cancel
-            </button>
-        </div>
+<h3>9. Data Processing Agreement (DPA)</h3>
+<p>
+SB3PM Advisory & Services Ltd acts as a data controller for user accounts and may act as a data processor for submitted content.
+Third-party providers (including AI services and hosting infrastructure) may process data under appropriate safeguards.
+</p>
 
-    </div>
+<p>
+User data is not sold.
+</p>
+
+<h3>10. AI Processing & Third-Party Services</h3>
+<p>
+The Platform may use third-party providers for AI processing, hosting, and payments.
+Data may be processed outside the user’s country under GDPR-compliant safeguards.
+</p>
+
+<h3>11. Logging</h3>
+<p>
+Inputs and outputs may be logged for performance, debugging, and system improvement.
+</p>
+
+<h3>12. Cookies</h3>
+<p>
+The Platform may use cookies to maintain functionality, improve user experience, and analyze usage.
+</p>
+
+<h3>13. Intellectual Property</h3>
+<p>
+All platform systems, models, and logic are owned by SB3PM Advisory & Services Ltd.
+Users retain ownership of submitted content.
+</p>
+
+<h3>14. Payments & Subscriptions</h3>
+<p>
+Payments are processed via third-party providers such as Stripe.
+Subscriptions renew automatically unless cancelled.
+</p>
+
+<p>
+Subscriptions follow a 30-day billing cycle unless stated otherwise.
+</p>
+
+<p>
+Users may cancel at any time. Cancellation takes effect at the end of the billing period.
+Payments are non-refundable unless required by law.
+</p>
+
+<h3>15. Limitation of Liability</h3>
+<p>
+The Platform is provided “as is” without guarantees.
+SB3PM Advisory & Services Ltd is not liable for indirect damages, employment outcomes, or decisions based on Platform output.
+</p>
+
+<h3>16. Availability and Changes</h3>
+<p>
+The Platform may be modified or unavailable at any time without notice.
+</p>
+
+<h3>17. Termination</h3>
+<p>
+Access may be suspended or terminated in case of misuse or violation of terms.
+</p>
+
+<h3>18. Governing Law</h3>
+<p>
+This Agreement is governed by the laws of the Republic of Bulgaria.
+Disputes fall under Bulgarian jurisdiction unless mandatory EU consumer protections apply.
+</p>
+
+<h3>19. Contact</h3>
+<p>
+HiddenEdgeInfo@proton.me
+</p>
+
 </div>
+
+<button onclick="acceptEula()">Accept & Continue</button>
+
+</div>
+
+<script>
+function acceptEula() {
+    fetch("/accept-eula", { method: "POST" })
+        .then(res => res.json())
+        .then(data => window.location.href = data.redirect);
+}
+</script>
 
 </body>
 </html>
