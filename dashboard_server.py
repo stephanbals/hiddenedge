@@ -73,6 +73,29 @@ stripe.api_key = os.getenv(
 FREE_TRIAL_LIMIT = 3
 
 # =========================================
+# OWNER ACCESS
+# =========================================
+
+OWNER_EMAILS = [
+
+    email.strip().lower()
+
+    for email in os.getenv(
+        "OWNER_EMAILS",
+        ""
+    ).split(",")
+
+    if email.strip()
+]
+
+def is_owner(email):
+
+    return (
+        email
+        and email.lower() in OWNER_EMAILS
+    )
+
+# =========================================
 # DATABASE
 # =========================================
 
@@ -816,10 +839,13 @@ def submit_email():
 
         subscription_active = (
 
-            subscription
-            and subscription.get("status")
-            == "active"
-        )
+    subscription
+    and subscription.get("status")
+    in [
+        "active",
+        "trialing"
+    ]
+)
 
         if subscription_active:
 
@@ -904,6 +930,8 @@ def analyze():
             ""
         )
 
+        print(f"[ANALYZE EMAIL] {email}")
+
         subscription = (
             get_subscription_by_email(email)
         )
@@ -912,15 +940,23 @@ def analyze():
 
             subscription
             and subscription.get("status")
-            == "active"
+            in [
+                "active",
+                "trialing"
+            ]
         )
 
         used_tries = (
             get_user_free_uses(email)
         )
 
+        access_granted = (
+            subscription_active
+            or is_owner(email)
+        )
+
         if (
-            not subscription_active
+            not access_granted
             and used_tries >= FREE_TRIAL_LIMIT
         ):
 
@@ -1030,10 +1066,18 @@ def refine():
 
             subscription
             and subscription.get("status")
-            == "active"
+            in [
+                "active",
+                "trialing"
+            ]
         )
 
-        if not subscription_active:
+        access_granted = (
+            subscription_active
+            or is_owner(email)
+        )
+
+        if not access_granted:
 
             return jsonify({
 
@@ -1511,7 +1555,6 @@ def search_jobs_real_sources(
 # =========================================
 # STRIPE CHECKOUT
 # =========================================
-
 @app.route(
     "/create-checkout-session",
     methods=["POST"]
@@ -1562,10 +1605,16 @@ def create_checkout():
                 customer_email=
                     customer_email,
 
+                payment_method_collection="always",
+
                 line_items=[{
                     "price": price_id,
                     "quantity": 1
                 }],
+
+                subscription_data={
+                    "trial_period_days": 7
+                },
 
                 success_url=(
 
