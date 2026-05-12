@@ -1,605 +1,207 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html>
 <head>
-
-    <!-- Google Tag Manager -->
-    <script>
-        (function(w,d,s,l,i){
-            w[l]=w[l]||[];
-            w[l].push({
-                'gtm.start': new Date().getTime(),
-                event:'gtm.js'
-            });
-
-            var f=d.getElementsByTagName(s)[0],
-                j=d.createElement(s),
-                dl=l!='dataLayer' ? '&l='+l : '';
-
-            j.async=true;
-
-            j.src=
-                'https://www.googletagmanager.com/gtm.js?id='
-                + i + dl;
-
-            f.parentNode.insertBefore(j,f);
-
-        })(window,document,'script','dataLayer','GTM-NZTJH8CW');
-    </script>
-    <!-- End Google Tag Manager -->
-
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        HiddenEdge — AI Career Intelligence Platform
-    </title>
+    <title>HiddenEdge</title>
 
     <style>
-
-        * {
-            box-sizing: border-box;
-        }
-
         body {
-
             margin: 0;
-
-            font-family:
-                Arial,
-                sans-serif;
-
-            background:
-                radial-gradient(
-                    circle at top left,
-                    #172554 0%,
-                    #020617 45%
-                ),
-                #020617;
-
+            font-family: Arial, sans-serif;
+            background: #0f172a;
             color: white;
-
-            overflow-x: hidden;
         }
 
-        a {
-            text-decoration: none;
-        }
-
-        /* =========================================
-           BACKGROUND EFFECTS
-        ========================================= */
-
-        .glow {
-
-            position: absolute;
-
-            width: 500px;
-            height: 500px;
-
-            border-radius: 50%;
-
-            background:
-                rgba(99,102,241,0.12);
-
-            filter: blur(120px);
-
-            z-index: 0;
-        }
-
-        .glow.left {
-            top: -120px;
-            left: -120px;
-        }
-
-        .glow.right {
-            bottom: -120px;
-            right: -120px;
-        }
-
-        /* =========================================
-           MAIN WRAPPER
-        ========================================= */
-
-        .wrapper {
-
-            position: relative;
-
-            z-index: 2;
-
-            max-width: 1450px;
-
-            margin: auto;
-
-            padding:
-                40px
-                32px
-                80px;
-        }
-
-        /* =========================================
-           HERO
-        ========================================= */
-
-        .hero {
-
-            display: grid;
-
-            grid-template-columns:
-                1.15fr
-                0.85fr;
-
-            gap: 50px;
-
-            align-items: center;
-        }
-
-        /* =========================================
-           LEFT HERO
-        ========================================= */
-
-        .hero-left {
-
-            padding-top: 20px;
-        }
-
-        .brand {
-
+        .container {
             display: flex;
-
-            align-items: center;
-
-            gap: 14px;
-
-            margin-bottom: 35px;
+            height: 100vh;
         }
 
-        .brand img {
-
-            width: 62px;
-
-            filter:
-                drop-shadow(
-                    0 0 18px rgba(99,102,241,0.45)
-                );
-        }
-
-        .brand h1 {
-
-            margin: 0;
-
-            font-size: 40px;
-
-            font-weight: 700;
-        }
-
-        .tag {
-
-            display: inline-block;
-
-            margin-bottom: 24px;
-
-            padding:
-                10px
-                16px;
-
-            border-radius: 999px;
-
-            background:
-                rgba(59,130,246,0.12);
-
-            border:
-                1px solid rgba(59,130,246,0.22);
-
-            color: #7dd3fc;
-
-            font-size: 13px;
-
-            font-weight: bold;
-
-            letter-spacing: 1px;
-
-            text-transform: uppercase;
-        }
-
-        .headline {
-
-            font-size: 72px;
-
-            line-height: 1.05;
-
-            font-weight: 800;
-
-            margin-bottom: 30px;
-
-            max-width: 780px;
-        }
-
-        .headline span {
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #8b5cf6,
-                    #3b82f6
-                );
-
-            -webkit-background-clip: text;
-
-            -webkit-text-fill-color: transparent;
-        }
-
-        .subtext {
-
-            font-size: 24px;
-
-            line-height: 1.7;
-
-            color: #cbd5e1;
-
-            max-width: 760px;
-
-            margin-bottom: 42px;
-        }
-
-        .benefits {
-
-            display: grid;
-
-            grid-template-columns:
-                repeat(2, 1fr);
-
-            gap: 22px;
-
-            margin-bottom: 55px;
-        }
-
-        .benefit {
-
-            background:
-                rgba(15,23,42,0.72);
-
-            border:
-                1px solid rgba(255,255,255,0.06);
-
-            border-radius: 22px;
-
-            padding: 22px;
-
-            backdrop-filter: blur(14px);
-        }
-
-        .benefit h3 {
-
-            margin-top: 0;
-
-            margin-bottom: 10px;
-
-            font-size: 20px;
-        }
-
-        .benefit p {
-
-            margin: 0;
-
-            color: #94a3b8;
-
-            line-height: 1.6;
-
-            font-size: 15px;
-        }
-
-        .robots {
-
+        .left {
+            width: 45%;
+            background: linear-gradient(180deg, #0f172a, #1e293b);
             display: flex;
-
-            justify-content: center;
-
-            gap: 28px;
-
-            margin-top: 10px;
-        }
-
-        .robots img {
-
-            width: 170px;
-
-            filter:
-                drop-shadow(
-                    0 0 30px rgba(59,130,246,0.28)
-                );
-
-            transition:
-                transform 0.25s ease;
-        }
-
-        .robots img:hover {
-
-            transform:
-                translateY(-6px);
-        }
-
-        /* =========================================
-           RIGHT HERO CARD
-        ========================================= */
-
-        .hero-card {
-
-            background:
-                linear-gradient(
-                    180deg,
-                    rgba(15,23,42,0.94),
-                    rgba(2,6,23,0.96)
-                );
-
-            border:
-                1px solid rgba(255,255,255,0.08);
-
-            border-radius: 34px;
-
-            padding: 42px;
-
-            box-shadow:
-                0 30px 80px rgba(0,0,0,0.38);
-
-            backdrop-filter: blur(18px);
-        }
-
-        .hero-card h2 {
-
-            margin-top: 0;
-
-            font-size: 46px;
-
-            line-height: 1.15;
-
-            margin-bottom: 22px;
-        }
-
-        .hero-card h2 span {
-
-            color: #8b5cf6;
-        }
-
-        .hero-card p {
-
-            color: #cbd5e1;
-
-            line-height: 1.8;
-
-            font-size: 18px;
-        }
-
-        .checklist {
-
-            margin-top: 30px;
-
-            display: flex;
-
             flex-direction: column;
-
-            gap: 16px;
-        }
-
-        .check {
-
-            display: flex;
-
-            align-items: center;
-
-            gap: 14px;
-
-            color: #e2e8f0;
-
-            font-size: 17px;
-        }
-
-        .check-icon {
-
-            width: 26px;
-            height: 26px;
-
-            border-radius: 50%;
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #22c55e,
-                    #16a34a
-                );
-
-            display: flex;
-
-            align-items: center;
             justify-content: center;
-
-            font-size: 14px;
-
-            font-weight: bold;
-        }
-
-        .cta-btn {
-
-            width: 100%;
-
-            margin-top: 38px;
-
-            padding:
-                20px
-                24px;
-
-            border: none;
-
-            border-radius: 18px;
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #6366f1,
-                    #9333ea
-                );
-
-            color: white;
-
-            font-size: 22px;
-
-            font-weight: bold;
-
-            cursor: pointer;
-
-            transition:
-                transform 0.22s ease,
-                box-shadow 0.22s ease;
-        }
-
-        .cta-btn:hover {
-
-            transform:
-                translateY(-2px);
-
-            box-shadow:
-                0 18px 40px rgba(99,102,241,0.34);
-        }
-
-        .trial {
-
-            margin-top: 16px;
-
+            align-items: center;
             text-align: center;
-
-            color: #94a3b8;
-
-            font-size: 14px;
+            padding: 40px;
         }
 
-        .trust-box {
+        .robot-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
 
-            margin-top: 34px;
+        .robot-group img {
+            width: 90px;
+        }
 
-            padding: 22px;
+        .left h1 {
+            font-size: 34px;
+            margin-bottom: 10px;
+        }
 
-            border-radius: 18px;
+        .left p {
+            color: #94a3b8;
+            max-width: 350px;
+            line-height: 1.5;
+        }
 
-            background:
-                rgba(255,255,255,0.03);
+        .steps {
+            margin-top: 25px;
+            text-align: left;
+            font-size: 14px;
+            color: #cbd5f5;
+        }
 
-            border:
-                1px solid rgba(255,255,255,0.06);
+        .steps p {
+            margin: 6px 0;
+        }
 
-            color: #cbd5e1;
+        .right {
+            width: 55%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
 
-            line-height: 1.7;
+        .card {
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 12px;
+            width: 340px;
+            text-align: center;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(45deg, #6366f1, #9333ea);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .links {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .links a {
+            color: #94a3b8;
+            text-decoration: none;
+            margin: 0 8px;
+        }
+
+        .links a:hover {
+            text-decoration: underline;
         }
 
         .coming {
-
-            margin-top: 34px;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #94a3b8;
+            text-align: left;
         }
 
-        .coming h4 {
-
-            margin-bottom: 18px;
-
-            color: #8b5cf6;
-
-            font-size: 18px;
-        }
-
-        .coming-grid {
-
-            display: grid;
-
-            grid-template-columns:
-                1fr
-                1fr;
-
-            gap: 14px;
-        }
-
-        .coming-item {
-
-            background:
-                rgba(255,255,255,0.03);
-
-            padding: 14px;
-
-            border-radius: 14px;
-
-            color: #cbd5e1;
-
-            font-size: 14px;
+        .coming b {
+            color: #cbd5f5;
         }
 
         .contact {
-
-            margin-top: 40px;
-
-            text-align: center;
-
+            margin-top: 15px;
+            font-size: 12px;
             color: #94a3b8;
-
-            font-size: 14px;
         }
 
         .contact a {
-
-            color: #60a5fa;
+            color: #94a3b8;
+            text-decoration: none;
         }
 
-        footer {
-
-            margin-top: 80px;
-
-            text-align: center;
-
-            color: #64748b;
-
-            font-size: 14px;
+        .contact a:hover {
+            text-decoration: underline;
         }
 
     </style>
-
 </head>
 
 <body>
 
-<!-- Google Tag Manager (noscript) -->
-<noscript>
-    <iframe
-        src="https://www.googletagmanager.com/ns.html?id=GTM-NZTJH8CW"
-        height="0"
-        width="0"
-        style="display:none;visibility:hidden"
-    ></iframe>
-</noscript>
-<!-- End Google Tag Manager (noscript) -->
+<div class="container">
 
-<div class="glow left"></div>
-<div class="glow right"></div>
+    <!-- LEFT -->
+    <div class="left">
 
-<div class="wrapper">
+        <div class="robot-group">
+            <img src="/static/alec.png">
+            <img src="/static/helper.png">
+            <img src="/static/nestor.png">
+        </div>
 
-    <!-- ALL YOUR EXISTING CONTENT REMAINS UNCHANGED -->
+        <h1>HiddenEdge</h1>
+
+        <p>
+            Most candidates don’t get rejected because they are bad —  
+            they get rejected because their CV doesn’t show the right signal.
+        </p>
+
+        <div class="steps">
+            <p>✔ Upload your CV</p>
+            <p>✔ Analyze job fit</p>
+            <p>✔ Understand gaps</p>
+            <p>✔ Improve your positioning</p>
+            <p>✔ Increase interview chances</p>
+        </div>
+
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right">
+
+        <div class="card">
+
+            <h2>Start your improvement</h2>
+
+            <p>
+                Get real feedback.<br>
+                Not generic advice.
+            </p>
+
+            <button onclick="window.location.href='/eula'">
+                Start Now
+            </button>
+
+            <div class="coming">
+                <b>Coming next:</b><br>
+                • CV targeting engine<br>
+                • Application tracking<br>
+                • Interview preparation AI<br>
+                • Job matching intelligence
+            </div>
+
+            <div class="contact">
+                Questions or feedback?<br>
+                <a href="mailto:HiddenEdgeInfo@proton.me">
+                    HiddenEdgeInfo@proton.me
+                </a>
+            </div>
+
+            <div class="links">
+                <a href="/privacy">Privacy</a> |
+                <a href="/eula">EULA</a>
+            </div>
+
+        </div>
+
+    </div>
 
 </div>
-
-<script>
-
-const email =
-    localStorage.getItem(
-        "hiddenedge_email"
-    );
-
-if (email) {
-
-    window.location.href = "/app";
-}
-
-</script>
 
 </body>
 </html>
