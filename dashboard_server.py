@@ -13,6 +13,10 @@ from flask import (
 
 from flask_cors import CORS
 
+from core.routes.page_routes import (
+    page_routes
+)
+
 from core.cv.cv_service import CVService
 
 from core.scoring.scoring_engine import (
@@ -20,8 +24,32 @@ from core.scoring.scoring_engine import (
     extract_keywords_from_text
 )
 
-import psycopg2
-import requests
+from core.db.subscription_service import (
+    get_subscription_by_email,
+    get_user_free_uses,
+    increment_user_free_uses,
+    save_subscription
+)
+
+from core.files.cv_extractor import (
+    extract_cv_text
+)
+
+from core.jobs.job_search_service import (
+    search_jobs_real_sources
+)
+
+from core.payments.stripe_service import (
+    handle_success,
+    create_checkout_session,
+    create_customer_portal_session
+)
+
+from core.routes.billing_routes import (
+    billing_routes
+)
+
+
 import traceback
 import os
 import stripe
@@ -30,7 +58,7 @@ from io import BytesIO
 
 from dotenv import load_dotenv
 
-from docx import Document
+# from docx import Document
 from docx.shared import Pt
 
 # =========================================
@@ -60,7 +88,17 @@ app = Flask(
 
 CORS(app)
 
+app.register_blueprint(
+    page_routes
+)
+
+app.register_blueprint(
+    billing_routes
+)
+
 cv_service = CVService()
+
+
 
 # =========================================
 # STRIPE
@@ -71,6 +109,22 @@ stripe.api_key = os.getenv(
 )
 
 FREE_TRIAL_LIMIT = 3
+
+# =========================================
+# DATABASE
+# =========================================
+
+from core.db.database import (
+    get_db,
+    init_db
+)
+
+from core.db.subscription_repository import (
+    get_subscription_by_email,
+    get_user_free_uses,
+    increment_user_free_uses,
+    save_subscription
+)
 
 # =========================================
 # OWNER ACCESS
@@ -94,673 +148,6 @@ def is_owner(email):
         email
         and email.lower() in OWNER_EMAILS
     )
-
-# =========================================
-# DATABASE
-# =========================================
-
-def get_db():
-
-    return psycopg2.connect(
-        os.getenv("DATABASE_URL")
-    )
-
-# =========================================
-# INIT DATABASE
-# =========================================
-
-def init_db():
-
-    try:
-
-        conn = get_db()
-
-        cur = conn.cursor()
-
-        # =========================================
-        # USERS
-        # =========================================
-
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-
-            id SERIAL PRIMARY KEY,
-
-            email TEXT UNIQUE,
-
-            free_uses INTEGER
-            DEFAULT 0,
-
-            created_at TIMESTAMP
-            DEFAULT CURRENT_TIMESTAMP
-        )
-        """)
-
-        # =========================================
-        # SUBSCRIPTIONS
-        # =========================================
-
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS subscriptions (
-
-            id SERIAL PRIMARY KEY,
-
-            email TEXT,
-
-            stripe_customer_id TEXT,
-
-            stripe_subscription_id TEXT UNIQUE,
-
-            status TEXT,
-
-            plan TEXT,
-
-            cancel_at_period_end BOOLEAN
-            DEFAULT FALSE,
-
-            current_period_end TIMESTAMP,
-
-            created_at TIMESTAMP
-            DEFAULT CURRENT_TIMESTAMP
-        )
-        """)
-
-        # =========================================
-        # SAFE MIGRATION
-        # =========================================
-
-        try:
-
-            cur.execute("""
-            ALTER TABLE users
-            ADD COLUMN IF NOT EXISTS free_uses INTEGER DEFAULT 0
-            """)
-
-        except Exception as migration_error:
-
-            print(
-                "[MIGRATION WARNING]",
-                migration_error
-            )
-
-        conn.commit()
-
-        cur.close()
-        conn.close()
-
-        print(
-            "[DB] initialization complete"
-        )
-
-    except Exception as e:
-
-        print(
-            "[DB INIT ERROR]",
-            e
-        )
-
-        traceback.print_exc()
-
-# =========================================
-# SUBSCRIPTION LOOKUP
-# =========================================
-
-def get_subscription_by_email(email):
-
-    try:
-
-        conn = get_db()
-
-        cur = conn.cursor()
-
-        cur.execute("""
-
-        SELECT
-            email,
-            status,
-            plan,
-            current_period_end
-
-        FROM subscriptions
-
-        WHERE email = %s
-
-        ORDER BY created_at DESC
-
-        LIMIT 1
-
-        """, (email,))
-
-        row = cur.fetchone()
-
-        cur.close()
-        conn.close()
-
-        if not row:
-            return None
-
-        return {
-
-            "email": row[0],
-            "status": row[1],
-            "plan": row[2],
-            "current_period_end": row[3]
-        }
-
-    except Exception as e:
-
-        print(
-            "[SUB LOOKUP ERROR]",
-            e
-        )
-
-        return None
-
-# =========================================
-# USER USAGE
-# =========================================
-
-def get_user_free_uses(email):
-
-    try:
-
-        conn = get_db()
-
-        cur = conn.cursor()
-
-        cur.execute("""
-
-        SELECT free_uses
-
-        FROM users
-
-        WHERE email = %s
-
-        """, (email,))
-
-        row = cur.fetchone()
-
-        cur.close()
-        conn.close()
-
-        if not row:
-            return 0
-
-        return row[0] or 0
-
-    except Exception as e:
-
-        print(
-            "[FREE USE LOOKUP ERROR]",
-            e
-        )
-
-        return 0
-
-
-def increment_user_free_uses(email):
-
-    try:
-
-        conn = get_db()
-
-        cur = conn.cursor()
-
-        cur.execute("""
-
-        UPDATE users
-
-        SET free_uses = free_uses + 1
-
-        WHERE email = %s
-
-        """, (email,))
-
-        conn.commit()
-
-        cur.close()
-        conn.close()
-
-        print(
-            f"[FREE USE INCREMENTED] {email}"
-        )
-
-    except Exception as e:
-
-        print(
-            "[FREE USE INCREMENT ERROR]",
-            e
-        )
-
-        traceback.print_exc()
-
-# =========================================
-# SAVE SUBSCRIPTION
-# =========================================
-
-def save_subscription(
-
-    email,
-    customer_id,
-    subscription_id,
-    status,
-    plan,
-    current_period_end
-
-):
-
-    try:
-
-        conn = get_db()
-
-        cur = conn.cursor()
-
-        cur.execute("""
-
-        INSERT INTO subscriptions (
-
-            email,
-            stripe_customer_id,
-            stripe_subscription_id,
-            status,
-            plan,
-            current_period_end
-
-        )
-
-        VALUES (
-
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-
-            CASE
-                WHEN %s IS NOT NULL
-                THEN to_timestamp(%s)
-                ELSE NULL
-            END
-        )
-
-        ON CONFLICT (
-            stripe_subscription_id
-        )
-
-        DO UPDATE SET
-
-            status = EXCLUDED.status,
-
-            current_period_end =
-                EXCLUDED.current_period_end
-
-        """, (
-
-            email,
-            customer_id,
-            subscription_id,
-            status,
-            plan,
-
-            current_period_end,
-            current_period_end
-
-        ))
-
-        conn.commit()
-
-        cur.close()
-        conn.close()
-
-        print(
-            f"[SUBSCRIPTION SAVED] {email}"
-        )
-
-    except Exception as e:
-
-        print(
-            "[SAVE SUB ERROR]",
-            e
-        )
-
-        traceback.print_exc()
-
-# =========================================
-# CV EXTRACTION
-# =========================================
-
-def extract_cv_text(file):
-
-    if not file:
-        return ""
-
-    filename = file.filename.lower()
-
-    allowed_extensions = (
-        ".pdf",
-        ".docx",
-        ".txt"
-    )
-
-    if not filename.endswith(allowed_extensions):
-
-        raise ValueError(
-            "Unsupported file format. "
-            "Please upload a PDF, DOCX, or TXT file."
-        )
-
-    try:
-
-        if filename.endswith(".docx"):
-
-            doc = Document(file)
-
-            text = "\n".join([
-                p.text for p in doc.paragraphs
-            ])
-
-            return text.strip()
-
-        elif filename.endswith(".pdf"):
-
-            try:
-
-                from pypdf import PdfReader
-
-                reader = PdfReader(file)
-
-                text = ""
-
-                for page in reader.pages:
-
-                    extracted = page.extract_text()
-
-                    if extracted:
-                        text += extracted + "\n"
-
-                return text.strip()
-
-            except Exception as pdf_error:
-
-                print(
-                    "PDF PARSE ERROR:",
-                    pdf_error
-                )
-
-                raise ValueError(
-                    "Unable to read PDF file."
-                )
-
-        elif filename.endswith(".txt"):
-
-            return file.read().decode(
-                "utf-8",
-                errors="ignore"
-            ).strip()
-
-        else:
-
-            raise ValueError(
-                "Unsupported file format."
-            )
-
-    except ValueError:
-        raise
-
-    except Exception as e:
-
-        print("CV PARSE ERROR:", e)
-
-        raise ValueError(
-            "Failed to process uploaded file."
-        )
-
-# =========================================
-# PAGE ROUTES
-# =========================================
-
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-
-@app.route("/eula")
-def eula():
-    return render_template("eula.html")
-
-
-@app.route("/privacy")
-def privacy():
-    return render_template("privacy.html")
-
-
-@app.route("/email")
-def email():
-    return render_template("email.html")
-
-
-@app.route("/app")
-def app_page():
-    return render_template("app.html")
-
-
-@app.route("/payment")
-def payment():
-    return render_template("payment.html")
-
-
-@app.route("/payment-cancel")
-def payment_cancel():
-    return render_template(
-        "payment-cancel.html"
-    )
-
-# =========================================
-# STRIPE SUCCESS
-# =========================================
-
-@app.route("/success")
-def success():
-
-    try:
-
-        session_id = request.args.get(
-            "session_id"
-        )
-
-        print(
-            f"[STRIPE SUCCESS] session_id={session_id}"
-        )
-
-        if not session_id:
-
-            return redirect("/app")
-
-        checkout_session = (
-            stripe.checkout.Session.retrieve(
-                session_id
-            )
-        )
-
-        subscription_id = (
-            checkout_session.subscription
-        )
-
-        customer_id = (
-            checkout_session.customer
-        )
-
-        customer_email = None
-
-        try:
-
-            if (
-                hasattr(
-                    checkout_session,
-                    "customer_details"
-                )
-                and checkout_session.customer_details
-            ):
-
-                customer_email = (
-                    checkout_session
-                    .customer_details
-                    .email
-                )
-
-        except Exception:
-            pass
-
-        if not customer_email:
-
-            try:
-
-                customer_email = (
-                    checkout_session
-                    .customer_email
-                )
-
-            except Exception:
-                pass
-
-        subscription = (
-            stripe.Subscription.retrieve(
-                subscription_id
-            )
-        )
-
-        current_period_end = None
-
-        try:
-
-            if (
-                hasattr(subscription, "_data")
-                and isinstance(
-                    subscription._data,
-                    dict
-                )
-            ):
-
-                current_period_end = (
-                    subscription._data.get(
-                        "current_period_end",
-                        None
-                    )
-                )
-
-        except Exception:
-
-            current_period_end = None
-
-        save_subscription(
-
-            email=customer_email,
-
-            customer_id=customer_id,
-
-            subscription_id=subscription_id,
-
-            status=subscription.status,
-
-            plan="premium",
-
-            current_period_end=current_period_end
-        )
-
-        return redirect(
-            "/app?payment=success"
-        )
-
-    except Exception as e:
-
-        print(
-            "[SUCCESS ROUTE ERROR]"
-        )
-
-        print(e)
-
-        traceback.print_exc()
-
-        return redirect(
-            "/app?payment=failed"
-        )
-
-# =========================================
-# STRIPE CUSTOMER PORTAL
-# =========================================
-
-@app.route(
-    "/create-customer-portal-session",
-    methods=["POST"]
-)
-def create_customer_portal():
-
-    try:
-
-        data = request.get_json()
-
-        email = data.get("email")
-
-        if not email:
-
-            return jsonify({
-                "error": "Missing email"
-            }), 400
-
-        conn = get_db()
-
-        cur = conn.cursor()
-
-        cur.execute("""
-
-        SELECT stripe_customer_id
-
-        FROM subscriptions
-
-        WHERE email = %s
-
-        ORDER BY created_at DESC
-
-        LIMIT 1
-
-        """, (email,))
-
-        row = cur.fetchone()
-
-        cur.close()
-        conn.close()
-
-        if not row:
-
-            return jsonify({
-                "error": "No subscription found"
-            }), 404
-
-        stripe_customer_id = row[0]
-
-        session = stripe.billing_portal.Session.create(
-
-            customer=stripe_customer_id,
-
-            return_url=f"{BASE_URL}/app"
-        )
-
-        return jsonify({
-            "url": session.url
-        })
-
-    except Exception as e:
-
-        print(
-            "[CUSTOMER PORTAL ERROR]",
-            e
-        )
-
-        traceback.print_exc()
-
-        return jsonify({
-            "error": str(e)
-        }), 500
 
 # =========================================
 # FLOW CONTROL
@@ -1345,297 +732,6 @@ def search_jobs():
         print(
             "[ERROR] /api/jobs/search failed"
         )
-
-        traceback.print_exc()
-
-        return jsonify({
-            "error": str(e)
-        }), 500
-
-# =========================================
-# JOB SOURCE
-# =========================================
-
-def search_jobs_real_sources(
-    keywords,
-    region
-):
-
-    all_results = []
-
-    fallback_regions = [
-        region,
-        "Netherlands",
-        "Germany",
-        "Remote",
-        "Europe"
-    ]
-
-    seen = set()
-
-    search_regions = []
-
-    for r in fallback_regions:
-
-        if r and r.lower() not in seen:
-
-            search_regions.append(r)
-
-            seen.add(r.lower())
-
-    for current_region in search_regions:
-
-        region_results = []
-
-        # =========================================
-        # ADZUNA
-        # =========================================
-
-        try:
-
-            adzuna_url = (
-                "https://api.adzuna.com/"
-                "v1/api/jobs/be/search/1"
-            )
-
-            adzuna_params = {
-
-                "app_id":
-                    os.getenv(
-                        "ADZUNA_APP_ID"
-                    ),
-
-                "app_key":
-                    os.getenv(
-                        "ADZUNA_APP_KEY"
-                    ),
-
-                "what":
-                    keywords,
-
-                "where":
-                    current_region,
-
-                "results_per_page":
-                    5
-            }
-
-            adzuna_response = requests.get(
-                adzuna_url,
-                params=adzuna_params
-            )
-
-            adzuna_data = (
-                adzuna_response.json()
-            )
-
-            for job in adzuna_data.get(
-                "results",
-                []
-            ):
-
-                region_results.append({
-
-                    "id":
-                        f"adzuna_{job.get('id')}",
-
-                    "title":
-                        job.get("title"),
-
-                    "company":
-                        job.get(
-                            "company",
-                            {}
-                        ).get(
-                            "display_name"
-                        ),
-
-                    "location":
-                        job.get(
-                            "location",
-                            {}
-                        ).get(
-                            "display_name"
-                        ),
-
-                    "url":
-                        job.get(
-                            "redirect_url"
-                        ),
-
-                    "rate":
-                        job.get(
-                            "salary_max"
-                        )
-                })
-
-        except Exception as e:
-
-            print(
-                "ADZUNA FETCH ERROR:",
-                e
-            )
-
-        # =========================================
-        # JOOBLE
-        # =========================================
-
-        try:
-
-            jooble_key = os.getenv(
-                "JOOBLE_API_KEY"
-            )
-
-            jooble_url = (
-                f"https://jooble.org/api/"
-                f"{jooble_key}"
-            )
-
-            jooble_payload = {
-
-                "keywords":
-                    keywords,
-
-                "location":
-                    current_region
-            }
-
-            jooble_response = requests.post(
-                jooble_url,
-                json=jooble_payload
-            )
-
-            jooble_data = (
-                jooble_response.json()
-            )
-
-            for job in jooble_data.get(
-                "jobs",
-                []
-            ):
-
-                region_results.append({
-
-                    "id":
-                        f"jooble_{job.get('id')}",
-
-                    "title":
-                        job.get("title"),
-
-                    "company":
-                        job.get("company"),
-
-                    "location":
-                        job.get("location"),
-
-                    "url":
-                        job.get("link"),
-
-                    "rate":
-                        None
-                })
-
-        except Exception as e:
-
-            print(
-                "JOOBLE FETCH ERROR:",
-                e
-            )
-
-        if len(region_results) > 0:
-
-            all_results.extend(
-                region_results
-            )
-
-            break
-
-    return all_results[:10]
-
-# =========================================
-# STRIPE CHECKOUT
-# =========================================
-@app.route(
-    "/create-checkout-session",
-    methods=["POST"]
-)
-def create_checkout():
-
-    try:
-
-        data = request.get_json(
-            silent=True
-        )
-
-        customer_email = None
-
-        if data and isinstance(data, dict):
-
-            customer_email = data.get(
-                "email"
-            )
-
-        if not customer_email:
-
-            customer_email = request.form.get(
-                "email"
-            )
-
-        if not customer_email:
-
-            customer_email = request.args.get(
-                "email"
-            )
-
-        if not customer_email:
-
-            return jsonify({
-                "error": "Missing email"
-            }), 400
-
-        price_id = os.getenv(
-            "STRIPE_PRICE_ID"
-        )
-
-        checkout = (
-            stripe.checkout.Session.create(
-
-                mode="subscription",
-
-                customer_email=
-                    customer_email,
-
-                payment_method_collection="always",
-
-                line_items=[{
-                    "price": price_id,
-                    "quantity": 1
-                }],
-
-                subscription_data={
-                    "trial_period_days": 7
-                },
-
-                success_url=(
-
-                    f"{BASE_URL}/success"
-                    "?session_id={CHECKOUT_SESSION_ID}"
-                ),
-
-                cancel_url=(
-
-                    f"{BASE_URL}/payment-cancel"
-                )
-            )
-        )
-
-        return jsonify({
-            "url": checkout.url
-        })
-
-    except Exception as e:
-
-        print("STRIPE ERROR:", e)
 
         traceback.print_exc()
 
