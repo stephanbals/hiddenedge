@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 
     <meta charset="UTF-8">
@@ -40,6 +41,8 @@
 
         </div>
 
+        <!-- STEPS -->
+
         <div class="steps">
 
             <div class="step active">
@@ -49,7 +52,7 @@
                 </div>
 
                 <div>
-                    Upload CV
+                    Upload Profile
                 </div>
 
             </div>
@@ -61,7 +64,7 @@
                 </div>
 
                 <div>
-                    Analyze Fit
+                    Analyze Positioning
                 </div>
 
             </div>
@@ -73,29 +76,62 @@
                 </div>
 
                 <div>
-                    Tailor CV
+                    Strengthen CV
                 </div>
 
             </div>
 
         </div>
 
-        <!-- UPLOAD -->
+<!-- UPLOAD -->
 
-        <div class="panel">
+<div class="panel">
 
-            <h3>Upload CV</h3>
+    <h3>
+        Upload Your CV
+    </h3>
 
-            <input type="file"
-                   id="cvFile">
+    <p class="helper-text">
 
-        </div>
+        Upload your CV in PDF, DOCX or TXT format.
+        HiddenEdge analyzes recruiter alignment,
+        ATS visibility and positioning opportunities.
+
+    </p>
+
+    <input type="file"
+           id="cvFile">
+
+    <div id="uploadStatus"
+         class="upload-status">
+
+        No file selected yet.
+
+    </div>
+
+    <div id="nextStepMessage"
+         class="helper-text"
+         style="margin-top:12px;">
+
+        Upload your CV to begin your analysis.
+
+    </div>
+
+</div>
 
         <!-- JOB DESCRIPTION -->
 
         <div class="panel">
 
-            <h3>Job Description</h3>
+            <h3>
+                Target Opportunity
+            </h3>
+
+            <p class="helper-text">
+
+                Paste the job description you want to position yourself for.
+
+            </p>
 
             <textarea
                 id="jobText"
@@ -105,7 +141,7 @@
             <button class="primary-btn"
                     onclick="analyze()">
 
-                Analyze CV Fit
+                Analyze Positioning
 
             </button>
 
@@ -115,7 +151,9 @@
 
         <div class="panel">
 
-            <h3>Find Jobs</h3>
+            <h3>
+                Discover Opportunities
+            </h3>
 
             <input
                 id="jobRole"
@@ -132,7 +170,9 @@
                 class="secondary-btn"
                 onclick="findJobs()"
             >
+
                 Search Opportunities
+
             </button>
 
         </div>
@@ -141,18 +181,20 @@
 
         <div class="panel">
 
-            <h3>Progress</h3>
+            <h3>
+                Progress
+            </h3>
 
             <div class="progress-row">
 
                 <div class="progress-label">
 
                     <span>
-                        Analyze
+                        Analysis
                     </span>
 
                     <span>
-                        Live
+                        Active
                     </span>
 
                 </div>
@@ -173,7 +215,7 @@
                 <div class="progress-label">
 
                     <span>
-                        Tailor
+                        CV Optimization
                     </span>
 
                     <span>
@@ -233,7 +275,9 @@
                         color:#9fd3ff;
                     "
                 >
+
                     Free trial status loading...
+
                 </div>
 
             </div>
@@ -244,7 +288,7 @@
                 onclick="handleSubscriptionButton()"
             >
 
-                Get Full Access — €9/month
+                Unlock Full Access — €9/month
 
             </button>
 
@@ -257,7 +301,7 @@
             <div class="card score-card">
 
                 <h3>
-                    Match Score
+                    Positioning Strength
                 </h3>
 
                 <div class="score-circle"
@@ -268,23 +312,38 @@
                 </div>
 
                 <div class="green">
-                    Alignment Analysis
+
+                    Alignment Potential
+
+                </div>
+
+                <div
+                    id="scoreInterpretation"
+                    class="score-interpretation"
+                    style="
+                        margin-top:15px;
+                        line-height:1.5;
+                    "
+                >
+
+                    Your positioning analysis will appear here.
+
                 </div>
 
             </div>
 
-            <!-- SCORE IMPROVEMENT -->
+            <!-- IMPROVEMENT -->
 
             <div class="card summary-card">
 
                 <h3>
-                    Score Improvement Potential
+                    Positioning Opportunities
                 </h3>
 
                 <div class="content-box"
                      id="scoreGrowth">
 
-                    CV improvement analysis pending.
+                    Improvement opportunities will appear after analysis.
 
                 </div>
 
@@ -301,11 +360,11 @@
                     <div class="analysis-title">
 
                         <h4>
-                            Recruiter Analysis
+                            Recruiter Perspective
                         </h4>
 
                         <p>
-                            Professional Recruiter Perspective
+                            Recruiter interpretation and positioning review
                         </p>
 
                     </div>
@@ -315,7 +374,7 @@
                 <div class="content-box"
                      id="recruiter">
 
-                    Recruiter evaluation pending.
+                    Recruiter positioning feedback pending.
 
                 </div>
 
@@ -332,11 +391,11 @@
                     <div class="analysis-title">
 
                         <h4>
-                            Hiring Manager Analysis
+                            Hiring Manager Perspective
                         </h4>
 
                         <p>
-                            Executive Delivery Perspective
+                            Executive delivery and leadership evaluation
                         </p>
 
                     </div>
@@ -346,7 +405,7 @@
                 <div class="content-box"
                      id="manager">
 
-                    Hiring manager evaluation pending.
+                    Hiring manager interpretation pending.
 
                 </div>
 
@@ -357,24 +416,24 @@
             <div class="card full-card">
 
                 <h3>
-                    ATS Evaluation
+                    ATS Visibility Review
                 </h3>
 
                 <div class="content-box"
                      id="ats">
 
-                    ATS analysis pending.
+                    ATS positioning analysis pending.
 
                 </div>
 
             </div>
 
-            <!-- ROLE SUGGESTIONS -->
+            <!-- JOB SUGGESTIONS -->
 
             <div class="card full-card">
 
                 <h3>
-                    Other Possible Job Positions For You
+                    Additional Role Opportunities
                 </h3>
 
                 <div class="suggestions-grid"
@@ -382,7 +441,7 @@
 
                     <div class="suggestion-item orange">
 
-                        Analyze a CV to receive suggested alternative roles.
+                        Analyze your profile to discover additional role opportunities.
 
                     </div>
 
@@ -390,7 +449,7 @@
 
             </div>
 
-            <!-- QUESTIONS -->
+            <!-- GUIDED OPTIMIZATION -->
 
             <div class="card full-card">
 
@@ -399,12 +458,18 @@
                     <div style="flex:1;">
 
                         <h3>
-                            Guided CV Optimization
+                            Guided CV Strengthening
                         </h3>
+
+                        <p class="helper-text">
+
+                            Answering these questions helps HiddenEdge improve recruiter positioning and highlight stronger business alignment.
+
+                        </p>
 
                         <div id="questions">
 
-                            Questions will appear after analysis.
+                            Positioning guidance questions will appear after analysis.
 
                         </div>
 
@@ -417,7 +482,7 @@
                             "
                         >
 
-                            Improve CV
+                            Strengthen CV Positioning
 
                         </button>
 
@@ -433,6 +498,57 @@
 
             </div>
 
+            <!-- PREMIUM CTA -->
+
+            <div class="card full-card">
+
+                <h3>
+                    Continue Strengthening Your Positioning
+                </h3>
+
+                <div class="content-box">
+
+                    <p>
+
+                        HiddenEdge Premium helps improve recruiter positioning,
+                        ATS visibility and executive presentation quality.
+
+                    </p>
+
+                    <ul style="margin-top:15px; line-height:1.8;">
+
+                        <li>
+                            Tailored recruiter-focused CV optimization
+                        </li>
+
+                        <li>
+                            Stronger ATS keyword positioning
+                        </li>
+
+                        <li>
+                            Executive-level positioning improvements
+                        </li>
+
+                        <li>
+                            Personalized optimization guidance
+                        </li>
+
+                    </ul>
+
+                    <button
+                        class="upgrade-btn"
+                        style="margin-top:25px;"
+                        onclick="goToStripe()"
+                    >
+
+                        Unlock Full Optimization
+
+                    </button>
+
+                </div>
+
+            </div>
+
             <!-- IMPROVED CV -->
 
             <div class="card full-card">
@@ -440,7 +556,7 @@
                 <div class="download-header">
 
                     <h3>
-                        Tailored CV
+                        Tailored CV Output
                     </h3>
 
                     <button class="download-btn"
@@ -455,7 +571,7 @@
                 <textarea
                     id="cvOutput"
                     class="cv-output"
-                    placeholder="Your improved CV will appear here"
+                    placeholder="Your optimized CV will appear here"
                 ></textarea>
 
             </div>
@@ -466,7 +582,7 @@
 
 </div>
 
-<!-- LOADING OVERLAY -->
+<!-- LOADING -->
 
 <div id="loadingOverlay"
      class="loading-overlay hidden">
@@ -476,11 +592,15 @@
         <div class="loader-spinner"></div>
 
         <h2 id="loadingTitle">
+
             Processing...
+
         </h2>
 
         <p id="loadingMessage">
-            Please wait while HiddenEdge analyzes your profile.
+
+            Preparing your positioning analysis.
+
         </p>
 
     </div>
@@ -497,8 +617,64 @@ let hasSubscription = false;
 
 let freeTrialsRemaining = 0;
 
+let loadingInterval = null;
+
 /* =========================================
-   SUBSCRIPTION STATE
+   FILE UPLOAD UX
+========================================= */
+
+document
+    .getElementById("cvFile")
+    .addEventListener("change", function() {
+
+        const file = this.files[0];
+
+        const status =
+            document.getElementById(
+                "uploadStatus"
+            );
+
+        if (file) {
+
+            status.innerHTML = `
+                ✓ Uploaded successfully:
+                ${file.name}
+            `;
+
+        } else {
+
+            status.innerText =
+                "No file selected yet.";
+        }
+    });
+
+const jobTextArea =
+    document.getElementById("jobText");
+
+jobTextArea.addEventListener(
+    "input",
+    function() {
+
+        localStorage.setItem(
+            "hiddenedge_jobtext",
+            this.value
+        );
+    }
+);
+
+const savedJobText =
+    localStorage.getItem(
+        "hiddenedge_jobtext"
+    );
+
+if (savedJobText) {
+
+    jobTextArea.value =
+        savedJobText;
+}
+
+/* =========================================
+   SUBSCRIPTIONS
 ========================================= */
 
 function initializeSubscriptionState() {
@@ -513,9 +689,7 @@ function initializeSubscriptionState() {
             "hiddenedge_subscription"
         );
 
-    if (
-        paymentSuccess === "success"
-    ) {
+    if (paymentSuccess === "success") {
 
         hasSubscription = true;
 
@@ -574,26 +748,8 @@ async function loadTrialStatus() {
             data.subscription ||
             false;
 
-        if (
-            data.free_trials_remaining ===
-            "unlimited"
-        ) {
-
-            freeTrialsRemaining =
-                "unlimited";
-
-        } else {
-
-            freeTrialsRemaining =
-                Number(
-                    data.free_trials_remaining || 0
-                );
-        }
-
-        localStorage.setItem(
-            "hiddenedge_subscription",
-            hasSubscription ? "true" : "false"
-        );
+        freeTrialsRemaining =
+            data.free_trials_remaining || 0;
 
         updateSubscriptionButton();
 
@@ -601,10 +757,7 @@ async function loadTrialStatus() {
 
     } catch (err) {
 
-        console.error(
-            "Trial status load failed",
-            err
-        );
+        console.error(err);
 
         updateTrialStatus();
     }
@@ -629,7 +782,7 @@ function updateSubscriptionButton() {
     } else {
 
         button.innerText =
-            "Get Full Access — €9/month";
+            "Unlock Full Access — €9/month";
     }
 }
 
@@ -647,7 +800,7 @@ function updateTrialStatus() {
     if (hasSubscription) {
 
         el.innerHTML =
-            "Premium subscription active.";
+            "Premium access active.";
 
         return;
     }
@@ -662,17 +815,32 @@ function handleSubscriptionButton() {
 
         openCustomerPortal();
 
-        return;
-    }
+    } else {
 
-    goToStripe();
+        goToStripe();
+    }
 }
 
 /* =========================================
-   LOADING OVERLAY
+   LOADER
 ========================================= */
 
-function showLoader(title, message) {
+function showLoader(title) {
+
+    const loadingMessages = [
+
+        "Reviewing recruiter expectations...",
+
+        "Analyzing ATS visibility...",
+
+        "Evaluating positioning strengths...",
+
+        "Identifying improvement opportunities...",
+
+        "Preparing optimization guidance..."
+    ];
+
+    let idx = 0;
 
     document
         .getElementById("loadingTitle")
@@ -680,7 +848,20 @@ function showLoader(title, message) {
 
     document
         .getElementById("loadingMessage")
-        .innerText = message;
+        .innerText = loadingMessages[0];
+
+    loadingInterval = setInterval(() => {
+
+        idx =
+            (idx + 1) %
+            loadingMessages.length;
+
+        document
+            .getElementById("loadingMessage")
+            .innerText =
+                loadingMessages[idx];
+
+    }, 2500);
 
     document
         .getElementById("loadingOverlay")
@@ -688,6 +869,8 @@ function showLoader(title, message) {
 }
 
 function hideLoader() {
+
+    clearInterval(loadingInterval);
 
     document
         .getElementById("loadingOverlay")
@@ -713,22 +896,19 @@ async function analyze() {
 
     if (!fileInput.files[0]) {
 
-        alert("Please upload a CV.");
+        alert("Please upload your CV.");
 
         return;
     }
 
     if (!jobText.trim()) {
 
-        alert("Please paste a job description.");
+        alert("Please paste the job description.");
 
         return;
     }
 
-    showLoader(
-        "Analyzing CV",
-        "HiddenEdge is evaluating recruiter, ATS, and hiring-manager alignment."
-    );
+    showLoader("Analyzing Positioning");
 
     const formData = new FormData();
 
@@ -753,30 +933,60 @@ async function analyze() {
 
     try {
 
-        const res = await fetch("/analyze", {
+        const res = await fetch(
+            "/analyze",
+            {
 
-            method:"POST",
+                method:"POST",
 
-            body:formData
-        });
+                body:formData
+            }
+        );
 
         const data = await res.json();
 
-        if (res.status === 403) {
+        if (!res.ok) {
+
+            hideLoader();
+
+            if (res.status === 403) {
+
+                document
+                    .getElementById("scoreGrowth")
+                    .innerHTML = `
+
+                        <div class="upgrade-message">
+
+                            <h4>
+                                Ready for Full CV Optimization?
+                            </h4>
+
+                            <p>
+                                Unlock advanced recruiter insights,
+                                ATS optimization and tailored CV
+                                strengthening for €9/month.
+                            </p>
+
+                            <button
+                                class="upgrade-btn"
+                                onclick="goToStripe()"
+                            >
+                                Unlock Full Optimization
+                            </button>
+
+                        </div>
+                `;
+
+                return;
+            }
 
             alert(
-                data.message ||
-                "Free trial exhausted."
+                data.error ||
+                "Analysis failed."
             );
-
-            goToStripe();
 
             return;
         }
-
-        document
-            .getElementById("analyzeProgress")
-            .style.width = "100%";
 
         originalScore =
             data.fit_score || 0;
@@ -785,6 +995,31 @@ async function analyze() {
             .getElementById("score")
             .innerText =
                 originalScore + "%";
+
+        let interpretation = "";
+
+        if (originalScore >= 80) {
+
+            interpretation =
+                "Strong positioning potential for this opportunity.";
+
+        } else if (originalScore >= 65) {
+
+            interpretation =
+                "Good alignment with several recruiter expectations.";
+
+        } else {
+
+            interpretation =
+                "There is meaningful improvement potential to strengthen alignment.";
+        }
+
+        document
+            .getElementById(
+                "scoreInterpretation"
+            )
+            .innerText =
+                interpretation;
 
         document
             .getElementById("ats")
@@ -800,9 +1035,6 @@ async function analyze() {
             .getElementById("manager")
             .innerHTML =
                 data.hiring_manager_view?.decision_rationale || "";
-
-        lastRoleSuggestions =
-            data.role_suggestions || [];
 
         hasSubscription =
             data.subscription_active || false;
@@ -832,6 +1064,27 @@ async function analyze() {
 
         updateTrialStatus();
 
+        document
+            .getElementById("scoreGrowth")
+            .innerHTML = `
+
+                <ul style="line-height:1.8;">
+
+                    <li>
+                        Strengthen recruiter-facing language
+                    </li>
+
+                    <li>
+                        Improve ATS keyword alignment
+                    </li>
+
+                    <li>
+                        Highlight stronger business impact visibility
+                    </li>
+
+                </ul>
+            `;
+
         let qHTML = "";
 
         if (data.questions) {
@@ -858,11 +1111,11 @@ async function analyze() {
         let jobsHTML = "";
 
         if (
-            lastRoleSuggestions &&
-            lastRoleSuggestions.length > 0
+            data.role_suggestions &&
+            data.role_suggestions.length > 0
         ) {
 
-            lastRoleSuggestions
+            data.role_suggestions
                 .slice(0,6)
                 .forEach(role => {
 
@@ -882,7 +1135,7 @@ async function analyze() {
 
                 <div class="suggestion-item orange">
 
-                    No alternative role suggestions available.
+                    No additional role suggestions available yet.
 
                 </div>
             `;
@@ -891,6 +1144,25 @@ async function analyze() {
         document
             .getElementById("jobs")
             .innerHTML = jobsHTML;
+
+        document
+            .getElementById("analyzeProgress")
+            .style.width = "100%";
+
+        document
+            .getElementById("score")
+            .scrollIntoView({
+                behavior: "smooth"
+            });
+
+        document
+            .getElementById("nextStepMessage")
+            .innerHTML = `
+
+                Analysis complete.<br><br>
+
+                Review your insights below and explore opportunities to strengthen your profile.
+            `;
 
     } catch (err) {
 
@@ -913,7 +1185,6 @@ async function analyze() {
         }, 800);
     }
 }
-
 /* =========================================
    IMPROVE CV
 ========================================= */
@@ -922,11 +1193,30 @@ async function improveCV() {
 
     if (!hasSubscription) {
 
-        alert(
-            "Premium subscription required for CV tailoring."
-        );
+        document
+            .getElementById("scoreGrowth")
+            .innerHTML = `
 
-        goToStripe();
+                <div class="upgrade-message">
+
+                    <h4>
+                        Premium Optimization Available
+                    </h4>
+
+                    <p>
+                        Unlock tailored recruiter positioning,
+                        ATS optimization and executive-level CV strengthening.
+                    </p>
+
+                    <button
+                        class="upgrade-btn"
+                        onclick="goToStripe()"
+                    >
+                        Unlock Full Optimization
+                    </button>
+
+                </div>
+            `;
 
         return;
     }
@@ -942,10 +1232,7 @@ async function improveCV() {
             "hiddenedge_email"
         ) || "";
 
-    showLoader(
-        "Improving CV",
-        "HiddenEdge is repositioning your profile for stronger market alignment."
-    );
+    showLoader("Strengthening CV Positioning");
 
     const answers = [];
 
@@ -977,40 +1264,24 @@ async function improveCV() {
         formData.append("answers", a)
     );
 
-    document
-        .getElementById("tailorProgress")
-        .style.width = "70%";
-
     try {
 
-        const res = await fetch("/refine", {
+        const res = await fetch(
+            "/refine",
+            {
 
-            method:"POST",
+                method:"POST",
 
-            body:formData
-        });
+                body:formData
+            }
+        );
 
         const data = await res.json();
 
-        if (res.status === 403) {
-
-            alert(
-                data.message ||
-                "Premium required."
-            );
-
-            goToStripe();
-
-            return;
-        }
-
-        document
-            .getElementById("tailorProgress")
-            .style.width = "100%";
-
         document
             .getElementById("cvOutput")
-            .value = data.cv;
+            .value =
+                data.cv || "";
 
         const gain =
             8 + Math.floor(Math.random() * 8);
@@ -1025,24 +1296,32 @@ async function improveCV() {
             .getElementById("scoreGrowth")
             .innerHTML = `
 
-                Original Score:
-                ${originalScore}%<br><br>
+                <div>
 
-                Estimated Improvement:
-                +${gain}%<br><br>
+                    Original Positioning:
+                    ${originalScore}%<br><br>
 
-                Estimated New Score:
-                <span class="green">
-                    ${newScore}%
-                </span>
+                    Estimated Improvement:
+                    +${gain}%<br><br>
+
+                    Potential Updated Alignment:
+                    <span class="green">
+                        ${newScore}%
+                    </span>
+
+                </div>
             `;
+
+        document
+            .getElementById("tailorProgress")
+            .style.width = "100%";
 
     } catch (err) {
 
         console.error(err);
 
         alert(
-            "CV improvement failed."
+            "CV optimization failed."
         );
 
     } finally {
@@ -1060,7 +1339,7 @@ async function improveCV() {
 }
 
 /* =========================================
-   DOWNLOAD CV
+   DOWNLOAD
 ========================================= */
 
 async function downloadCV() {
@@ -1073,7 +1352,7 @@ async function downloadCV() {
     if (!cvText.trim()) {
 
         alert(
-            "No CV available to download."
+            "No optimized CV available yet."
         );
 
         return;
@@ -1131,7 +1410,7 @@ async function downloadCV() {
 }
 
 /* =========================================
-   FIND JOBS
+   JOB SEARCH
 ========================================= */
 
 async function findJobs() {
@@ -1142,10 +1421,7 @@ async function findJobs() {
     const country =
         document.getElementById("jobCountry").value;
 
-    showLoader(
-        "Searching Opportunities",
-        "HiddenEdge is scanning external job sources and scoring role alignment."
-    );
+    showLoader("Searching Opportunities");
 
     try {
 
@@ -1199,7 +1475,7 @@ async function findJobs() {
 
                         <span class="green">
 
-                            Match:
+                            Match Potential:
                             ${j.fitScore || 0}%
 
                         </span>
@@ -1214,7 +1490,7 @@ async function findJobs() {
 
                 <div class='suggestion-item orange'>
 
-                    No jobs found
+                    No matching opportunities found.
 
                 </div>
             `;
@@ -1229,20 +1505,12 @@ async function findJobs() {
         console.error(err);
 
         alert(
-            "Job search failed."
+            "Opportunity search failed."
         );
 
     } finally {
 
         hideLoader();
-
-        setTimeout(() => {
-
-            document
-                .getElementById("analyzeProgress")
-                .style.width = "0%";
-
-        }, 800);
     }
 }
 
@@ -1286,7 +1554,7 @@ function goToStripe() {
         } else {
 
             alert(
-                "Stripe checkout failed."
+                "Unable to open checkout."
             );
         }
     })
@@ -1296,7 +1564,7 @@ function goToStripe() {
         console.error(err);
 
         alert(
-            "Stripe checkout failed."
+            "Checkout failed."
         );
     });
 }

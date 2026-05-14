@@ -249,7 +249,9 @@ def submit_email():
         used_tries = (
             get_user_free_uses(email)
         )
-
+        print("USED TRIES:", used_tries)
+        print("EMAIL:", email)
+        
         remaining = max(
             0,
             FREE_TRIAL_LIMIT - used_tries
