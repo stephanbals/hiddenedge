@@ -589,12 +589,30 @@ textarea::placeholder {
 
 .analysis-header img {
 
-    width: 72px;
+    width: 90px;
+    height: 90px;
 
-    border-radius: 14px;
+    border-radius: 12px;
+
+    object-fit: cover;
+
+    flex-shrink: 0;
 
     box-shadow:
         0 10px 24px rgba(0,0,0,0.24);
+
+    transition:
+        transform 0.22s ease,
+        box-shadow 0.22s ease;
+}
+
+.analysis-card:hover .analysis-header img {
+
+    transform:
+        scale(1.03);
+
+    box-shadow:
+        0 14px 32px rgba(59,130,246,0.25);
 }
 
 .analysis-title h4 {
