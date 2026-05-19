@@ -928,6 +928,25 @@ async function analyze() {
 
     showLoader("Analyzing Positioning");
 
+	const analyzeButton =
+		document.querySelector(
+			'button[onclick="analyze()"]'
+		);
+
+	if (analyzeButton) {
+
+		analyzeButton.disabled = true;
+
+		analyzeButton.innerText =
+			"Analyzing...";
+
+		analyzeButton.style.opacity = "0.7";
+
+		analyzeButton.style.cursor =
+			"not-allowed";
+	}
+
+
     const formData = new FormData();
 
     formData.append(
@@ -1192,16 +1211,28 @@ async function analyze() {
 
     } finally {
 
-        hideLoader();
+    hideLoader();
 
-        setTimeout(() => {
+    if (analyzeButton) {
 
-            document
-                .getElementById("analyzeProgress")
-                .style.width = "0%";
+        analyzeButton.disabled = false;
 
-        }, 800);
+        analyzeButton.innerText =
+            "Analyze Positioning";
+
+        analyzeButton.style.opacity = "1";
+
+        analyzeButton.style.cursor =
+            "pointer";
     }
+
+    setTimeout(() => {
+
+        document
+            .getElementById("analyzeProgress")
+            .style.width = "0%";
+
+    }, 800);
 }
 /* =========================================
    IMPROVE CV

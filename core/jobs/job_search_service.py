@@ -35,6 +35,12 @@ def search_jobs_real_sources(
 
     for current_region in search_regions:
 
+        print("===================================")
+        print(
+            f"[JOB SEARCH REGION] {current_region}"
+        )
+        print("===================================")
+
         region_results = []
 
         # =========================================
@@ -42,6 +48,8 @@ def search_jobs_real_sources(
         # =========================================
 
         try:
+
+            print("[ADZUNA REQUEST START]")
 
             adzuna_url = (
                 "https://api.adzuna.com/"
@@ -72,12 +80,43 @@ def search_jobs_real_sources(
 
             adzuna_response = requests.get(
                 adzuna_url,
-                params=adzuna_params
+                params=adzuna_params,
+                timeout=20
             )
 
-            adzuna_data = (
-                adzuna_response.json()
+            print(
+                f"[ADZUNA STATUS] "
+                f"{adzuna_response.status_code}"
             )
+
+            try:
+
+                adzuna_data = (
+                    adzuna_response.json()
+                )
+
+            except Exception as parse_error:
+
+                print("===================================")
+                print("=== ADZUNA PARSE ERROR ===")
+                print("===================================")
+
+                print(
+                    "[ERROR]",
+                    str(parse_error)
+                )
+
+                print(
+                    "[STATUS]",
+                    adzuna_response.status_code
+                )
+
+                print(
+                    "[TEXT]",
+                    adzuna_response.text[:500]
+                )
+
+                adzuna_data = {}
 
             for job in adzuna_data.get(
                 "results",
@@ -119,18 +158,26 @@ def search_jobs_real_sources(
                         )
                 })
 
+            print(
+                f"[ADZUNA RESULTS] "
+                f"{len(adzuna_data.get('results', []))}"
+            )
+
         except Exception as e:
 
-            print(
-                "ADZUNA FETCH ERROR:",
-                e
-            )
+            print("===================================")
+            print("=== ADZUNA FETCH ERROR ===")
+            print("===================================")
+
+            print(str(e))
 
         # =========================================
         # JOOBLE
         # =========================================
 
         try:
+
+            print("[JOOBLE REQUEST START]")
 
             jooble_key = os.getenv(
                 "JOOBLE_API_KEY"
@@ -152,12 +199,43 @@ def search_jobs_real_sources(
 
             jooble_response = requests.post(
                 jooble_url,
-                json=jooble_payload
+                json=jooble_payload,
+                timeout=20
             )
 
-            jooble_data = (
-                jooble_response.json()
+            print(
+                f"[JOOBLE STATUS] "
+                f"{jooble_response.status_code}"
             )
+
+            try:
+
+                jooble_data = (
+                    jooble_response.json()
+                )
+
+            except Exception as parse_error:
+
+                print("===================================")
+                print("=== JOOBLE PARSE ERROR ===")
+                print("===================================")
+
+                print(
+                    "[ERROR]",
+                    str(parse_error)
+                )
+
+                print(
+                    "[STATUS]",
+                    jooble_response.status_code
+                )
+
+                print(
+                    "[TEXT]",
+                    jooble_response.text[:500]
+                )
+
+                jooble_data = {}
 
             for job in jooble_data.get(
                 "jobs",
@@ -185,19 +263,43 @@ def search_jobs_real_sources(
                         None
                 })
 
-        except Exception as e:
-
             print(
-                "JOOBLE FETCH ERROR:",
-                e
+                f"[JOOBLE RESULTS] "
+                f"{len(jooble_data.get('jobs', []))}"
             )
 
+        except Exception as e:
+
+            print("===================================")
+            print("=== JOOBLE FETCH ERROR ===")
+            print("===================================")
+
+            print(str(e))
+
         if len(region_results) > 0:
+
+            print(
+                f"[REGION SUCCESS] "
+                f"{len(region_results)} jobs found"
+            )
 
             all_results.extend(
                 region_results
             )
 
             break
+
+        else:
+
+            print(
+                f"[REGION EMPTY] {current_region}"
+            )
+
+    print("===================================")
+    print(
+        f"[TOTAL JOB RESULTS] "
+        f"{len(all_results[:10])}"
+    )
+    print("===================================")
 
     return all_results[:10]

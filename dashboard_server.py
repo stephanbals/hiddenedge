@@ -298,11 +298,19 @@ def submit_email():
 )
 def analyze():
 
+    start_time = time.time()
+
+    print("===================================")
+    print("=== ANALYSIS START ===")
+    print("===================================")
+
     try:
 
         file = request.files.get("files")
 
         if not file:
+
+            print("[ERROR] No CV file uploaded.")
 
             return jsonify({
                 "error":
@@ -320,6 +328,21 @@ def analyze():
         )
 
         print(f"[ANALYZE EMAIL] {email}")
+
+        print(
+            f"[JOB TEXT LENGTH] {len(job_text)}"
+        )
+
+        if len(job_text) > 25000:
+
+            print(
+                "[WARNING] Oversized job description detected."
+            )
+
+            return jsonify({
+                "error":
+                    "Job description too large. Please shorten the input."
+            }), 400
 
         subscription = (
             get_subscription_by_email(email)
@@ -349,6 +372,10 @@ def analyze():
             and used_tries >= FREE_TRIAL_LIMIT
         ):
 
+            print(
+                "[PAYWALL] Free trial exhausted."
+            )
+
             return jsonify({
 
                 "paywall": True,
@@ -358,11 +385,19 @@ def analyze():
 
             }), 403
 
+        print("[CV EXTRACTION START]")
+
         try:
 
             cv_text = extract_cv_text(file)
 
         except ValueError as validation_error:
+
+            print(
+                "[CV VALIDATION ERROR]"
+            )
+
+            print(str(validation_error))
 
             return jsonify({
 
@@ -371,10 +406,20 @@ def analyze():
 
             }), 400
 
+        print("[CV EXTRACTION COMPLETE]")
+
+        print(
+            f"[CV LENGTH] {len(cv_text)}"
+        )
+
+        print("[ANALYSIS START]")
+
         result = cv_service.analyze_cv(
             [cv_text],
             job_text
         )
+
+        print("[ANALYSIS COMPLETE]")
 
         if not subscription_active:
 
@@ -400,16 +445,42 @@ def analyze():
             "subscription_active"
         ] = subscription_active
 
+        duration = round(
+            time.time() - start_time,
+            2
+        )
+
+        print("===================================")
+        print("=== ANALYSIS COMPLETE ===")
+        print(
+            f"[DURATION] {duration} seconds"
+        )
+        print("===================================")
+
         return jsonify(result)
 
     except Exception as e:
 
-        print("[ANALYZE ERROR]")
+        duration = round(
+            time.time() - start_time,
+            2
+        )
+
+        print("===================================")
+        print("=== ANALYSIS FAILED ===")
+        print("===================================")
+
+        print(f"[ERROR] {str(e)}")
+
+        print(
+            f"[FAILED AFTER] {duration} seconds"
+        )
 
         traceback.print_exc()
 
         return jsonify({
-            "error": str(e)
+            "error":
+                "Analysis failed. Please try again."
         }), 500
 
 # =========================================
