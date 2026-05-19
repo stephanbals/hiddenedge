@@ -3,4 +3,4 @@ services:
     name: hiddenedge
     env: python
     buildCommand: ""
-    startCommand: gunicorn dashboard_server:app --timeout 300
+    sstartCommand: gunicorn dashboard_server:app --timeout 300 --workers 1 --threads 2
