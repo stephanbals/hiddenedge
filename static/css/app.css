@@ -453,6 +453,56 @@ textarea::placeholder {
     white-space: nowrap;
 }
 
+.hero-analyze-cta {
+
+    margin-top: 28px;
+
+    display: flex;
+
+    justify-content: center;
+}
+
+.analyze-hero-btn {
+
+    background:
+        linear-gradient(
+            135deg,
+            #7c3aed,
+            #2563eb
+        );
+
+    color: white;
+
+    border: none;
+
+    padding: 18px 34px;
+
+    border-radius: 14px;
+
+    font-size: 18px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+
+    box-shadow:
+        0 10px 28px rgba(
+            37,
+            99,
+            235,
+            0.28
+        );
+}
+
+.analyze-hero-btn:hover {
+
+    transform: translateY(-2px);
+}
+
 .upgrade-btn:hover {
 
     transform:
