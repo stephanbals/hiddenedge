@@ -652,6 +652,12 @@ document
                 "uploadStatus"
             );
 
+        console.log(
+            "[UPLOAD CHANGE EVENT]"
+        );
+
+        console.log(file);
+
         if (file) {
 
             status.innerHTML = `
@@ -659,10 +665,30 @@ document
                 ${file.name}
             `;
 
+            status.style.color =
+                "#4ade80";
+
+            status.style.fontWeight =
+                "600";
+
+            console.log(
+                "[UPLOAD SUCCESS]"
+            );
+
         } else {
 
             status.innerText =
                 "No file selected yet.";
+
+            status.style.color =
+                "";
+
+            status.style.fontWeight =
+                "";
+
+            console.log(
+                "[UPLOAD RESET]"
+            );
         }
     });
 
