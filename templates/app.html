@@ -369,7 +369,7 @@
 						onclick="analyze()"
 					>
 
-						Analyze Your CV →
+						Analyze My Positioning →
 
 					</button>
 
@@ -378,6 +378,40 @@
                 </div>
 
             </div>
+
+			<!-- YOU AS CANDIDATE -->
+
+				<div class="card full-card">
+
+					<div class="analysis-header">
+
+						<img src="/static/helper.png">
+
+						<div class="analysis-title">
+
+							<h4>
+								You as a Candidate
+							</h4>
+
+							<p>
+								Your overall executive and positioning profile
+							</p>
+
+						</div>
+
+					</div>
+
+					<div
+						class="content-box"
+						id="candidateSummary"
+					>
+
+						Your candidate positioning summary will appear here.
+
+					</div>
+
+				</div>
+
 
             <!-- RECRUITER -->
 
@@ -390,11 +424,11 @@
                     <div class="analysis-title">
 
                         <h4>
-                            Recruiter Perspective
+                            How Recruiters See Your CV
                         </h4>
 
                         <p>
-                            Recruiter interpretation and positioning review
+                            How recruiters are likely to interpret your profile
                         </p>
 
                     </div>
@@ -409,7 +443,7 @@
                 </div>
 
             </div>
-
+			
             <!-- HIRING MANAGER -->
 
             <div class="card analysis-card">
@@ -425,7 +459,7 @@
                         </h4>
 
                         <p>
-                            Executive delivery and leadership evaluation
+                           How hiring managers may evaluate your delivery capability
                         </p>
 
                     </div>
@@ -446,7 +480,7 @@
             <div class="card full-card">
 
                 <h3>
-                    ATS Visibility Review
+                    How ATS Systems Read Your CV
                 </h3>
 
                 <div class="content-box"
@@ -1110,6 +1144,11 @@ async function analyze() {
             .getElementById("manager")
             .innerHTML =
                 data.hiring_manager_view?.decision_rationale || "";
+
+		document
+			.getElementById("candidateSummary")
+			.innerHTML =
+				data.candidate_summary || "";
 
         hasSubscription =
             data.subscription_active || false;
