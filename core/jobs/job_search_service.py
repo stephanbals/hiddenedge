@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 
 
@@ -49,7 +50,11 @@ def search_jobs_real_sources(
 
         try:
 
+            adzuna_start = time.time()
+
+            print("===================================")
             print("[ADZUNA REQUEST START]")
+            print("===================================")
 
             adzuna_url = (
                 "https://api.adzuna.com/"
@@ -78,45 +83,82 @@ def search_jobs_real_sources(
                     5
             }
 
-            adzuna_response = requests.get(
-                adzuna_url,
-                params=adzuna_params,
-                timeout=20
-            )
+            adzuna_data = {}
 
-            print(
-                f"[ADZUNA STATUS] "
-                f"{adzuna_response.status_code}"
-            )
+            for attempt in range(2):
 
-            try:
+                try:
 
-                adzuna_data = (
-                    adzuna_response.json()
-                )
+                    print(
+                        f"[ADZUNA ATTEMPT] "
+                        f"{attempt + 1}"
+                    )
 
-            except Exception as parse_error:
+                    adzuna_response = requests.get(
+                        adzuna_url,
+                        params=adzuna_params,
+                        timeout=20
+                    )
 
-                print("===================================")
-                print("=== ADZUNA PARSE ERROR ===")
-                print("===================================")
+                    print(
+                        f"[ADZUNA STATUS] "
+                        f"{adzuna_response.status_code}"
+                    )
 
-                print(
-                    "[ERROR]",
-                    str(parse_error)
-                )
+                    if adzuna_response.status_code != 200:
 
-                print(
-                    "[STATUS]",
-                    adzuna_response.status_code
-                )
+                        print(
+                            "[ADZUNA NON-200 RESPONSE]"
+                        )
 
-                print(
-                    "[TEXT]",
-                    adzuna_response.text[:500]
-                )
+                        print(
+                            adzuna_response.text[:500]
+                        )
 
-                adzuna_data = {}
+                        continue
+
+                    try:
+
+                        adzuna_data = (
+                            adzuna_response.json()
+                        )
+
+                        break
+
+                    except Exception as parse_error:
+
+                        print("===================================")
+                        print("=== ADZUNA PARSE ERROR ===")
+                        print("===================================")
+
+                        print(
+                            "[ERROR]",
+                            str(parse_error)
+                        )
+
+                        print(
+                            "[STATUS]",
+                            adzuna_response.status_code
+                        )
+
+                        print(
+                            "[TEXT]",
+                            adzuna_response.text[:500]
+                        )
+
+                except requests.Timeout:
+
+                    print(
+                        "[ADZUNA TIMEOUT]"
+                    )
+
+                except Exception as request_error:
+
+                    print(
+                        "[ADZUNA REQUEST ERROR]"
+                    )
+
+                    print(str(request_error))
 
             for job in adzuna_data.get(
                 "results",
@@ -158,9 +200,18 @@ def search_jobs_real_sources(
                         )
                 })
 
+            adzuna_duration = (
+                time.time() - adzuna_start
+            )
+
             print(
                 f"[ADZUNA RESULTS] "
                 f"{len(adzuna_data.get('results', []))}"
+            )
+
+            print(
+                f"[ADZUNA DURATION] "
+                f"{round(adzuna_duration, 2)}s"
             )
 
         except Exception as e:
@@ -170,14 +221,17 @@ def search_jobs_real_sources(
             print("===================================")
 
             print(str(e))
-
         # =========================================
         # JOOBLE
         # =========================================
 
         try:
 
+            jooble_start = time.time()
+
+            print("===================================")
             print("[JOOBLE REQUEST START]")
+            print("===================================")
 
             jooble_key = os.getenv(
                 "JOOBLE_API_KEY"
@@ -197,45 +251,82 @@ def search_jobs_real_sources(
                     current_region
             }
 
-            jooble_response = requests.post(
-                jooble_url,
-                json=jooble_payload,
-                timeout=20
-            )
+            jooble_data = {}
 
-            print(
-                f"[JOOBLE STATUS] "
-                f"{jooble_response.status_code}"
-            )
+            for attempt in range(2):
 
-            try:
+                try:
 
-                jooble_data = (
-                    jooble_response.json()
-                )
+                    print(
+                        f"[JOOBLE ATTEMPT] "
+                        f"{attempt + 1}"
+                    )
 
-            except Exception as parse_error:
+                    jooble_response = requests.post(
+                        jooble_url,
+                        json=jooble_payload,
+                        timeout=20
+                    )
 
-                print("===================================")
-                print("=== JOOBLE PARSE ERROR ===")
-                print("===================================")
+                    print(
+                        f"[JOOBLE STATUS] "
+                        f"{jooble_response.status_code}"
+                    )
 
-                print(
-                    "[ERROR]",
-                    str(parse_error)
-                )
+                    if jooble_response.status_code != 200:
 
-                print(
-                    "[STATUS]",
-                    jooble_response.status_code
-                )
+                        print(
+                            "[JOOBLE NON-200 RESPONSE]"
+                        )
 
-                print(
-                    "[TEXT]",
-                    jooble_response.text[:500]
-                )
+                        print(
+                            jooble_response.text[:500]
+                        )
 
-                jooble_data = {}
+                        continue
+
+                    try:
+
+                        jooble_data = (
+                            jooble_response.json()
+                        )
+
+                        break
+
+                    except Exception as parse_error:
+
+                        print("===================================")
+                        print("=== JOOBLE PARSE ERROR ===")
+                        print("===================================")
+
+                        print(
+                            "[ERROR]",
+                            str(parse_error)
+                        )
+
+                        print(
+                            "[STATUS]",
+                            jooble_response.status_code
+                        )
+
+                        print(
+                            "[TEXT]",
+                            jooble_response.text[:500]
+                        )
+
+                except requests.Timeout:
+
+                    print(
+                        "[JOOBLE TIMEOUT]"
+                    )
+
+                except Exception as request_error:
+
+                    print(
+                        "[JOOBLE REQUEST ERROR]"
+                    )
+
+                    print(str(request_error))
 
             for job in jooble_data.get(
                 "jobs",
@@ -263,9 +354,18 @@ def search_jobs_real_sources(
                         None
                 })
 
+            jooble_duration = (
+                time.time() - jooble_start
+            )
+
             print(
                 f"[JOOBLE RESULTS] "
                 f"{len(jooble_data.get('jobs', []))}"
+            )
+
+            print(
+                f"[JOOBLE DURATION] "
+                f"{round(jooble_duration, 2)}s"
             )
 
         except Exception as e:
@@ -275,31 +375,3 @@ def search_jobs_real_sources(
             print("===================================")
 
             print(str(e))
-
-        if len(region_results) > 0:
-
-            print(
-                f"[REGION SUCCESS] "
-                f"{len(region_results)} jobs found"
-            )
-
-            all_results.extend(
-                region_results
-            )
-
-            break
-
-        else:
-
-            print(
-                f"[REGION EMPTY] {current_region}"
-            )
-
-    print("===================================")
-    print(
-        f"[TOTAL JOB RESULTS] "
-        f"{len(all_results[:10])}"
-    )
-    print("===================================")
-
-    return all_results[:10]

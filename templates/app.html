@@ -146,13 +146,6 @@
                 placeholder="Paste the target job description here"
             ></textarea>
 
-            <button class="primary-btn"
-                    onclick="analyze()">
-
-                Analyze Positioning
-
-            </button>
-
         </div>
 
         <!-- JOB SEARCH -->
@@ -366,7 +359,9 @@
 
 					<button
 						class="analyze-hero-btn"
+						id="heroAnalyzeBtn"
 						onclick="analyze()"
+						disabled
 					>
 
 						Analyze My Positioning →
@@ -720,7 +715,17 @@ document
             console.log(
                 "[UPLOAD SUCCESS]"
             );
+			
+			document
+				.getElementById("nextStepMessage")
+				.innerHTML = `
 
+					Great — now paste the target job description.
+			`;
+			
+			updateAnalyzeButtonState();
+}
+			
         } else {
 
             status.innerText =
@@ -749,6 +754,31 @@ jobTextArea.addEventListener(
             "hiddenedge_jobtext",
             this.value
         );
+		updateAnalyzeButtonState();
+		
+		if (this.value.trim().length > 0) {
+
+			document
+				.getElementById(
+					"nextStepMessage"
+				)
+				.innerHTML = `
+
+					Ready to analyze your positioning.
+				`;
+
+		} else {
+
+			document
+				.getElementById(
+					"nextStepMessage"
+				)
+				.innerHTML = `
+
+					Great — now paste the target job description.
+				`;
+}
+		
     }
 );
 
@@ -761,6 +791,47 @@ if (savedJobText) {
 
     jobTextArea.value =
         savedJobText;
+}
+
+updateAnalyzeButtonState();
+
+function updateAnalyzeButtonState() {
+
+    const fileSelected =
+        document.getElementById("cvFile")
+        .files.length > 0;
+
+    const jobFilled =
+        document.getElementById("jobText")
+        .value
+        .trim()
+        .length > 0;
+
+    const button =
+        document.getElementById(
+            "heroAnalyzeBtn"
+        );
+
+    if (!button) {
+        return;
+    }
+
+    if (fileSelected && jobFilled) {
+
+        button.disabled = false;
+
+        button.style.opacity = "1";
+
+        button.style.cursor = "pointer";
+
+    } else {
+
+        button.disabled = true;
+
+        button.style.opacity = "0.5";
+
+        button.style.cursor = "not-allowed";
+    }
 }
 
 /* =========================================
@@ -998,12 +1069,14 @@ async function analyze() {
         return;
     }
 
-    showLoader("Analyzing Positioning");
-
-	const analyzeButton =
-		document.querySelector(
-			'button[onclick="analyze()"]'
+		showLoader(
+			"Analyzing Your Positioning"
 		);
+
+		const analyzeButton =
+			document.getElementById(
+				"heroAnalyzeBtn"
+    );
 
 	if (analyzeButton) {
 
@@ -1292,15 +1365,10 @@ async function analyze() {
 
     if (analyzeButton) {
 
-        analyzeButton.disabled = false;
+		analyzeButton.innerText =
+			"Analyze My Positioning →";
 
-        analyzeButton.innerText =
-            "Analyze Positioning";
-
-        analyzeButton.style.opacity = "1";
-
-        analyzeButton.style.cursor =
-            "pointer";
+		updateAnalyzeButtonState();
     }
 
     setTimeout(() => {
